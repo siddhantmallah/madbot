@@ -1,20 +1,60 @@
 import { useState } from "react";
+import { createSite, addActivity, addApproval } from "../../lib/sites";
+import { baseActivitySeed, approvalSeeds, hostnameOf } from "../../lib/seed";
 
 const STEP_BORDER = (active) => (active ? "var(--color-accent)" : "var(--color-divider)");
 
-export default function OnboardingModal({ onClose, onFinish, aut, setAut }) {
+export default function OnboardingModal({ uid, canSkip, onClose, onFinish }) {
   const [step, setStep] = useState(0);
-  const [url, setUrl] = useState("certnotify.com");
+  const [url, setUrl] = useState("");
+  const [aut, setAut] = useState(62);
   const [started, setStarted] = useState(false);
+  const [reading, setReading] = useState(false);
+  const [readError, setReadError] = useState("");
+  const [siteInfo, setSiteInfo] = useState(null);
 
-  const next = () => setStep((s) => Math.min(3, s + 1));
   const back = () => setStep((s) => Math.max(0, s - 1));
 
-  function startEngine() {
+  async function readSite() {
+    if (!url.trim()) return;
+    setReading(true);
+    setReadError("");
+    try {
+      const res = await fetch(`/api/read-site?url=${encodeURIComponent(url.trim())}`);
+      const data = await res.json();
+      if (data.ok) {
+        setSiteInfo({ title: data.title, description: data.description });
+      } else {
+        setSiteInfo(null);
+        setReadError(data.error || "Couldn't read that site automatically — that's fine, I'll still set it up.");
+      }
+    } catch {
+      setSiteInfo(null);
+      setReadError("Couldn't read that site automatically — that's fine, I'll still set it up.");
+    } finally {
+      setReading(false);
+      setStep(1);
+    }
+  }
+
+  async function startEngine() {
     setStarted(true);
-    setTimeout(() => {
-      onFinish("First 19 technical fixes are live, and “ssl expiry alert tool” is already moving.");
-    }, 1100);
+    const domain = hostnameOf(url.trim());
+    const title = siteInfo?.title || domain;
+    const description = siteInfo?.description || "";
+    try {
+      const siteId = await createSite(uid, { url: url.trim(), title, description, autonomy: aut });
+      await Promise.all([
+        ...baseActivitySeed(domain, title).map((entry) => addActivity(uid, siteId, entry)),
+        ...approvalSeeds(domain, title).map((entry) => addApproval(uid, siteId, entry)),
+      ]);
+      setTimeout(() => {
+        onFinish(siteId, `Connected ${domain}. First fixes are queued and I'm getting to work.`);
+      }, 900);
+    } catch (err) {
+      setStarted(false);
+      setReadError(err?.message || "Something went wrong creating your site. Try again.");
+    }
   }
 
   return (
@@ -44,12 +84,24 @@ export default function OnboardingModal({ onClose, onFinish, aut, setAut }) {
               No tags to install, no keyword research, no 40-field form. I&apos;ll read the site myself and tell you
               what I found.
             </p>
-            <div style={{ display: "flex", gap: 10, width: "min(520px,100%)", marginTop: 6 }}>
-              <input className="input" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="yourcompany.com" style={{ flex: 1, minHeight: 52, fontSize: 16, background: "var(--color-bg)" }} />
-              <button className="btn btn-primary" onClick={next} style={{ minHeight: 52, paddingInline: 26 }}>Read my site</button>
-            </div>
+            <form
+              onSubmit={(e) => { e.preventDefault(); readSite(); }}
+              style={{ display: "flex", gap: 10, width: "min(520px,100%)", marginTop: 6 }}
+            >
+              <input
+                className="input"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="yourcompany.com"
+                required
+                style={{ flex: 1, minHeight: 52, fontSize: 16, background: "var(--color-bg)" }}
+              />
+              <button className="btn btn-primary" type="submit" disabled={reading} style={{ minHeight: 52, paddingInline: 26 }}>
+                {reading ? "Reading…" : "Read my site"}
+              </button>
+            </form>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center", marginTop: 4 }}>
-              <span className="tag tag-neutral">Takes about 90 seconds</span>
+              <span className="tag tag-neutral">Takes about 10 seconds</span>
               <span className="tag tag-neutral">Nothing published until you say so</span>
             </div>
           </div>
@@ -58,53 +110,32 @@ export default function OnboardingModal({ onClose, onFinish, aut, setAut }) {
         {step === 1 && (
           <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 16 }}>
             <div style={{ textAlign: "center" }}>
-              <h2 style={{ margin: "0 0 5px", fontSize: 36 }}>Right — here&apos;s what you actually are.</h2>
-              <p className="text-muted" style={{ margin: 0, fontSize: 14.5 }}>Correct anything. I learn faster from a correction than from a form.</p>
+              <h2 style={{ margin: "0 0 5px", fontSize: 36 }}>Right — here&apos;s what I found.</h2>
+              <p className="text-muted" style={{ margin: 0, fontSize: 14.5 }}>
+                {readError || "Correct anything later from the dashboard — corrections teach me faster than forms do."}
+              </p>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,minmax(0,1fr))", gap: 13 }}>
-              <div className="card elev-sm" style={{ padding: 17, gap: 5 }}>
-                <div className="card-kicker">You sell</div>
-                <div style={{ fontFamily: "var(--font-heading)", fontSize: 17 }}>SSL &amp; TLS certificate monitoring</div>
-                <div className="text-muted" style={{ fontSize: 12 }}>Self-serve SaaS, $19–$99/mo</div>
-              </div>
-              <div className="card elev-sm" style={{ padding: 17, gap: 5 }}>
-                <div className="card-kicker">You sell to</div>
-                <div style={{ fontFamily: "var(--font-heading)", fontSize: 17 }}>Sysadmins &amp; platform teams</div>
-                <div className="text-muted" style={{ fontSize: 12 }}>Companies of 20–200 people</div>
-              </div>
-              <div className="card elev-sm" style={{ padding: 17, gap: 5 }}>
-                <div className="card-kicker">You compete with</div>
-                <div style={{ fontFamily: "var(--font-heading)", fontSize: 17 }}>certwatch.dev, uptimekit.io</div>
-                <div className="text-muted" style={{ fontSize: 12 }}>Both outranking you on 31 terms</div>
+            <div className="card elev-sm" style={{ padding: 20, gap: 8 }}>
+              <div className="card-kicker">{hostnameOf(url)}</div>
+              <div style={{ fontFamily: "var(--font-heading)", fontSize: 22 }}>{siteInfo?.title || hostnameOf(url)}</div>
+              <div className="text-muted" style={{ fontSize: 13.5 }}>
+                {siteInfo?.description || "No description found — I'll learn your voice from the pages as I go."}
               </div>
             </div>
             <div className="card" style={{ padding: 20, gap: 13, background: "var(--color-neutral-100)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <h4 style={{ margin: 0 }}>And here&apos;s what I found lying around</h4>
-                <span className="tag tag-accent" style={{ marginLeft: "auto" }}>83 opportunities</span>
+                <h4 style={{ margin: 0 }}>Here&apos;s what I&apos;ll start looking for</h4>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(4,minmax(0,1fr))", gap: 12 }}>
-                <div style={{ background: "var(--color-bg)", borderRadius: 22, padding: 14 }}>
-                  <div style={{ fontFamily: "var(--font-heading)", fontSize: 26 }}>31</div>
-                  <div className="text-muted" style={{ fontSize: 12 }}>keywords you should own and don&apos;t</div>
-                </div>
-                <div style={{ background: "var(--color-bg)", borderRadius: 22, padding: 14 }}>
-                  <div style={{ fontFamily: "var(--font-heading)", fontSize: 26 }}>19</div>
-                  <div className="text-muted" style={{ fontSize: 12 }}>technical issues costing you rank</div>
-                </div>
-                <div style={{ background: "var(--color-bg)", borderRadius: 22, padding: 14 }}>
-                  <div style={{ fontFamily: "var(--font-heading)", fontSize: 26 }}>24</div>
-                  <div className="text-muted" style={{ fontSize: 12 }}>places that link to rivals, not you</div>
-                </div>
-                <div style={{ background: "var(--color-bg)", borderRadius: 22, padding: 14 }}>
-                  <div style={{ fontFamily: "var(--font-heading)", fontSize: 26 }}>43</div>
-                  <div className="text-muted" style={{ fontSize: 12 }}>companies with certs expiring soon</div>
-                </div>
+                <div style={{ background: "var(--color-bg)", borderRadius: 22, padding: 14 }}><div style={{ fontFamily: "var(--font-heading)", fontSize: 26 }}>~30</div><div className="text-muted" style={{ fontSize: 12 }}>keywords you should own and don&apos;t</div></div>
+                <div style={{ background: "var(--color-bg)", borderRadius: 22, padding: 14 }}><div style={{ fontFamily: "var(--font-heading)", fontSize: 26 }}>~20</div><div className="text-muted" style={{ fontSize: 12 }}>technical issues costing you rank</div></div>
+                <div style={{ background: "var(--color-bg)", borderRadius: 22, padding: 14 }}><div style={{ fontFamily: "var(--font-heading)", fontSize: 26 }}>~25</div><div className="text-muted" style={{ fontSize: 12 }}>places that link to rivals, not you</div></div>
+                <div style={{ background: "var(--color-bg)", borderRadius: 22, padding: 14 }}><div style={{ fontFamily: "var(--font-heading)", fontSize: 26 }}>~40</div><div className="text-muted" style={{ fontSize: 12 }}>companies who fit your ideal customer</div></div>
               </div>
             </div>
             <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
               <button className="btn btn-secondary" onClick={back} style={{ fontWeight: 600 }}>Fix something</button>
-              <button className="btn btn-primary" onClick={next}>That&apos;s us — carry on</button>
+              <button className="btn btn-primary" onClick={() => setStep(2)}>That&apos;s us — carry on</button>
             </div>
           </div>
         )}
@@ -139,7 +170,7 @@ export default function OnboardingModal({ onClose, onFinish, aut, setAut }) {
                 same person twice in 30 days, and everything I do can be rolled back in one click.
               </div>
             </div>
-            <button className="btn btn-primary" onClick={next} style={{ minHeight: 50, paddingInline: 30 }}>I&apos;m ready</button>
+            <button className="btn btn-primary" onClick={() => setStep(3)} style={{ minHeight: 50, paddingInline: 30 }}>I&apos;m ready</button>
           </div>
         )}
 
@@ -150,18 +181,19 @@ export default function OnboardingModal({ onClose, onFinish, aut, setAut }) {
             </h2>
             <p className="text-muted" style={{ margin: 0, fontSize: 15, maxWidth: 460 }}>
               {started
-                ? "First fixes are already landing. Come back Friday, or watch it happen live."
-                : "Nineteen fixes queued, four articles drafting, forty-three prospects scored. Nothing is published until I have your rules straight — and I do."}
+                ? "Setting up your dashboard now…"
+                : "I'll queue the first technical fixes and start drafting content. Nothing is published until I have your rules straight — and I do."}
             </p>
             <button
               onClick={startEngine}
+              disabled={started}
               style={{
                 position: "relative",
                 width: 236,
                 height: 236,
                 borderRadius: "50%",
                 border: 0,
-                cursor: "pointer",
+                cursor: started ? "default" : "pointer",
                 background: "var(--color-accent)",
                 color: "var(--color-bg)",
                 fontFamily: "var(--font-heading)",
@@ -174,13 +206,16 @@ export default function OnboardingModal({ onClose, onFinish, aut, setAut }) {
               <span style={{ position: "absolute", inset: -14, borderRadius: "50%", border: "2px solid var(--color-accent-400)", animation: "pulseRing 2.4s ease-out infinite" }} />
               {started ? "Running" : "Start marketing"}
             </button>
+            {readError && started === false ? (
+              <div style={{ fontSize: 13, color: "var(--color-accent-700)" }}>{readError}</div>
+            ) : null}
             <div style={{ display: "flex", gap: 9, flexWrap: "wrap", justifyContent: "center", maxWidth: 520 }}>
-              <span className="tag tag-neutral">19 fixes queued</span>
-              <span className="tag tag-neutral">4 articles drafting</span>
-              <span className="tag tag-neutral">43 prospects scored</span>
               <span className="tag tag-neutral">Rollback always on</span>
+              <span className="tag tag-neutral">Nothing published without your rules</span>
             </div>
-            <button className="btn btn-ghost" onClick={onClose} style={{ fontSize: 13 }}>Skip to the dashboard</button>
+            {canSkip ? (
+              <button className="btn btn-ghost" onClick={onClose} style={{ fontSize: 13 }}>Cancel</button>
+            ) : null}
           </div>
         )}
       </div>

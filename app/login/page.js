@@ -1,33 +1,79 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useAuth } from "../providers/AuthProvider";
 
-const TICKER_LINES = [
-  'Published "SSL expiry alerts: the 2026 guide" — 1,840 words',
-  "Fixed 11 missing meta descriptions and 3 orphan pages",
-  '"ssl expiry alert tool" entered the top 10 — #7 from nowhere',
-  "Scored 43 orgs with certs expiring inside 30 days",
+const PREVIEW_LINES = [
+  'Publishes "SSL expiry alerts: the 2026 guide" — 1,840 words, 4 internal links',
+  "Fixes missing meta descriptions and orphan pages",
+  "Scores companies who match your ideal customer profile",
+  "Tracks whether AI answer engines cite you",
 ];
 
-export default function LoginPage() {
+function friendlyAuthError(err) {
+  const code = err?.code || "";
+  if (code.includes("email-already-in-use")) return "That email already has an account — try signing in instead.";
+  if (code.includes("invalid-credential") || code.includes("wrong-password") || code.includes("user-not-found"))
+    return "Wrong email or password.";
+  if (code.includes("weak-password")) return "Use at least 6 characters for your password.";
+  if (code.includes("invalid-email")) return "That doesn't look like a valid email address.";
+  if (code.includes("popup-closed-by-user")) return "Sign-in window closed before finishing.";
+  if (code.includes("account-exists-with-different-credential"))
+    return "That email is already linked to a different sign-in method.";
+  return err?.message || "Something went wrong. Try again.";
+}
+
+function LoginInner() {
   const router = useRouter();
-  const [email, setEmail] = useState("priya@certnotify.com");
-  const [pass, setPass] = useState("••••••••••");
-  const [remember, setRemember] = useState(true);
+  const params = useSearchParams();
+  const { user, loading, signUp, logIn, logInWithGoogle, logInWithGithub } = useAuth();
+
+  const [mode, setMode] = useState(params.get("mode") === "signup" ? "signup" : "signin");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [pass, setPass] = useState("");
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
-    const id = setInterval(() => setTick((t) => (t + 1) % TICKER_LINES.length), 3400);
+    if (!loading && user) router.replace("/dashboard");
+  }, [loading, user, router]);
+
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => (t + 1) % PREVIEW_LINES.length), 3400);
     return () => clearInterval(id);
   }, []);
 
-  function signIn(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
+    setError("");
     setBusy(true);
-    setTimeout(() => router.push("/dashboard"), 620);
+    try {
+      if (mode === "signup") {
+        await signUp(email, pass, name);
+      } else {
+        await logIn(email, pass);
+      }
+      router.push("/dashboard");
+    } catch (err) {
+      setError(friendlyAuthError(err));
+      setBusy(false);
+    }
+  }
+
+  async function handleOAuth(provider) {
+    setError("");
+    setBusy(true);
+    try {
+      await (provider === "google" ? logInWithGoogle() : logInWithGithub());
+      router.push("/dashboard");
+    } catch (err) {
+      setError(friendlyAuthError(err));
+      setBusy(false);
+    }
   }
 
   return (
@@ -71,16 +117,15 @@ export default function LoginPage() {
           <span style={{ fontFamily: "var(--font-body)", fontWeight: 400, fontSize: 22, letterSpacing: "-.005em", color: "#fff" }}>madbot</span>
         </Link>
         <div style={{ position: "relative", maxWidth: "26em", animation: "fadeUp .7s cubic-bezier(.22,.75,.3,1) both" }}>
-          <h2 style={{ margin: "0 0 12px", fontSize: 34, lineHeight: 1.1 }}>It kept working while you were away.</h2>
+          <h2 style={{ margin: "0 0 12px", fontSize: 34, lineHeight: 1.1 }}>It keeps working while you're away.</h2>
           <p style={{ margin: "0 0 22px", fontSize: 15, lineHeight: 1.6, color: "rgba(255,255,255,.78)" }}>
-            Since your last sign-in: 112 actions, 24 pages indexed, 43 prospects scored, and two things waiting on a
-            human.
+            Connect a site once. From then on, this is what a normal week looks like.
           </p>
           <div style={{ display: "flex", alignItems: "center", gap: 11, padding: "12px 16px", border: "1px solid var(--color-divider)", borderRadius: 999, background: "rgba(10,8,16,.72)" }}>
             <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--color-accent)", flex: "none", animation: "softPulse 2.4s ease-in-out infinite" }} />
-            <span style={{ fontSize: 12.5, color: "rgba(255,255,255,.55)", flex: "none" }}>Live now</span>
+            <span style={{ fontSize: 12.5, color: "rgba(255,255,255,.55)", flex: "none" }}>For example</span>
             <span key={tick} style={{ fontSize: 13, color: "rgba(255,255,255,.82)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", animation: "revealFade .45s ease" }}>
-              {TICKER_LINES[tick]}
+              {PREVIEW_LINES[tick]}
             </span>
           </div>
         </div>
@@ -91,14 +136,19 @@ export default function LoginPage() {
 
       <section style={{ display: "grid", placeItems: "center", padding: "40px 32px" }}>
         <div style={{ width: "min(420px,100%)", animation: "fadeUp .6s cubic-bezier(.22,.75,.3,1) both" }}>
-          <h1 style={{ margin: "0 0 8px", fontSize: 38, lineHeight: 1.08 }}>Welcome back</h1>
-          <p style={{ margin: "0 0 26px", fontSize: 15, color: "rgba(255,255,255,.55)" }}>Sign in and see what it did this week.</p>
+          <h1 style={{ margin: "0 0 8px", fontSize: 38, lineHeight: 1.08 }}>
+            {mode === "signup" ? "Create your account" : "Welcome back"}
+          </h1>
+          <p style={{ margin: "0 0 26px", fontSize: 15, color: "rgba(255,255,255,.55)" }}>
+            {mode === "signup" ? "Takes about a minute. No card required." : "Sign in and see what it did this week."}
+          </p>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 22 }}>
             <button
               type="button"
               className="btn btn-secondary"
-              onClick={() => router.push("/dashboard")}
+              disabled={busy}
+              onClick={() => handleOAuth("google")}
               style={{ minHeight: 48, fontWeight: 600, fontSize: 14.5, color: "#fff", borderColor: "var(--color-divider)", background: "rgba(255,255,255,.04)" }}
             >
               <span style={{ width: 18, height: 18, borderRadius: "50%", background: "linear-gradient(135deg,#FF6A1A,#A855F7)", display: "block", flex: "none" }} />
@@ -107,7 +157,8 @@ export default function LoginPage() {
             <button
               type="button"
               className="btn btn-secondary"
-              onClick={() => router.push("/dashboard")}
+              disabled={busy}
+              onClick={() => handleOAuth("github")}
               style={{ minHeight: 48, fontWeight: 600, fontSize: 14.5, color: "#fff", borderColor: "var(--color-divider)", background: "rgba(255,255,255,.04)" }}
             >
               <span style={{ width: 18, height: 18, borderRadius: 4, background: "var(--color-neutral-400)", display: "block", flex: "none" }} />
@@ -121,13 +172,29 @@ export default function LoginPage() {
             <span style={{ flex: 1, height: 1, background: "var(--color-divider)" }} />
           </div>
 
-          <form onSubmit={signIn} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {mode === "signup" && (
+              <div className="field">
+                <label htmlFor="lg-name" style={{ color: "rgba(255,255,255,.6)" }}>Your name</label>
+                <input
+                  className="input"
+                  id="lg-name"
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Priya Raman"
+                  style={{ minHeight: 50, fontSize: 15, background: "var(--color-surface)", color: "#fff", borderColor: "var(--color-divider)" }}
+                />
+              </div>
+            )}
             <div className="field">
               <label htmlFor="lg-email" style={{ color: "rgba(255,255,255,.6)" }}>Work email</label>
               <input
                 className="input"
                 id="lg-email"
                 type="email"
+                required
+                autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@company.com"
@@ -135,65 +202,49 @@ export default function LoginPage() {
               />
             </div>
             <div className="field">
-              <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-                <label htmlFor="lg-pass" style={{ color: "rgba(255,255,255,.6)" }}>Password</label>
-                <a href="#forgot" style={{ marginLeft: "auto", fontSize: 12, marginBottom: 5 }}>Forgot it?</a>
-              </div>
+              <label htmlFor="lg-pass" style={{ color: "rgba(255,255,255,.6)" }}>Password</label>
               <input
                 className="input"
                 id="lg-pass"
                 type="password"
+                required
+                minLength={6}
+                autoComplete={mode === "signup" ? "new-password" : "current-password"}
                 value={pass}
                 onChange={(e) => setPass(e.target.value)}
                 placeholder="••••••••••"
                 style={{ minHeight: 50, fontSize: 15, background: "var(--color-surface)", color: "#fff", borderColor: "var(--color-divider)" }}
               />
             </div>
-            <label className="radio" style={{ gap: 10, color: "rgba(255,255,255,.65)", fontSize: 13.5 }}>
-              <input
-                type="checkbox"
-                checked={remember}
-                onChange={() => setRemember((r) => !r)}
-                style={{ position: "absolute", opacity: 0, width: 0, height: 0 }}
-              />
-              <span
-                style={{
-                  width: 18,
-                  height: 18,
-                  borderRadius: 6,
-                  border: `1.5px solid ${remember ? "var(--color-accent)" : "rgba(255,255,255,.35)"}`,
-                  background: remember ? "var(--color-accent)" : "transparent",
-                  flex: "none",
-                  display: "grid",
-                  placeItems: "center",
-                  fontSize: 11,
-                  color: "#0A0810",
-                  fontWeight: 800,
-                }}
-              >
-                {remember ? "✓" : ""}
-              </span>
-              Keep me signed in on this device
-            </label>
-            <button className="btn btn-primary" type="submit" style={{ minHeight: 52, fontSize: 16, color: "#0A0810" }}>
-              {busy ? "Waking the engine…" : "Sign in"}
+
+            {error ? (
+              <div style={{ fontSize: 13, color: "var(--color-accent-700)", background: "var(--color-accent-100)", borderRadius: 14, padding: "10px 14px" }}>
+                {error}
+              </div>
+            ) : null}
+
+            <button className="btn btn-primary" type="submit" disabled={busy} style={{ minHeight: 52, fontSize: 16, color: "#0A0810" }}>
+              {busy ? "Working…" : mode === "signup" ? "Create account" : "Sign in"}
             </button>
           </form>
 
-          <div style={{ marginTop: 18, padding: "14px 16px", border: "1px dashed var(--color-accent-400)", borderRadius: 22, background: "var(--color-accent-100)" }}>
-            <div style={{ fontSize: 12.5, color: "var(--color-accent-800)", marginBottom: 8 }}>
-              Showing this to someone? Skip the credentials.
-            </div>
-            <Link className="btn btn-primary" href="/dashboard" style={{ minHeight: 42, fontSize: 14, color: "#0A0810", width: "100%" }}>
-              Open the demo dashboard
-            </Link>
-          </div>
-
           <p style={{ margin: "22px 0 0", fontSize: 13.5, color: "rgba(255,255,255,.5)" }}>
-            No account yet? <Link href="/">Connect a site free</Link> — it audits before it asks for anything.
+            {mode === "signup" ? (
+              <>Already have an account? <button type="button" className="btn btn-ghost" style={{ fontSize: "inherit", padding: 0 }} onClick={() => setMode("signin")}>Sign in</button></>
+            ) : (
+              <>No account yet? <button type="button" className="btn btn-ghost" style={{ fontSize: "inherit", padding: 0 }} onClick={() => setMode("signup")}>Create one free</button></>
+            )}
           </p>
         </div>
       </section>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginInner />
+    </Suspense>
   );
 }

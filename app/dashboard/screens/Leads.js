@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { LEAD_DATA } from "../data";
 
 const FIT_STYLE = {
   Hot: { bg: "var(--color-accent-200)", fg: "var(--color-accent-800)" },
@@ -7,17 +6,17 @@ const FIT_STYLE = {
   Cool: { bg: "var(--color-neutral-200)", fg: "var(--color-neutral-800)" },
 };
 
-export default function Leads() {
+export default function Leads({ leadData }) {
   const [view, setView] = useState("hot");
-  const rows = view === "hot" ? LEAD_DATA.filter((l) => l.fit === "Hot") : view === "replied" ? LEAD_DATA.filter((l) => l.state.toLowerCase().includes("repl")) : LEAD_DATA;
+  const rows = view === "hot" ? leadData.filter((l) => l.fit === "Hot") : view === "replied" ? leadData.filter((l) => l.state.toLowerCase().includes("repl")) : leadData;
 
   return (
     <section data-screen-label="Leads" style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       <div style={{ display: "flex", alignItems: "flex-end", gap: 14, flexWrap: "wrap" }}>
         <div>
-          <h2 style={{ margin: "0 0 3px" }}>43 people who have your problem right now</h2>
+          <h2 style={{ margin: "0 0 3px" }}>People who have your problem right now</h2>
           <p className="text-muted" style={{ margin: 0, fontSize: 13.5 }}>
-            Found in public signals — expiring certs, hiring posts, forum questions. Never bought lists.
+            Found in public signals — hiring posts, forum questions, public news. Never bought lists.
           </p>
         </div>
         <div className="seg" style={{ marginLeft: "auto", background: "var(--color-bg)" }}>
@@ -36,7 +35,7 @@ export default function Leads() {
               <tr><th>Company</th><th>Why now</th><th>Fit</th><th></th></tr>
             </thead>
             <tbody>
-              {(rows.length ? rows : LEAD_DATA).map((l) => {
+              {(rows.length ? rows : leadData).map((l) => {
                 const fit = FIT_STYLE[l.fit] || FIT_STYLE.Cool;
                 return (
                   <tr key={l.co}>
@@ -60,10 +59,10 @@ export default function Leads() {
               <span className="text-muted" style={{ fontSize: 11, marginLeft: "auto" }}>goes out 9:10am, unless you stop it</span>
             </div>
             <div style={{ background: "var(--color-bg)", borderRadius: 20, padding: 14, fontSize: 13, lineHeight: 1.55 }}>
-              <div style={{ fontWeight: 700, marginBottom: 6 }}>Your wildcard cert expires in 19 days</div>
+              <div style={{ fontWeight: 700, marginBottom: 6 }}>A signal matching your ideal customer</div>
               <p style={{ margin: "0 0 8px" }} className="text-muted">
-                Hi Dana — noticed the cert on app.northwind.io renews on the 12th. Not selling you anything today:
-                here&apos;s the free checklist we give teams before a wildcard rollover…
+                Hi — noticed something that suggests you have this problem right now. Not selling you anything
+                today: here&apos;s something genuinely useful first…
               </p>
               <span className="tag tag-outline" style={{ fontSize: 10 }}>No pricing, no pressure — per your rules</span>
             </div>
@@ -76,7 +75,7 @@ export default function Leads() {
           <section className="card elev-sm" style={{ padding: 18, gap: 8, background: "var(--color-accent-2-100)" }}>
             <h4 style={{ margin: 0 }}>How I score them</h4>
             <div style={{ fontSize: 12.5, color: "var(--color-accent-2-900)", display: "flex", flexDirection: "column", gap: 5 }}>
-              <div>Signal freshness — a cert expiring in 3 weeks beats one in 6 months.</div>
+              <div>Signal freshness — a signal from this week beats one from 6 months ago.</div>
               <div>Shape of the company — you close 4× faster under 200 people.</div>
               <div>Whether a human at your end already knows them.</div>
             </div>

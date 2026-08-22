@@ -1,8 +1,20 @@
 "use client";
 
-import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import { APPR_DATA, BASE_FEED, DEFAULT_RULES, POOL_FEED, SCREEN_TITLES } from "./data";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useAuth } from "../providers/AuthProvider";
+import {
+  subscribeSites,
+  subscribeSite,
+  subscribeActivity,
+  subscribeApprovals,
+  updateSiteSettings,
+  addActivity,
+  setActivityUndone,
+  setApprovalStatus,
+} from "../../lib/sites";
+import { buildSiteInsights, ACTIVITY_POOL, hostnameOf, siteDisplayName } from "../../lib/seed";
+import { SCREEN_TITLES } from "./data";
 import OnboardingModal from "./OnboardingModal";
 import Growth from "./screens/Growth";
 import Opportunities from "./screens/Opportunities";
@@ -12,12 +24,6 @@ import Approvals from "./screens/Approvals";
 import Visibility from "./screens/Visibility";
 import Autonomy from "./screens/Autonomy";
 import ActivityLog from "./screens/ActivityLog";
-
-const SITES = [
-  { id: "certnotify.com", label: "certnotify.com" },
-  { id: "docs.certnotify.com", label: "docs.certnotify.com" },
-  { id: "statuspage.io/cert", label: "statuspage.io/cert" },
-];
 
 function NavButton({ label, badge, active, onClick }) {
   return (
@@ -48,48 +54,107 @@ function NavButton({ label, badge, active, onClick }) {
   );
 }
 
+function FullScreenLoading() {
+  return (
+    <div style={{ height: "100vh", display: "grid", placeItems: "center", background: "var(--color-bg)", color: "#fff" }}>
+      <span style={{ width: 28, height: 28, borderRadius: "50%", border: "3px solid var(--color-accent-300)", borderTopColor: "var(--color-accent)", animation: "sweep 1s linear infinite", display: "block" }} />
+    </div>
+  );
+}
+
 export default function DashboardPage() {
+  const router = useRouter();
+  const { user, loading, logOut } = useAuth();
+
   const [screen, setScreen] = useState("growth");
-  const [onboard, setOnboard] = useState(false);
-  const [site, setSite] = useState("certnotify.com");
   const [siteOpen, setSiteOpen] = useState(false);
-  const [paused, setPaused] = useState(false);
+  const [toast, setToast] = useState(null);
+  const [signingOut, setSigningOut] = useState(false);
+
+  const [sites, setSites] = useState(null);
+  const [activeSiteId, setActiveSiteId] = useState(null);
+  const [site, setSite] = useState(null);
+  const [activity, setActivity] = useState([]);
+  const [approvals, setApprovals] = useState([]);
+  const [onboardOpen, setOnboardOpen] = useState(false);
 
   const [aut, setAut] = useState(62);
   const [thr, setThr] = useState(58);
+  const [rules, setRules] = useState([]);
+  const [voice, setVoice] = useState("a");
+  const [paused, setPaused] = useState(false);
+
   const [zoom, setZoom] = useState(1);
   const [sel, setSel] = useState("kw");
   const [taken, setTaken] = useState({});
 
-  const [extra, setExtra] = useState([]);
-  const [mins, setMins] = useState(0);
-  const [toast, setToast] = useState(null);
-  const [undone, setUndone] = useState({});
-  const [appr, setAppr] = useState({});
-  const [rules, setRules] = useState(DEFAULT_RULES);
-  const [voice, setVoice] = useState("a");
+  useEffect(() => {
+    if (!loading && !user) router.replace("/login");
+  }, [loading, user, router]);
 
   useEffect(() => {
+    if (!user) return undefined;
+    return subscribeSites(user.uid, (list) => {
+      setSites(list);
+      setActiveSiteId((prev) => (prev && list.some((s) => s.id === prev) ? prev : list[0]?.id || null));
+    });
+  }, [user]);
+
+  useEffect(() => {
+    if (sites !== null && sites.length === 0) setOnboardOpen(true);
+  }, [sites]);
+
+  useEffect(() => {
+    if (!user || !activeSiteId) {
+      setSite(null);
+      return undefined;
+    }
+    return subscribeSite(user.uid, activeSiteId, (s) => {
+      setSite(s);
+      if (s) {
+        setAut(s.autonomy);
+        setThr(s.throttle);
+        setRules(s.rules || []);
+        setVoice(s.voice || "a");
+        setPaused(!!s.paused);
+      }
+    });
+  }, [user, activeSiteId]);
+
+  useEffect(() => {
+    if (!user || !activeSiteId) {
+      setActivity([]);
+      return undefined;
+    }
+    return subscribeActivity(user.uid, activeSiteId, setActivity);
+  }, [user, activeSiteId]);
+
+  useEffect(() => {
+    if (!user || !activeSiteId) {
+      setApprovals([]);
+      return undefined;
+    }
+    return subscribeApprovals(user.uid, activeSiteId, setApprovals);
+  }, [user, activeSiteId]);
+
+  const poolIndexRef = useRef(0);
+  useEffect(() => {
+    if (!user || !activeSiteId || !site || paused) return undefined;
+    const domain = hostnameOf(site.url);
+    const name = siteDisplayName(site);
+    const pool = ACTIVITY_POOL(domain, name);
     const id = setInterval(() => {
-      setExtra((prev) => {
-        const item = { ...POOL_FEED[prev.length % POOL_FEED.length], id: "x" + prev.length, m: 0, fresh: true };
-        const shifted = prev.map((e) => ({ ...e, m: e.m + 6, fresh: false }));
+      const item = pool[poolIndexRef.current % pool.length];
+      poolIndexRef.current += 1;
+      addActivity(user.uid, activeSiteId, item).then(() => {
         if (item.k === "win") setToast(item.text);
-        return [item, ...shifted].slice(0, 5);
       });
-      setMins((m) => m + 6);
-    }, 5600);
+    }, 60000);
     return () => clearInterval(id);
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, activeSiteId, site?.id, paused]);
 
-  const pendingCount = useMemo(() => APPR_DATA.filter((a) => !appr[a.id]).length, [appr]);
-
-  const feedAll = useMemo(
-    () => [...extra, ...BASE_FEED.map((b) => ({ ...b, m: b.m + mins }))],
-    [extra, mins]
-  );
-  const feedTop = feedAll.slice(0, 6);
-  const actionCount = 112 + extra.length;
+  const insights = useMemo(() => (site ? buildSiteInsights(site) : null), [site]);
 
   function go(k) {
     setScreen(k);
@@ -97,9 +162,52 @@ export default function DashboardPage() {
     setToast(null);
   }
 
-  function toggleUndo(id) {
-    setUndone((u) => ({ ...u, [id]: !u[id] }));
+  function commitAut() {
+    if (user && activeSiteId) updateSiteSettings(user.uid, activeSiteId, { autonomy: aut });
   }
+  function commitThr() {
+    if (user && activeSiteId) updateSiteSettings(user.uid, activeSiteId, { throttle: thr });
+  }
+  function saveRules(updater) {
+    setRules((prev) => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      if (user && activeSiteId) updateSiteSettings(user.uid, activeSiteId, { rules: next });
+      return next;
+    });
+  }
+  function saveVoice(v) {
+    setVoice(v);
+    if (user && activeSiteId) updateSiteSettings(user.uid, activeSiteId, { voice: v });
+  }
+  function togglePause() {
+    setPaused((p) => {
+      const next = !p;
+      if (user && activeSiteId) updateSiteSettings(user.uid, activeSiteId, { paused: next });
+      return next;
+    });
+  }
+  function toggleUndo(id, undone) {
+    if (user && activeSiteId) setActivityUndone(user.uid, activeSiteId, id, undone);
+  }
+  function approve(id) {
+    if (user && activeSiteId) setApprovalStatus(user.uid, activeSiteId, id, "yes");
+  }
+  function decline(id) {
+    if (user && activeSiteId) setApprovalStatus(user.uid, activeSiteId, id, "no");
+  }
+
+  async function handleSignOut() {
+    setSigningOut(true);
+    await logOut();
+    router.replace("/login");
+  }
+
+  const pendingCount = approvals.filter((a) => a.status === "pending").length;
+
+  if (loading || (user && sites === null)) return <FullScreenLoading />;
+  if (!user) return null;
+
+  const displayName = user.displayName || user.email || "you";
 
   return (
     <div style={{ height: "100vh", display: "grid", gridTemplateColumns: "236px 1fr", fontSize: 15, color: "var(--color-text)", background: "var(--color-bg)", overflow: "hidden" }}>
@@ -112,27 +220,32 @@ export default function DashboardPage() {
         </div>
 
         <div style={{ position: "relative" }}>
-          <button className="btn btn-secondary" onClick={() => setSiteOpen((v) => !v)} style={{ width: "100%", justifyContent: "space-between", background: "var(--color-bg)", fontWeight: 600, fontSize: 13 }}>
+          <button
+            className="btn btn-secondary"
+            onClick={() => setSiteOpen((v) => !v)}
+            disabled={!site}
+            style={{ width: "100%", justifyContent: "space-between", background: "var(--color-bg)", fontWeight: 600, fontSize: 13 }}
+          >
             <span style={{ display: "flex", alignItems: "center", gap: 8, overflow: "hidden" }}>
               <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--color-accent-2-600)", flex: "none" }} />
-              {site}
+              {site ? siteDisplayName(site) : "No site yet"}
             </span>
-            <span style={{ opacity: 0.5, fontSize: 11 }}>3 sites</span>
+            <span style={{ opacity: 0.5, fontSize: 11 }}>{sites?.length || 0} site{sites?.length === 1 ? "" : "s"}</span>
           </button>
           {siteOpen ? (
             <div className="card elev-lg" style={{ position: "absolute", top: 44, left: 0, right: 0, zIndex: 30, padding: 8, gap: 2, background: "var(--color-bg)", animation: "pop .18s ease-out" }}>
-              {SITES.map((s) => (
+              {(sites || []).map((s) => (
                 <button
                   key={s.id}
                   className="btn btn-ghost"
-                  onClick={() => { setSite(s.id); setSiteOpen(false); }}
+                  onClick={() => { setActiveSiteId(s.id); setSiteOpen(false); }}
                   style={{ justifyContent: "flex-start", color: "var(--color-text)", fontWeight: 600, fontSize: 13 }}
                 >
-                  {s.label}
+                  {hostnameOf(s.url)}
                 </button>
               ))}
               <div className="hr" style={{ margin: "6px 0" }} />
-              <button className="btn btn-ghost" onClick={() => { setOnboard(true); setSiteOpen(false); }} style={{ justifyContent: "flex-start", fontSize: 13, fontWeight: 600 }}>
+              <button className="btn btn-ghost" onClick={() => { setOnboardOpen(true); setSiteOpen(false); }} style={{ justifyContent: "flex-start", fontSize: 13, fontWeight: 600 }}>
                 + Connect a new site
               </button>
             </div>
@@ -141,9 +254,9 @@ export default function DashboardPage() {
 
         <nav style={{ display: "flex", flexDirection: "column", gap: 2 }} aria-label="Sections">
           <NavButton label="Growth" active={screen === "growth"} onClick={() => go("growth")} />
-          <NavButton label="Opportunities" badge={83} active={screen === "opps"} onClick={() => go("opps")} />
-          <NavButton label="Content" badge={9} active={screen === "content"} onClick={() => go("content")} />
-          <NavButton label="Leads" badge={43} active={screen === "leads"} onClick={() => go("leads")} />
+          <NavButton label="Opportunities" active={screen === "opps"} onClick={() => go("opps")} />
+          <NavButton label="Content" active={screen === "content"} onClick={() => go("content")} />
+          <NavButton label="Leads" active={screen === "leads"} onClick={() => go("leads")} />
           <NavButton label="Approvals" badge={pendingCount} active={screen === "appr"} onClick={() => go("appr")} />
           <NavButton label="AI visibility" active={screen === "vis"} onClick={() => go("vis")} />
           <NavButton label="Autonomy" active={screen === "aut"} onClick={() => go("aut")} />
@@ -160,16 +273,19 @@ export default function DashboardPage() {
               Teach me 3 more pages and I&apos;ll stop sounding like a robot.
             </div>
           </button>
-          <button className="btn btn-secondary" onClick={() => setOnboard(true)} style={{ fontWeight: 600, fontSize: 12.5 }}>
-            Replay the 60-second setup
+          <button className="btn btn-secondary" onClick={() => setOnboardOpen(true)} style={{ fontWeight: 600, fontSize: 12.5 }}>
+            Connect another site
           </button>
           <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "8px 6px 0" }}>
-            <span style={{ width: 26, height: 26, borderRadius: "50%", background: "var(--color-accent-2-400)", flex: "none", display: "grid", placeItems: "center", fontSize: 11, fontWeight: 700 }}>PR</span>
-            <span style={{ fontSize: 12.5, lineHeight: 1.25 }}>
-              Priya Raman
-              <span style={{ display: "block", fontSize: 11, color: "rgba(255,255,255,.45)" }}>Owner</span>
+            <span style={{ width: 26, height: 26, borderRadius: "50%", background: "var(--color-accent-2-400)", flex: "none", display: "grid", placeItems: "center", fontSize: 11, fontWeight: 700 }}>
+              {displayName.slice(0, 2).toUpperCase()}
             </span>
-            <Link href="/login" className="btn btn-ghost" style={{ marginLeft: "auto", fontSize: 12, fontWeight: 600 }}>Sign out</Link>
+            <span style={{ fontSize: 12.5, lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {displayName}
+            </span>
+            <button className="btn btn-ghost" onClick={handleSignOut} disabled={signingOut} style={{ marginLeft: "auto", fontSize: 12, fontWeight: 600 }}>
+              {signingOut ? "…" : "Sign out"}
+            </button>
           </div>
         </div>
       </aside>
@@ -190,48 +306,91 @@ export default function DashboardPage() {
           }}
         >
           <div style={{ fontFamily: "var(--font-heading)", fontSize: 17 }}>{SCREEN_TITLES[screen] || "Growth"}</div>
-          <span className="tag tag-neutral" style={{ fontSize: 11 }}>{site}</span>
+          {site ? <span className="tag tag-neutral" style={{ fontSize: 11 }}>{hostnameOf(site.url)}</span> : null}
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
-            <span
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 8,
-                padding: "7px 14px",
-                borderRadius: 999,
-                background: paused ? "var(--color-neutral-200)" : "var(--color-accent-2-200)",
-                fontSize: 12.5,
-                fontWeight: 600,
-                color: paused ? "var(--color-neutral-700)" : "var(--color-accent-2-800)",
-              }}
-            >
-              <span style={{ position: "relative", width: 9, height: 9, flex: "none" }}>
-                <span style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "currentColor" }} />
-                {!paused ? <span style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "currentColor", animation: "pulseRing 2.2s ease-out infinite" }} /> : null}
-              </span>
-              {paused ? "Paused by you" : "Engine running"}
-            </span>
-            <button className="btn btn-secondary" onClick={() => setPaused((p) => !p)} style={{ fontWeight: 600, fontSize: 13 }}>
-              {paused ? "Resume" : "Pause"}
-            </button>
+            {site ? (
+              <>
+                <span
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 8,
+                    padding: "7px 14px",
+                    borderRadius: 999,
+                    background: paused ? "var(--color-neutral-200)" : "var(--color-accent-2-200)",
+                    fontSize: 12.5,
+                    fontWeight: 600,
+                    color: paused ? "var(--color-neutral-700)" : "var(--color-accent-2-800)",
+                  }}
+                >
+                  <span style={{ position: "relative", width: 9, height: 9, flex: "none" }}>
+                    <span style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "currentColor" }} />
+                    {!paused ? <span style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "currentColor", animation: "pulseRing 2.2s ease-out infinite" }} /> : null}
+                  </span>
+                  {paused ? "Paused by you" : "Engine running"}
+                </span>
+                <button className="btn btn-secondary" onClick={togglePause} style={{ fontWeight: 600, fontSize: 13 }}>
+                  {paused ? "Resume" : "Pause"}
+                </button>
+              </>
+            ) : null}
           </div>
         </header>
 
         <div style={{ padding: "26px 30px 56px" }}>
-          {screen === "growth" && (
-            <Growth actionCount={actionCount} pendingCount={pendingCount} goApprovals={() => go("appr")} goLog={() => go("log")} feedTop={feedTop} undone={undone} onUndo={toggleUndo} paused={paused} />
+          {site && insights ? (
+            <>
+              {screen === "growth" && (
+                <Growth
+                  site={site}
+                  domain={insights.domain}
+                  actionCount={activity.length}
+                  pendingCount={pendingCount}
+                  goApprovals={() => go("appr")}
+                  goLog={() => go("log")}
+                  feedTop={activity.slice(0, 6)}
+                  onUndo={toggleUndo}
+                  paused={paused}
+                />
+              )}
+              {screen === "opps" && (
+                <Opportunities
+                  pendingCount={pendingCount}
+                  zoom={zoom}
+                  setZoom={setZoom}
+                  sel={sel}
+                  setSel={setSel}
+                  taken={taken}
+                  setTaken={setTaken}
+                  nodeData={insights.nodeData}
+                  oppData={insights.oppData}
+                  siteName={insights.name}
+                />
+              )}
+              {screen === "content" && <Content dayData={insights.dayData} siteName={insights.name} />}
+              {screen === "leads" && <Leads leadData={insights.leadData} />}
+              {screen === "appr" && <Approvals approvals={approvals} onApprove={approve} onDecline={decline} goAutonomy={() => go("aut")} />}
+              {screen === "vis" && <Visibility engineData={insights.engineData} domain={insights.domain} />}
+              {screen === "aut" && (
+                <Autonomy
+                  aut={aut}
+                  setAut={setAut}
+                  onCommitAut={commitAut}
+                  thr={thr}
+                  setThr={setThr}
+                  onCommitThr={commitThr}
+                  rules={rules}
+                  setRules={saveRules}
+                  voice={voice}
+                  setVoice={saveVoice}
+                  brandName={insights.name}
+                />
+              )}
+              {screen === "log" && <ActivityLog feedAll={activity} onToggleUndo={toggleUndo} />}
+            </>
+          ) : (
+            <div className="text-muted" style={{ fontSize: 14 }}>Connect a site to get started.</div>
           )}
-          {screen === "opps" && (
-            <Opportunities pendingCount={pendingCount} zoom={zoom} setZoom={setZoom} sel={sel} setSel={setSel} taken={taken} setTaken={setTaken} />
-          )}
-          {screen === "content" && <Content />}
-          {screen === "leads" && <Leads />}
-          {screen === "appr" && <Approvals appr={appr} setAppr={setAppr} goAutonomy={() => go("aut")} />}
-          {screen === "vis" && <Visibility />}
-          {screen === "aut" && (
-            <Autonomy aut={aut} setAut={setAut} thr={thr} setThr={setThr} rules={rules} setRules={setRules} voice={voice} setVoice={setVoice} />
-          )}
-          {screen === "log" && <ActivityLog feedAll={feedAll} undone={undone} onToggleUndo={toggleUndo} />}
         </div>
 
         {toast ? (
@@ -239,7 +398,7 @@ export default function DashboardPage() {
             <div className="card elev-lg" style={{ padding: 18, gap: 10, background: "var(--color-accent-2-100)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
                 <span style={{ width: 28, height: 28, borderRadius: "50%", background: "var(--color-accent-2-500)", flex: "none", animation: "drift 3s ease-in-out infinite" }} />
-                <div style={{ fontFamily: "var(--font-heading)", fontSize: 16 }}>A win just landed</div>
+                <div style={{ fontFamily: "var(--font-heading)", fontSize: 16 }}>Update</div>
                 <button className="btn btn-ghost" onClick={() => setToast(null)} style={{ marginLeft: "auto", color: "var(--color-accent-2-800)", fontSize: 16, paddingInline: 4 }}>×</button>
               </div>
               <p style={{ margin: 0, fontSize: 13.5, color: "var(--color-accent-2-900)", lineHeight: 1.5 }}>{toast}</p>
@@ -252,13 +411,14 @@ export default function DashboardPage() {
         ) : null}
       </main>
 
-      {onboard ? (
+      {onboardOpen && user ? (
         <OnboardingModal
-          aut={aut}
-          setAut={setAut}
-          onClose={() => setOnboard(false)}
-          onFinish={(text) => {
-            setOnboard(false);
+          uid={user.uid}
+          canSkip={(sites || []).length > 0}
+          onClose={() => setOnboardOpen(false)}
+          onFinish={(newSiteId, text) => {
+            setActiveSiteId(newSiteId);
+            setOnboardOpen(false);
             setScreen("growth");
             setToast(text);
           }}

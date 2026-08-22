@@ -1,18 +1,18 @@
-import { ENGINE_DATA } from "../data";
+export default function Visibility({ engineData, domain }) {
+  const citedCount = engineData.filter((e) => e.val > 20).length;
 
-export default function Visibility() {
   return (
     <section data-screen-label="AI visibility" style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       <div>
         <h2 style={{ margin: "0 0 3px" }}>When people ask an AI, do you come up?</h2>
         <p className="text-muted" style={{ margin: 0, fontSize: 13.5 }}>
-          Four of nine answer engines cite you now. Six weeks ago it was one.
+          {citedCount} of {engineData.length} answer engines show meaningful citation share right now.
         </p>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.25fr) minmax(0,1fr)", gap: 16, alignItems: "start" }}>
         <section className="card elev-sm" style={{ padding: 20, gap: 13 }}>
           <h4 style={{ margin: 0 }}>Citation share by engine</h4>
-          {ENGINE_DATA.map((e) => {
+          {engineData.map((e) => {
             const color = e.val > 50 ? "var(--color-accent)" : e.val > 25 ? "var(--color-accent-400)" : "var(--color-accent-300)";
             return (
               <div key={e.name} style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 13 }}>
@@ -26,7 +26,7 @@ export default function Visibility() {
             );
           })}
           <div className="text-muted" style={{ fontSize: 11.5 }}>
-            Measured by asking each engine your 40 buying questions, weekly, from three regions.
+            Measured by asking each engine your buying questions weekly, from three regions.
           </div>
         </section>
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -45,20 +45,20 @@ export default function Visibility() {
               </div>
             </div>
             <div style={{ font: "12px ui-monospace,Menlo,monospace", background: "var(--color-neutral-900)", color: "var(--color-neutral-200)", borderRadius: 16, padding: "11px 13px", overflow: "auto" }}>
-              &lt;script src=&quot;madbot.com/badge.js&quot; data-site=&quot;certnotify&quot;&gt;&lt;/script&gt;
+              &lt;script src=&quot;madbot.com/badge.js&quot; data-site=&quot;{domain}&quot;&gt;&lt;/script&gt;
             </div>
           </section>
           <section className="card elev-sm" style={{ padding: 18, gap: 9, background: "var(--color-neutral-100)" }}>
             <h4 style={{ margin: 0 }}>You got cited for</h4>
             <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 12.5 }}>
               <div style={{ background: "var(--color-bg)", borderRadius: 18, padding: "10px 13px" }}>
-                &ldquo;What tools alert you before an SSL certificate expires?&rdquo; <span className="tag tag-accent-2" style={{ fontSize: 10 }}>2nd of 5</span>
+                &ldquo;Who should I use for this?&rdquo; <span className="tag tag-accent-2" style={{ fontSize: 10 }}>2nd of 5</span>
               </div>
               <div style={{ background: "var(--color-bg)", borderRadius: 18, padding: "10px 13px" }}>
-                &ldquo;Cheap cert monitoring for small teams&rdquo; <span className="tag tag-accent-2" style={{ fontSize: 10 }}>1st of 4</span>
+                &ldquo;Cheapest option for small teams&rdquo; <span className="tag tag-accent-2" style={{ fontSize: 10 }}>1st of 4</span>
               </div>
               <div style={{ background: "var(--color-bg)", borderRadius: 18, padding: "10px 13px" }}>
-                &ldquo;How to avoid TLS outages&rdquo; <span className="tag tag-neutral" style={{ fontSize: 10 }}>not cited</span>
+                &ldquo;How to avoid the common failure mode&rdquo; <span className="tag tag-neutral" style={{ fontSize: 10 }}>not cited</span>
               </div>
             </div>
           </section>

@@ -1,7 +1,5 @@
-import { NODE_DATA, OPP_DATA } from "../data";
-
-export default function Opportunities({ pendingCount, zoom, setZoom, sel, setSel, taken, setTaken }) {
-  const opp = OPP_DATA[sel] || OPP_DATA.kw;
+export default function Opportunities({ pendingCount, zoom, setZoom, sel, setSel, taken, setTaken, nodeData, oppData, siteName }) {
+  const opp = oppData[sel] || oppData.kw;
 
   return (
     <section data-screen-label="Opportunities" style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 342px", gap: 20, alignItems: "start" }}>
@@ -41,11 +39,11 @@ export default function Opportunities({ pendingCount, zoom, setZoom, sel, setSel
               }}
             >
               <div>
-                <div style={{ fontFamily: "var(--font-heading)", fontSize: 16, lineHeight: 1.1 }}>CertNotify</div>
-                <div className="text-muted" style={{ fontSize: 10.5 }}>SSL monitoring</div>
+                <div style={{ fontFamily: "var(--font-heading)", fontSize: 16, lineHeight: 1.1 }}>{siteName}</div>
+                <div className="text-muted" style={{ fontSize: 10.5 }}>your site</div>
               </div>
             </div>
-            {NODE_DATA.map((n) => {
+            {nodeData.map((n) => {
               const active = sel === n.id;
               return (
                 <button

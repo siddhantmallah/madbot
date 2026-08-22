@@ -1,8 +1,13 @@
-import { APPR_DATA } from "../data";
+import { ago, minutesAgo } from "../data";
 
-export default function Approvals({ appr, setAppr, goAutonomy }) {
-  const pending = APPR_DATA.filter((a) => !appr[a.id]).length;
-  const headline = pending === 0 ? "Queue clear. Go do something else." : `${pending} ${pending === 1 ? "thing needs" : "things need"} a human`;
+export default function Approvals({ approvals, onApprove, onDecline, goAutonomy }) {
+  const pending = approvals.filter((a) => a.status === "pending").length;
+  const headline =
+    approvals.length === 0
+      ? "Nothing waiting yet."
+      : pending === 0
+      ? "Queue clear. Go do something else."
+      : `${pending} ${pending === 1 ? "thing needs" : "things need"} a human`;
 
   return (
     <section data-screen-label="Approvals" style={{ display: "flex", flexDirection: "column", gap: 18, maxWidth: 900 }}>
@@ -12,8 +17,8 @@ export default function Approvals({ appr, setAppr, goAutonomy }) {
           Only three things ever reach this queue: money, public claims, and anything I&apos;m under 60% sure about.
         </p>
       </div>
-      {APPR_DATA.map((a) => {
-        const status = appr[a.id];
+      {approvals.map((a) => {
+        const status = a.status === "pending" ? null : a.status;
         const kindStyle =
           a.kind === "Spend"
             ? { bg: "var(--color-accent-200)", fg: "var(--color-accent-800)" }
@@ -28,7 +33,7 @@ export default function Approvals({ appr, setAppr, goAutonomy }) {
           >
             <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap" }}>
               <span className="tag" style={{ background: kindStyle.bg, color: kindStyle.fg, fontSize: 10.5 }}>{a.kind}</span>
-              <span className="text-muted" style={{ fontSize: 11.5 }}>{a.when}</span>
+              <span className="text-muted" style={{ fontSize: 11.5 }}>waiting {ago(minutesAgo(a.createdAt))}</span>
               <span className="tag tag-neutral" style={{ marginLeft: "auto", fontSize: 10.5 }}>
                 {status === "yes" ? "Approved" : status === "no" ? "Declined" : "Waiting on you"}
               </span>
@@ -45,11 +50,11 @@ export default function Approvals({ appr, setAppr, goAutonomy }) {
               </div>
             </div>
             <div style={{ display: "flex", gap: 9, alignItems: "center", flexWrap: "wrap" }}>
-              <button className="btn btn-primary" onClick={() => setAppr((p) => ({ ...p, [a.id]: "yes" }))} style={{ fontSize: 13 }}>
+              <button className="btn btn-primary" disabled={!!status} onClick={() => onApprove(a.id)} style={{ fontSize: 13 }}>
                 {a.yes}
               </button>
-              <button className="btn btn-secondary" style={{ fontWeight: 600, fontSize: 13 }}>Change it first</button>
-              <button className="btn btn-ghost" onClick={() => setAppr((p) => ({ ...p, [a.id]: "no" }))} style={{ fontSize: 13 }}>
+              <button className="btn btn-secondary" disabled style={{ fontWeight: 600, fontSize: 13 }}>Change it first</button>
+              <button className="btn btn-ghost" disabled={!!status} onClick={() => onDecline(a.id)} style={{ fontSize: 13 }}>
                 No thanks
               </button>
               <span className="text-muted" style={{ fontSize: 11.5, marginLeft: "auto" }}>{a.rule}</span>

@@ -14,7 +14,7 @@ function thrValFromEvent(e) {
   return Math.max(0, Math.min(100, Math.round(((e.clientX - r.left) / r.width) * 100)));
 }
 
-export default function Autonomy({ aut, setAut, thr, setThr, rules, setRules, voice, setVoice }) {
+export default function Autonomy({ aut, setAut, onCommitAut, thr, setThr, onCommitThr, rules, setRules, voice, setVoice, brandName }) {
   const [drag, setDrag] = useState(null);
   const [draftRule, setDraftRule] = useState("");
 
@@ -58,7 +58,7 @@ export default function Autonomy({ aut, setAut, thr, setThr, rules, setRules, vo
           onPointerMove={(e) => {
             if (drag === "dial") setAut(dialValFromEvent(e));
           }}
-          onPointerUp={() => setDrag(null)}
+          onPointerUp={() => { setDrag(null); onCommitAut(); }}
           style={{ position: "relative", width: 404, height: 404, display: "grid", placeItems: "center", touchAction: "none", cursor: "grab", userSelect: "none" }}
         >
           <div style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "var(--color-surface)", boxShadow: "var(--shadow-lg)" }} />
@@ -99,7 +99,7 @@ export default function Autonomy({ aut, setAut, thr, setThr, rules, setRules, vo
             onPointerMove={(e) => {
               if (drag === "thr") setThr(thrValFromEvent(e));
             }}
-            onPointerUp={() => setDrag(null)}
+            onPointerUp={() => { setDrag(null); onCommitThr(); }}
             style={{ flex: 1.15, height: 26, display: "flex", alignItems: "center", touchAction: "none", cursor: "pointer" }}
           >
             <div style={{ width: "100%", height: 10, borderRadius: 999, background: "var(--color-neutral-200)", position: "relative" }}>
@@ -139,21 +139,20 @@ export default function Autonomy({ aut, setAut, thr, setThr, rules, setRules, vo
             <span className="tag tag-accent" style={{ marginLeft: "auto" }}>{voice === "a" ? 91 : 88}% you</span>
           </div>
           <p className="card-body" style={{ margin: 0 }}>
-            Twelve of your pages fed in. Tell me which of these two sounds more like you and I get sharper.
+            I read your pages when you connected. Tell me which of these two sounds more like you and I get sharper.
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <button
               onClick={() => setVoice("a")}
               style={{ textAlign: "left", border: "1px solid var(--color-divider)", background: voice === "a" ? "var(--color-accent-100)" : "var(--color-bg)", borderRadius: 20, padding: "12px 14px", font: "13px/1.5 var(--font-body)", cursor: "pointer" }}
             >
-              &ldquo;Certs expire. Outages follow. We ping you first.&rdquo;
+              &ldquo;{brandName} does the thing. Simply. We tell you when it matters.&rdquo;
             </button>
             <button
               onClick={() => setVoice("b")}
               style={{ textAlign: "left", border: "1px solid var(--color-divider)", background: voice === "b" ? "var(--color-accent-100)" : "var(--color-bg)", borderRadius: 20, padding: "12px 14px", font: "13px/1.5 var(--font-body)", cursor: "pointer" }}
             >
-              &ldquo;CertNotify provides proactive certificate lifecycle visibility for modern engineering
-              organisations.&rdquo;
+              &ldquo;{brandName} provides a comprehensive, enterprise-grade solution for modern organisations.&rdquo;
             </button>
           </div>
           <div className="text-muted" style={{ fontSize: 11.5 }}>

@@ -1,7 +1,6 @@
 import { useState } from "react";
-import { DAY_DATA } from "../data";
 
-export default function Content() {
+export default function Content({ dayData, siteName }) {
   const [view, setView] = useState("week");
 
   return (
@@ -25,7 +24,7 @@ export default function Content() {
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7,minmax(0,1fr))", gap: 10 }}>
-        {DAY_DATA.map((d) => (
+        {dayData.map((d) => (
           <div key={d.name} style={{ display: "flex", flexDirection: "column", gap: 8, minHeight: 270, background: d.items.length ? "var(--color-neutral-100)" : "transparent", border: "1px solid var(--color-divider)", borderRadius: 24, padding: "12px 10px" }}>
             <div style={{ display: "flex", alignItems: "baseline", gap: 6, padding: "0 4px" }}>
               <span style={{ fontFamily: "var(--font-heading)", fontSize: 14 }}>{d.name}</span>
@@ -55,10 +54,9 @@ export default function Content() {
             <span className="tag tag-accent">Draft · in your voice</span>
             <span className="text-muted" style={{ fontSize: 11.5, marginLeft: "auto" }}>1,840 words · reading level 9</span>
           </div>
-          <h3 style={{ margin: 0 }}>SSL expiry alerts: the 2026 guide</h3>
+          <h3 style={{ margin: 0 }}>{siteName}: the definitive guide</h3>
           <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.6 }} className="text-muted">
-            Certificates don&apos;t fail politely. They fail at 3am on a Sunday, and the first person to notice is a
-            customer on Twitter. Here&apos;s how teams that never have that morning set things up…
+            A pillar page written in your voice, targeting the search terms buyers actually use before they find you.
           </p>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", paddingTop: 4 }}>
             <span className="tag tag-accent-2">4 internal links</span>
@@ -77,7 +75,7 @@ export default function Content() {
           <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: 12.5 }}>
             <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
               <span style={{ width: 34, height: 34, borderRadius: "50%", background: "var(--color-accent-200)", flex: "none", display: "grid", placeItems: "center", fontWeight: 700, fontSize: 11 }}>×4</span>
-              <span><strong>Pillar &amp; supporting</strong> — own &ldquo;certificate expiry monitoring&rdquo; end to end.</span>
+              <span><strong>Pillar &amp; supporting</strong> — own your highest-value search terms end to end.</span>
             </div>
             <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
               <span style={{ width: 34, height: 34, borderRadius: "50%", background: "var(--color-accent-2-200)", flex: "none", display: "grid", placeItems: "center", fontWeight: 700, fontSize: 11 }}>×2</span>
