@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../providers/AuthProvider";
 import {
   subscribeSites,
@@ -18,10 +18,18 @@ import {
   updateLead,
   addContentItem,
   updateContentItem,
+  subscribeCompetitors,
+  addCompetitor,
+  updateCompetitor,
+  removeCompetitor,
 } from "../../lib/sites";
+import { diffSnapshots } from "../../lib/auditClient";
 import { buildSiteInsights, CONTENT_BODY, rewriteContentBody, hostnameOf } from "../../lib/seed";
-import { buildDigest } from "../../lib/digest";
+import { buildDigest, digestData } from "../../lib/digest";
 import { MadbotMark, SiteIcon } from "../components/Brand";
+import SearchConsolePanel from "./panels/SearchConsolePanel";
+import CompetitorPanel from "./panels/CompetitorPanel";
+import DigestPanel from "./panels/DigestPanel";
 import { SCREEN_TITLES } from "./data";
 import OnboardingModal from "./OnboardingModal";
 import Growth from "./screens/Growth";
@@ -74,7 +82,7 @@ function DashboardInner() {
   const router = useRouter();
   const params = useSearchParams();
   const initialUrl = params.get("url") || "";
-  const { user, loading, logOut } = useAuth();
+  const { user, loading, logOut, connectSearchConsole } = useAuth();
 
   const [screen, setScreen] = useState("growth");
   const [siteOpen, setSiteOpen] = useState(false);
@@ -88,6 +96,15 @@ function DashboardInner() {
   const [approvals, setApprovals] = useState([]);
   const [leads, setLeads] = useState([]);
   const [content, setContent] = useState([]);
+  const [competitors, setCompetitors] = useState([]);
+  const [competitorBusy, setCompetitorBusy] = useState(null);
+  const [addingCompetitor, setAddingCompetitor] = useState(false);
+  const [digestSentTo, setDigestSentTo] = useState(null);
+
+  // Search Console. The OAuth access token is session-only by design: Firebase
+  // hands back no refresh token, so we never persist it and just reconnect.
+  const [gsc, setGsc] = useState({ status: "idle", error: "", properties: [], siteUrl: null, data: null });
+  const gscTokenRef = useRef(null);
   const [onboardOpen, setOnboardOpen] = useState(false);
 
   const [aut, setAut] = useState(62);
@@ -166,6 +183,14 @@ function DashboardInner() {
       return undefined;
     }
     return subscribeContent(user.uid, activeSiteId, setContent);
+  }, [user, activeSiteId]);
+
+  useEffect(() => {
+    if (!user || !activeSiteId) {
+      setCompetitors([]);
+      return undefined;
+    }
+    return subscribeCompetitors(user.uid, activeSiteId, setCompetitors);
   }, [user, activeSiteId]);
 
   // There is deliberately no background timer writing invented activity here.
@@ -300,6 +325,105 @@ function DashboardInner() {
     });
   }
 
+  async function gscCall(action, extra = {}) {
+    const res = await fetch("/api/search-console", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: gscTokenRef.current, action, ...extra }),
+    });
+    return res.json();
+  }
+
+  async function loadGscSummary(propertyUrl) {
+    setGsc((s) => ({ ...s, status: "loading", error: "" }));
+    const data = await gscCall("summary", { siteUrl: propertyUrl });
+    if (!data.ok) {
+      setGsc((s) => ({ ...s, status: "error", error: data.error, needsReconnect: !!data.needsReconnect }));
+      return;
+    }
+    setGsc((s) => ({ ...s, status: "ready", siteUrl: propertyUrl, data }));
+    if (user && activeSiteId) updateSiteSettings(user.uid, activeSiteId, { gscProperty: propertyUrl });
+  }
+
+  async function handleConnectSearchConsole() {
+    setGsc((s) => ({ ...s, status: "connecting", error: "" }));
+    try {
+      gscTokenRef.current = await connectSearchConsole();
+      const listed = await gscCall("sites");
+      if (!listed.ok) {
+        setGsc((s) => ({ ...s, status: "error", error: listed.error }));
+        return;
+      }
+      const properties = listed.sites || [];
+      // If one of their verified properties matches this site, skip the picker.
+      const auto =
+        properties.find((p) => p.siteUrl.replace(/^sc-domain:/, "").includes(hostnameOf(site?.url || ""))) || null;
+      if (auto) {
+        setGsc((s) => ({ ...s, properties }));
+        await loadGscSummary(auto.siteUrl);
+      } else {
+        setGsc((s) => ({ ...s, status: "choosing", properties }));
+      }
+    } catch (err) {
+      const code = err?.code || "";
+      const friendly = code.includes("popup-closed")
+        ? "Sign-in window closed before Google finished."
+        : code.includes("popup-blocked")
+        ? "Your browser blocked the popup — allow popups and try again."
+        : err?.message || "Couldn't connect to Google.";
+      setGsc((s) => ({ ...s, status: "idle", error: friendly }));
+    }
+  }
+
+  async function addCompetitorSite(url) {
+    if (!user || !activeSiteId) return { error: "No site selected." };
+    setAddingCompetitor(true);
+    try {
+      const res = await fetch(`/api/snapshot?url=${encodeURIComponent(url)}`);
+      const data = await res.json();
+      if (!data.ok) return { error: data.error };
+      await addCompetitor(user.uid, activeSiteId, { url: data.snapshot.url, snapshot: data.snapshot });
+      addActivity(user.uid, activeSiteId, {
+        k: "link",
+        text: `Started watching ${hostnameOf(url)} for changes`,
+        why: "You added them as a competitor",
+        result: "Watching",
+      });
+      return {};
+    } catch {
+      return { error: "Couldn't reach that site." };
+    } finally {
+      setAddingCompetitor(false);
+    }
+  }
+
+  async function checkCompetitor(c) {
+    if (!user || !activeSiteId) return;
+    setCompetitorBusy(c.id);
+    try {
+      const res = await fetch(`/api/snapshot?url=${encodeURIComponent(c.url)}`);
+      const data = await res.json();
+      if (!data.ok) return;
+      const changes = diffSnapshots(c.snapshot, data.snapshot);
+      await updateCompetitor(user.uid, activeSiteId, c.id, {
+        snapshot: data.snapshot,
+        changes,
+        lastCheckedAt: new Date(),
+      });
+      if (changes.length) {
+        addActivity(user.uid, activeSiteId, {
+          k: "link",
+          text: `${hostnameOf(c.url)} changed: ${changes[0].text}`,
+          why: "Detected by comparing against the previous snapshot",
+          result: `${changes.length} change${changes.length === 1 ? "" : "s"}`,
+        });
+        setToast(`${hostnameOf(c.url)} changed — ${changes[0].text}`);
+      }
+    } finally {
+      setCompetitorBusy(null);
+    }
+  }
+
   async function handleSignOut() {
     setSigningOut(true);
     await logOut();
@@ -311,7 +435,15 @@ function DashboardInner() {
     if (!user || !site) return;
     setSendingDigest(true);
     try {
-      const { subject, html, text } = buildDigest({ site, activity, approvals, leads, content });
+      const { subject, html, text } = buildDigest({
+        site,
+        activity,
+        approvals,
+        leads,
+        content,
+        competitors,
+        search: gsc.status === "ready" ? gsc.data : null,
+      });
       const idToken = await user.getIdToken();
       const res = await fetch("/api/send-digest", {
         method: "POST",
@@ -319,6 +451,7 @@ function DashboardInner() {
         body: JSON.stringify({ idToken, subject, html, text }),
       });
       const data = await res.json();
+      if (data.ok) setDigestSentTo(data.to);
       setToast(data.ok ? `Digest sent to ${data.to}.` : data.error || "Couldn't send the digest.");
     } catch (err) {
       setToast(err?.message || "Couldn't send the digest.");
@@ -485,8 +618,41 @@ function DashboardInner() {
                   feedTop={activity.slice(0, 6)}
                   onUndo={toggleUndo}
                   paused={paused}
-                  onSendDigest={sendDigestNow}
-                  sendingDigest={sendingDigest}
+                  searchPanel={
+                    <SearchConsolePanel
+                      state={gsc}
+                      domain={insights.domain}
+                      onConnect={handleConnectSearchConsole}
+                      onPickProperty={loadGscSummary}
+                      onRefresh={() => loadGscSummary(gsc.siteUrl)}
+                    />
+                  }
+                  competitorPanel={
+                    <CompetitorPanel
+                      competitors={competitors}
+                      onAdd={addCompetitorSite}
+                      onCheck={checkCompetitor}
+                      onRemove={(id) => removeCompetitor(user.uid, activeSiteId, id)}
+                      busyId={competitorBusy}
+                      adding={addingCompetitor}
+                    />
+                  }
+                  digestPanel={
+                    <DigestPanel
+                      digest={digestData({
+                        site,
+                        activity,
+                        approvals,
+                        leads,
+                        content,
+                        competitors,
+                        search: gsc.status === "ready" ? gsc.data : null,
+                      })}
+                      onSend={sendDigestNow}
+                      sending={sendingDigest}
+                      lastSentTo={digestSentTo}
+                    />
+                  }
                 />
               )}
               {screen === "opps" && (

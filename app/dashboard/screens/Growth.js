@@ -28,8 +28,9 @@ export default function Growth({
   onUndo,
   paused,
   domain,
-  onSendDigest,
-  sendingDigest,
+  searchPanel,
+  competitorPanel,
+  digestPanel,
 }) {
   const drafted = content.filter((c) => c.status !== "published").length;
   const published = content.filter((c) => c.status === "published").length;
@@ -126,49 +127,9 @@ export default function Growth({
         </section>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          {/* Traffic and ranking numbers require a real analytics source. Rather
-              than model them, say so plainly and point at the next step. */}
-          <section className="card elev-sm" style={{ padding: 18, gap: 10, border: "1px dashed var(--color-accent-400)" }}>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-              <h4 style={{ margin: 0 }}>Traffic &amp; rankings</h4>
-              <span className="tag tag-accent" style={{ marginLeft: "auto" }}>Not connected</span>
-            </div>
-            <p style={{ margin: 0, fontSize: 13, lineHeight: 1.55 }} className="text-muted">
-              Organic visitors, keyword positions and impressions come from Google Search Console. Connect it and
-              real numbers appear here, measured against the day you connected {domain}.
-            </p>
-            <p style={{ margin: 0, fontSize: 12.5, color: "var(--color-accent-800)" }}>
-              Until then I won&apos;t show a number I can&apos;t actually measure.
-            </p>
-            <button className="btn btn-secondary" disabled style={{ fontWeight: 600, fontSize: 13, alignSelf: "flex-start" }}>
-              Connect Search Console — coming soon
-            </button>
-          </section>
-
-          <section className="card elev-sm" style={{ padding: 18, gap: 9, background: "var(--color-neutral-100)" }}>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-              <h4 style={{ margin: 0 }}>Competitor watch</h4>
-              <span className="tag tag-neutral" style={{ marginLeft: "auto" }}>Not connected</span>
-            </div>
-            <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.55 }} className="text-muted">
-              Tracking a rival&apos;s pages and rank movements needs a ranking data source. Nothing is being watched
-              yet — when it is, changes show up here the same week they happen.
-            </p>
-          </section>
-
-          <section className="card elev-sm" style={{ padding: 18, gap: 9, background: "var(--color-accent-2-100)" }}>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-              <h4 style={{ margin: 0 }}>Digest</h4>
-              <span className="tag tag-accent-2" style={{ marginLeft: "auto" }}>Email</span>
-            </div>
-            <p style={{ margin: 0, fontSize: 13, color: "var(--color-accent-2-900)", lineHeight: 1.55 }}>
-              A summary of what shipped, what&apos;s waiting on you, and what changed — built from this dashboard&apos;s
-              real activity and sent to your account email.
-            </p>
-            <button className="btn btn-secondary" onClick={onSendDigest} disabled={sendingDigest} style={{ fontWeight: 600, fontSize: 13, alignSelf: "flex-start" }}>
-              {sendingDigest ? "Sending…" : "Send me this digest now"}
-            </button>
-          </section>
+          {searchPanel}
+          {competitorPanel}
+          {digestPanel}
         </div>
       </div>
     </section>
