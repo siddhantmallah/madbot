@@ -5,3 +5,10 @@ out
 *.log
 .DS_Store
 .env*.local
+
+# Firebase service account keys — these hold a private key that grants full
+# admin access to the project. Never commit one.
+*serviceaccount*.json
+*service-account*.json
+*firebase-adminsdk*.json
+madbot-*-firebase-adminsdk-*.json
