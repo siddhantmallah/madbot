@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/organic-a199ad72-e1f5-4df1-81f7-b44e40a2fe33/styles.css">
+<script src="_ds/organic-a199ad72-e1f5-4df1-81f7-b44e40a2fe33/_ds_bundle.js"></script>
+<script src="./image-slot.js"></script>
+<style>
+:root{
+--color-bg:#0A0810;--color-surface:#15121F;--color-text:#FFFFFF;
+--color-accent:#FF6A1A;--color-accent-2:#A855F7;
+--color-divider:rgba(255,255,255,.13);
+--color-neutral-100:#15131C;--color-neutral-200:#1D1A26;--color-neutral-300:#2A2636;
+--color-neutral-400:#3E3950;--color-neutral-500:#5C5670;--color-neutral-600:#8A8499;
+--color-neutral-700:#ADA8BC;--color-neutral-800:#D8D4E2;--color-neutral-900:#F6F4FA;
+--color-accent-100:#26130A;--color-accent-200:#3A1C0C;--color-accent-300:#57290F;
+--color-accent-400:#8A3F12;--color-accent-500:#FF6A1A;--color-accent-600:#FF8036;
+--color-accent-700:#FF9557;--color-accent-800:#FFB284;--color-accent-900:#FFD6C2;
+--color-accent-2-100:#1A0F2E;--color-accent-2-200:#25153F;--color-accent-2-300:#3A2160;
+--color-accent-2-400:#573094;--color-accent-2-500:#A855F7;--color-accent-2-600:#B972FF;
+--color-accent-2-700:#C68FFF;--color-accent-2-800:#DBB6FF;--color-accent-2-900:#EFDCFF;
+--shadow-sm:0 1px 2px rgba(0,0,0,.5);--shadow-md:0 6px 22px rgba(0,0,0,.55);--shadow-lg:0 24px 70px rgba(0,0,0,.7);
+}
+html,body{margin:0;height:100%;background:var(--color-bg);color:#fff}
+a{color:var(--color-accent)}a:hover{color:var(--color-accent-700)}
+@keyframes pulseRing{0%{transform:scale(.9);opacity:.5}70%{transform:scale(1.6);opacity:0}100%{transform:scale(1.6);opacity:0}}
+@keyframes drift{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes sweep{to{transform:rotate(360deg)}}
+@keyframes slideIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:none}}
+@keyframes pop{0%{transform:scale(.86);opacity:0}62%{transform:scale(1.03)}100%{transform:scale(1);opacity:1}}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+</style>
+</helmet>
+
+<div style="height:100vh;display:grid;grid-template-columns:236px 1fr;font-size:15px;color:var(--color-text);background:var(--color-bg);overflow:hidden">
+
+<aside style="background:var(--color-surface);padding:18px 14px 14px;display:flex;flex-direction:column;gap:16px;border-right:1px solid var(--color-divider);overflow:auto">
+<div style="display:flex;align-items:center;gap:9px;padding:0 6px">
+<span style="position:relative;width:29px;height:29px;border-radius:50%;border:1.8px solid #E4EC1B;display:grid;place-items:center;flex:none"><span style="width:13px;height:13px;border:1.8px solid #E4EC1B;transform:rotate(45deg);display:block"></span></span>
+<span style="font-family:var(--font-body);font-weight:400;font-size:21px;letter-spacing:-.005em;color:#fff">madbot</span>
+</div>
+
+<div style="position:relative">
+<button class="btn btn-secondary" onClick="{{ toggleSites }}" style="width:100%;justify-content:space-between;background:var(--color-bg);font-family:var(--font-body);font-weight:600;font-size:13px">
+<span style="display:flex;align-items:center;gap:8px;overflow:hidden"><span style="width:8px;height:8px;border-radius:50%;background:var(--color-accent-2-600);flex:none"></span>{{ site }}</span>
+<span style="opacity:.5;font-size:11px">3 sites</span>
+</button>
+<sc-if value="{{ siteOpen }}">
+<div class="card elev-lg" style="position:absolute;top:44px;left:0;right:0;z-index:30;padding:8px;gap:2px;background:var(--color-bg);animation:pop .18s ease-out">
+<button class="btn btn-ghost" onClick="{{ pickA }}" style="justify-content:flex-start;color:var(--color-text);font-family:var(--font-body);font-weight:600;font-size:13px">certnotify.com</button>
+<button class="btn btn-ghost" onClick="{{ pickB }}" style="justify-content:flex-start;color:var(--color-text);font-family:var(--font-body);font-weight:600;font-size:13px">docs.certnotify.com</button>
+<button class="btn btn-ghost" onClick="{{ pickC }}" style="justify-content:flex-start;color:var(--color-text);font-family:var(--font-body);font-weight:600;font-size:13px">statuspage.io/cert</button>
+<div class="hr" style="margin:6px 0"></div>
+<button class="btn btn-ghost" onClick="{{ startOnboard }}" style="justify-content:flex-start;font-size:13px;font-family:var(--font-body);font-weight:600">+ Connect a new site</button>
+</div>
+</sc-if>
+</div>
+
+<nav style="display:flex;flex-direction:column;gap:2px" aria-label="Sections">
+<button onClick="{{ goGrowth }}" style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 13px;border:0;border-radius:999px;cursor:pointer;text-align:left;font:600 13.5px var(--font-body);background:{{ navGrowthBg }};color:{{ navGrowthFg }}" style-hover="filter:brightness(.97)">Growth</button>
+<button onClick="{{ goOpps }}" style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 13px;border:0;border-radius:999px;cursor:pointer;text-align:left;font:600 13.5px var(--font-body);background:{{ navOppsBg }};color:{{ navOppsFg }}" style-hover="filter:brightness(.97)">Opportunities<span class="tag tag-accent" style="font-size:10px;padding:1px 8px">83</span></button>
+<button onClick="{{ goContent }}" style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 13px;border:0;border-radius:999px;cursor:pointer;text-align:left;font:600 13.5px var(--font-body);background:{{ navContentBg }};color:{{ navContentFg }}" style-hover="filter:brightness(.97)">Content<span class="tag tag-neutral" style="font-size:10px;padding:1px 8px">9</span></button>
+<button onClick="{{ goLeads }}" style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 13px;border:0;border-radius:999px;cursor:pointer;text-align:left;font:600 13.5px var(--font-body);background:{{ navLeadsBg }};color:{{ navLeadsFg }}" style-hover="filter:brightness(.97)">Leads<span class="tag tag-accent-2" style="font-size:10px;padding:1px 8px">43</span></button>
+<button onClick="{{ goApprovals }}" style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 13px;border:0;border-radius:999px;cursor:pointer;text-align:left;font:600 13.5px var(--font-body);background:{{ navApprBg }};color:{{ navApprFg }}" style-hover="filter:brightness(.97)">Approvals<span class="tag tag-accent" style="font-size:10px;padding:1px 8px">{{ pendingCount }}</span></button>
+<button onClick="{{ goVis }}" style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 13px;border:0;border-radius:999px;cursor:pointer;text-align:left;font:600 13.5px var(--font-body);background:{{ navVisBg }};color:{{ navVisFg }}" style-hover="filter:brightness(.97)">AI visibility</button>
+<button onClick="{{ goAutonomy }}" style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 13px;border:0;border-radius:999px;cursor:pointer;text-align:left;font:600 13.5px var(--font-body);background:{{ navAutBg }};color:{{ navAutFg }}" style-hover="filter:brightness(.97)">Autonomy</button>
+<button onClick="{{ goLog }}" style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 13px;border:0;border-radius:999px;cursor:pointer;text-align:left;font:600 13.5px var(--font-body);background:{{ navLogBg }};color:{{ navLogFg }}" style-hover="filter:brightness(.97)">Activity log</button>
+</nav>
+
+<div style="margin-top:auto;display:flex;flex-direction:column;gap:10px">
+<button onClick="{{ goAutonomy }}" style="border:0;cursor:pointer;text-align:left;background:var(--color-accent-2-100);border-radius:26px;padding:14px;font-family:var(--font-body)" style-hover="background:var(--color-accent-2-200)">
+<div style="font-family:var(--font-heading);font-size:14px;margin-bottom:3px">Brand voice: {{ voicePct }}% you</div>
+<div style="font-size:11.5px;color:var(--color-accent-2-800);line-height:1.45">Teach me 3 more pages and I'll stop sounding like a robot.</div>
+</button>
+<button class="btn btn-secondary" onClick="{{ startOnboard }}" style="font-family:var(--font-body);font-weight:600;font-size:12.5px">Replay the 60-second setup</button>
+<div style="display:flex;align-items:center;gap:9px;padding:8px 6px 0">
+<span style="width:26px;height:26px;border-radius:50%;background:var(--color-accent-2-400);flex:none;display:grid;place-items:center;font-size:11px;font-weight:700">PR</span>
+<span style="font-size:12.5px;line-height:1.25">Priya Raman<span style="display:block;font-size:11px;color:rgba(255,255,255,.45)">Owner</span></span>
+<a href="MADBOT%20Login.dc.html" class="btn btn-ghost" style="margin-left:auto;font-size:12px;font-family:var(--font-body);font-weight:600">Sign out</a>
+</div>
+</div>
+</aside>
+
+<main style="overflow:auto;position:relative">
+
+<header style="position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:12px;padding:14px 26px;background:color-mix(in srgb, var(--color-bg) 88%, transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--color-divider)">
+<div style="font-family:var(--font-heading);font-size:17px">{{ screenTitle }}</div>
+<span class="tag tag-neutral" style="font-size:11px">{{ site }}</span>
+<div style="margin-left:auto;display:flex;align-items:center;gap:10px">
+<span style="display:inline-flex;align-items:center;gap:8px;padding:7px 14px;border-radius:999px;background:{{ statusBg }};font-size:12.5px;font-weight:600;color:{{ statusFg }}">
+<span style="position:relative;width:9px;height:9px;flex:none"><span style="position:absolute;inset:0;border-radius:50%;background:currentColor"></span><span style="position:absolute;inset:0;border-radius:50%;background:currentColor;animation:{{ pulseAnim }}"></span></span>
+{{ statusLabel }}
+</span>
+<button class="btn btn-secondary" onClick="{{ togglePause }}" style="font-family:var(--font-body);font-weight:600;font-size:13px">{{ pauseLabel }}</button>
+</div>
+</header>
+
+<div style="padding:{{ pad }}">
+
+<sc-if value="{{ isGrowth }}" hint-placeholder-val="{{ true }}">
+<section data-screen-label="Growth" style="display:flex;flex-direction:column;gap:18px">
+<div style="display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap">
+<div>
+<h2 style="margin:0 0 3px;font-size:32px">Week 6 was a good week.</h2>
+<p style="margin:0;font-size:14px" class="text-muted">I did {{ actionCount }} things, you approved 2, and here's what came of it.</p>
+</div>
+<button class="btn btn-primary" onClick="{{ goApprovals }}" style="margin-left:auto">{{ pendingCount }} things need you · 90 seconds</button>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px">
+<div class="card elev-sm" style="gap:4px;padding:18px 20px">
+<div class="card-kicker">Organic visitors</div>
+<div style="font-family:var(--font-heading);font-size:36px;line-height:1">+38%</div>
+<div style="display:flex;align-items:flex-end;gap:4px;height:30px;margin-top:6px">
+<span style="flex:1;height:34%;background:var(--color-accent-300);border-radius:3px"></span><span style="flex:1;height:41%;background:var(--color-accent-300);border-radius:3px"></span><span style="flex:1;height:37%;background:var(--color-accent-300);border-radius:3px"></span><span style="flex:1;height:56%;background:var(--color-accent-400);border-radius:3px"></span><span style="flex:1;height:66%;background:var(--color-accent-400);border-radius:3px"></span><span style="flex:1;height:100%;background:var(--color-accent);border-radius:3px"></span>
+</div>
+</div>
+<div class="card elev-sm" style="gap:4px;padding:18px 20px">
+<div class="card-kicker">Qualified prospects</div>
+<div style="font-family:var(--font-heading);font-size:36px;line-height:1">+43</div>
+<div style="font-size:12px" class="text-muted">18 opened · 6 replied · 2 demos booked</div>
+</div>
+<div class="card elev-sm" style="gap:4px;padding:18px 20px">
+<div class="card-kicker">Referring domains</div>
+<div style="font-family:var(--font-heading);font-size:36px;line-height:1">+17</div>
+<div style="font-size:12px" class="text-muted">2 above DR 60</div>
+</div>
+<div class="card elev-sm" style="gap:4px;padding:18px 20px">
+<div class="card-kicker">Pages indexed</div>
+<div style="font-family:var(--font-heading);font-size:36px;line-height:1">+24</div>
+<div style="font-size:12px" class="text-muted">of 24 submitted</div>
+</div>
+</div>
+
+<div style="display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:16px;align-items:start">
+
+<section class="card" style="padding:18px;gap:12px;background:var(--color-neutral-100)">
+<div style="display:flex;align-items:center;gap:10px">
+<h4 style="margin:0">Live engine feed</h4>
+<button class="btn btn-ghost" onClick="{{ goLog }}" style="margin-left:auto;font-size:12.5px;font-family:var(--font-body);font-weight:600">Full log</button>
+</div>
+<ol style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:3px">
+<sc-for list="{{ feedTop }}" as="f" hint-placeholder-count="6">
+<li style="display:grid;grid-template-columns:62px 24px minmax(0,1fr) auto;gap:10px;align-items:center;padding:11px 12px;border-radius:20px;background:{{ f.bg }};animation:{{ f.anim }}">
+<span style="font-size:11px;font-variant-numeric:tabular-nums" class="text-muted">{{ f.ago }}</span>
+<span style="width:24px;height:24px;border-radius:50%;background:{{ f.dot }};flex:none"></span>
+<span style="font-size:13.5px;line-height:1.4">{{ f.text }}</span>
+<span style="display:flex;align-items:center;gap:6px;justify-self:end">
+<span class="tag" style="font-size:10.5px;background:{{ f.tagBg }};color:{{ f.tagFg }};display:{{ f.tagShow }}">{{ f.tag }}</span>
+<button class="btn btn-ghost" onClick="{{ f.onUndo }}" style="font-size:12px;font-family:var(--font-body);font-weight:600;display:{{ f.undoShow }}">Undo</button>
+</span>
+</li>
+</sc-for>
+</ol>
+<div style="display:flex;align-items:center;gap:8px;font-size:12px" class="text-muted">
+<span style="width:14px;height:14px;border-radius:50%;border:2px solid var(--color-accent-300);border-top-color:var(--color-accent);animation:sweep 1.4s linear infinite;display:block;flex:none"></span>
+{{ workingOn }}
+</div>
+</section>
+
+<div style="display:flex;flex-direction:column;gap:16px">
+
+<section class="card elev-sm" style="padding:18px;gap:12px">
+<h4 style="margin:0">Before MADBOT → now</h4>
+<sc-for list="{{ scoreboard }}" as="s" hint-placeholder-count="3">
+<div>
+<div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:5px"><span>{{ s.label }}</span><span style="font-weight:700">{{ s.delta }}</span></div>
+<div style="height:9px;border-radius:999px;background:var(--color-neutral-200);position:relative;overflow:hidden">
+<span style="position:absolute;left:0;top:0;height:9px;border-radius:999px;background:var(--color-neutral-400);width:{{ s.before }}"></span>
+<span style="position:absolute;left:0;top:0;height:9px;border-radius:999px;background:var(--color-accent);opacity:.9;width:{{ s.now }};transform-origin:left;animation:grow 1s cubic-bezier(.2,.8,.2,1)"></span>
+</div>
+</div>
+</sc-for>
+<div class="text-muted" style="font-size:11.5px">Baseline is the 30 days before you connected. I never re-base it, so it can't flatter me.</div>
+</section>
+
+<section class="card elev-sm" style="padding:18px;gap:9px;background:var(--color-neutral-100)">
+<div style="display:flex;align-items:baseline;gap:8px"><h4 style="margin:0">Competitor watch</h4><span class="tag tag-neutral" style="margin-left:auto">3 tracked</span></div>
+<div style="font-size:12.5px;display:flex;flex-direction:column;gap:8px">
+<div style="display:flex;gap:8px"><span class="tag tag-accent-2" style="font-size:10px;flex:none">new</span><span>uptimekit.io shipped a pricing page. I'm drafting a comparison — <a href="#">see the draft</a>.</span></div>
+<div style="display:flex;gap:8px"><span class="tag tag-neutral" style="font-size:10px;flex:none">rank</span><span>certwatch.dev slipped to #6 on “tls monitoring”. That gap is open for about two weeks.</span></div>
+</div>
+</section>
+
+<section class="card elev-sm" style="padding:18px;gap:9px;background:var(--color-accent-2-100)">
+<div style="display:flex;align-items:baseline;gap:8px"><h4 style="margin:0">Friday digest</h4><span class="tag tag-accent-2" style="margin-left:auto">Slack + email</span></div>
+<p style="margin:0;font-size:13px;color:var(--color-accent-2-900)">“6 posts out, 17 new links, 43 prospects, 2 things for you.” Reads in 40 seconds.</p>
+<div style="display:flex;gap:7px;flex-wrap:wrap"><span class="tag tag-outline">Weekly</span><span class="tag tag-neutral">Ping me for wins only</span></div>
+</section>
+</div>
+</div>
+</section>
+</sc-if>
+
+<sc-if value="{{ isOpps }}">
+<section data-screen-label="Opportunities" style="display:grid;grid-template-columns:minmax(0,1fr) 342px;gap:20px;align-items:start">
+<div style="display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap">
+<div>
+<h2 style="margin:0 0 3px">83 ways to grow, mapped</h2>
+<p class="text-muted" style="margin:0;font-size:13.5px">Bigger circle, bigger prize. Closer to the middle, easier for me. Click one.</p>
+</div>
+<div style="margin-left:auto;display:flex;align-items:center;gap:8px">
+<button class="btn btn-secondary btn-icon" onClick="{{ zoomOut }}" aria-label="Zoom out">–</button>
+<span style="font-size:12px;font-variant-numeric:tabular-nums;width:38px;text-align:center">{{ zoomLabel }}</span>
+<button class="btn btn-secondary btn-icon" onClick="{{ zoomIn }}" aria-label="Zoom in">+</button>
+</div>
+</div>
+<div style="position:relative;height:600px;border-radius:34px;overflow:hidden;background:radial-gradient(85% 78% at 34% 24%, var(--color-accent-2-100) 0%, var(--color-bg) 62%);border:1px solid var(--color-divider)">
+<div style="position:absolute;inset:0;transform:scale({{ zoom }});transition:transform .35s cubic-bezier(.2,.8,.2,1)">
+<div style="position:absolute;left:50%;top:50%;width:540px;height:540px;border-radius:50%;border:1px dashed var(--color-neutral-300);transform:translate(-50%,-50%)"></div>
+<div style="position:absolute;left:50%;top:50%;width:360px;height:360px;border-radius:50%;border:1px dashed var(--color-neutral-300);transform:translate(-50%,-50%)"></div>
+<div style="position:absolute;left:50%;top:50%;width:180px;height:180px;border-radius:50%;border:1px dashed var(--color-neutral-300);transform:translate(-50%,-50%)"></div>
+<div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:124px;height:124px;border-radius:50%;background:var(--color-surface);box-shadow:var(--shadow-md);display:grid;place-items:center;text-align:center">
+<div><div style="font-family:var(--font-heading);font-size:16px;line-height:1.1">CertNotify</div><div class="text-muted" style="font-size:10.5px">SSL monitoring</div></div>
+</div>
+<sc-for list="{{ nodes }}" as="n" hint-placeholder-count="9">
+<button onClick="{{ n.onPick }}" style="position:absolute;left:{{ n.x }};top:{{ n.y }};width:{{ n.d }};height:{{ n.d }};border-radius:50%;border:{{ n.ring }};cursor:pointer;display:grid;place-items:center;text-align:center;padding:9px;background:{{ n.bg }};color:{{ n.fg }};box-shadow:{{ n.shadow }};font-family:var(--font-body);animation:{{ n.anim }};transition:transform .2s" style-hover="transform:scale(1.06)">
+<span style="font-size:{{ n.fs }};font-weight:700;line-height:1.15">{{ n.label }}</span>
+</button>
+</sc-for>
+</div>
+<div class="card elev-lg" style="position:absolute;right:16px;top:16px;width:262px;padding:15px;gap:6px;background:var(--color-bg);animation:pop .25s ease-out">
+<div class="card-kicker">If I take this</div>
+<div style="font-family:var(--font-heading);font-size:16px;line-height:1.2">{{ forecast }}</div>
+<div class="text-muted" style="font-size:12px">{{ forecastMeta }}</div>
+<div style="height:44px;display:flex;align-items:flex-end;gap:3px;margin-top:4px">
+<span style="flex:1;height:16%;background:var(--color-neutral-300);border-radius:2px"></span><span style="flex:1;height:22%;background:var(--color-neutral-300);border-radius:2px"></span><span style="flex:1;height:31%;background:var(--color-accent-300);border-radius:2px"></span><span style="flex:1;height:48%;background:var(--color-accent-300);border-radius:2px"></span><span style="flex:1;height:64%;background:var(--color-accent-400);border-radius:2px"></span><span style="flex:1;height:82%;background:var(--color-accent-400);border-radius:2px"></span><span style="flex:1;height:100%;background:var(--color-accent);border-radius:2px"></span>
+</div>
+<div class="text-muted" style="font-size:10.5px">Modelled on 41 sites like yours. Week 1 → 7.</div>
+</div>
+</div>
+<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+<span class="tag tag-neutral">Ranked by expected value</span>
+<span class="text-muted" style="font-size:12px">54 auto-queued · 27 waiting · {{ pendingCount }} need you</span>
+</div>
+</div>
+
+<aside style="display:flex;flex-direction:column;gap:14px;position:sticky;top:0">
+<div class="card elev-sm" style="padding:18px;gap:9px">
+<div class="card-kicker">Selected opportunity</div>
+<div style="font-family:var(--font-heading);font-size:20px;line-height:1.15">{{ oppTitle }}</div>
+<p class="card-body" style="margin:0;font-size:13px">{{ oppBody }}</p>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;font-size:12.5px;padding-top:2px">
+<div><div class="text-muted" style="font-size:10.5px">Expected value</div><strong>{{ oppValue }}</strong></div>
+<div><div class="text-muted" style="font-size:10.5px">Difficulty</div><strong>{{ oppDiff }}</strong></div>
+<div><div class="text-muted" style="font-size:10.5px">Confidence</div><strong>{{ oppConf }}</strong></div>
+<div><div class="text-muted" style="font-size:10.5px">Needs approval</div><strong>{{ oppAppr }}</strong></div>
+</div>
+<button class="btn btn-primary btn-block" onClick="{{ takeOpp }}">{{ takeLabel }}</button>
+<button class="btn btn-ghost" onClick="{{ dismissOpp }}" style="align-self:center;font-size:12.5px">Not for us — and remember why</button>
+</div>
+<section style="display:flex;flex-direction:column;gap:9px">
+<h5 style="margin:0">My plan, in order</h5>
+<sc-for list="{{ plan }}" as="p" hint-placeholder-count="4">
+<div style="display:flex;gap:10px;align-items:center;background:var(--color-surface);border-radius:20px;padding:10px 13px;font-size:12.5px"><span style="font-family:var(--font-heading);color:var(--color-accent)">{{ p.n }}</span>{{ p.text }}</div>
+</sc-for>
+</section>
+</aside>
+</section>
+</sc-if>
+
+<sc-if value="{{ isContent }}">
+<section data-screen-label="Content" style="display:flex;flex-direction:column;gap:18px">
+<div style="display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap">
+<div>
+<h2 style="margin:0 0 3px">What's going out, and when</h2>
+<p class="text-muted" style="margin:0;font-size:13.5px">Nine pieces this week. Drag anything to move it. Open anything to rewrite it.</p>
+</div>
+<div class="seg" style="margin-left:auto;background:var(--color-bg)">
+<label class="seg-opt"><input type="radio" name="cv" defaultChecked="{{ true }}">Week</label>
+<label class="seg-opt"><input type="radio" name="cv">Month</label>
+<label class="seg-opt"><input type="radio" name="cv">Backlog</label>
+</div>
+<button class="btn btn-secondary" style="font-family:var(--font-body);font-weight:600;font-size:13px">Ask for a piece</button>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:10px">
+<sc-for list="{{ days }}" as="d" hint-placeholder-count="7">
+<div style="display:flex;flex-direction:column;gap:8px;min-height:270px;background:{{ d.bg }};border:1px solid var(--color-divider);border-radius:24px;padding:12px 10px">
+<div style="display:flex;align-items:baseline;gap:6px;padding:0 4px">
+<span style="font-family:var(--font-heading);font-size:14px">{{ d.name }}</span>
+<span class="text-muted" style="font-size:11px;margin-left:auto">{{ d.date }}</span>
+</div>
+<sc-for list="{{ d.items }}" as="c" hint-placeholder-count="2">
+<div style="background:var(--color-bg);border-radius:16px;padding:9px 10px;box-shadow:var(--shadow-sm);cursor:grab" style-hover="box-shadow:var(--shadow-md)">
+<div style="font-size:11.5px;font-weight:700;line-height:1.3;margin-bottom:4px">{{ c.title }}</div>
+<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap"><span class="tag" style="font-size:9.5px;padding:1px 7px;background:{{ c.tagBg }};color:{{ c.tagFg }}">{{ c.kind }}</span><span class="text-muted" style="font-size:9.5px">{{ c.meta }}</span></div>
+</div>
+</sc-for>
+</div>
+</sc-for>
+</div>
+
+<div style="display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:16px">
+<section class="card elev-sm" style="padding:20px;gap:10px">
+<div style="display:flex;align-items:center;gap:9px"><span class="tag tag-accent">Draft · in your voice</span><span class="text-muted" style="font-size:11.5px;margin-left:auto">1,840 words · reading level 9</span></div>
+<h3 style="margin:0">SSL expiry alerts: the 2026 guide</h3>
+<p style="margin:0;font-size:13.5px;line-height:1.6" class="text-muted">Certificates don't fail politely. They fail at 3am on a Sunday, and the first person to notice is a customer on Twitter. Here's how teams that never have that morning set things up…</p>
+<div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:4px">
+<span class="tag tag-accent-2">4 internal links</span><span class="tag tag-accent-2">FAQ schema</span><span class="tag tag-accent-2">Targets 2 keywords</span><span class="tag tag-outline">Sounds 88% like you</span>
+</div>
+<div style="display:flex;gap:9px;padding-top:4px"><button class="btn btn-primary">Publish now</button><button class="btn btn-secondary" style="font-family:var(--font-body);font-weight:600;font-size:13px">Rewrite it</button><button class="btn btn-ghost" style="font-size:13px">Preview</button></div>
+</section>
+<section class="card elev-sm" style="padding:20px;gap:10px;background:var(--color-neutral-100)">
+<h4 style="margin:0">What each piece is for</h4>
+<div style="display:flex;flex-direction:column;gap:10px;font-size:12.5px">
+<div style="display:flex;gap:10px;align-items:center"><span style="width:34px;height:34px;border-radius:50%;background:var(--color-accent-200);flex:none;display:grid;place-items:center;font-weight:700;font-size:11px">×4</span><span><strong>Pillar &amp; supporting</strong> — own “certificate expiry monitoring” end to end.</span></div>
+<div style="display:flex;gap:10px;align-items:center"><span style="width:34px;height:34px;border-radius:50%;background:var(--color-accent-2-200);flex:none;display:grid;place-items:center;font-weight:700;font-size:11px">×2</span><span><strong>Comparison</strong> — catch people already shopping competitors.</span></div>
+<div style="display:flex;gap:10px;align-items:center"><span style="width:34px;height:34px;border-radius:50%;background:var(--color-neutral-300);flex:none;display:grid;place-items:center;font-weight:700;font-size:11px">×3</span><span><strong>Answer-engine bait</strong> — short, quotable, schema-marked definitions.</span></div>
+</div>
+</section>
+</div>
+</section>
+</sc-if>
+
+<sc-if value="{{ isLeads }}">
+<section data-screen-label="Leads" style="display:flex;flex-direction:column;gap:18px">
+<div style="display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap">
+<div>
+<h2 style="margin:0 0 3px">43 people who have your problem right now</h2>
+<p class="text-muted" style="margin:0;font-size:13.5px">Found in public signals — expiring certs, hiring posts, forum questions. Never bought lists.</p>
+</div>
+<div class="seg" style="margin-left:auto;background:var(--color-bg)">
+<label class="seg-opt"><input type="radio" name="lv" defaultChecked="{{ true }}">Hot</label>
+<label class="seg-opt"><input type="radio" name="lv">All</label>
+<label class="seg-opt"><input type="radio" name="lv">Replied</label>
+</div>
+</div>
+<div style="display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:16px;align-items:start">
+<div class="card" style="padding:8px;background:var(--color-neutral-100)">
+<table class="table">
+<thead><tr><th>Company</th><th>Why now</th><th>Fit</th><th></th></tr></thead>
+<tbody>
+<sc-for list="{{ leads }}" as="l" hint-placeholder-count="6">
+<tr>
+<td style="font-weight:700">{{ l.co }}<div class="text-muted" style="font-size:11px;font-weight:400">{{ l.meta }}</div></td>
+<td style="font-size:12.5px">{{ l.why }}</td>
+<td><span class="tag" style="background:{{ l.fitBg }};color:{{ l.fitFg }};font-size:10.5px">{{ l.fit }}</span></td>
+<td style="text-align:right"><span class="tag tag-neutral" style="font-size:10.5px">{{ l.state }}</span></td>
+</tr>
+</sc-for>
+</tbody>
+</table>
+</div>
+<div style="display:flex;flex-direction:column;gap:14px">
+<section class="card elev-sm" style="padding:18px;gap:9px">
+<div style="display:flex;align-items:center;gap:8px"><span class="tag tag-accent">Outreach draft</span><span class="text-muted" style="font-size:11px;margin-left:auto">goes out 9:10am, unless you stop it</span></div>
+<div style="background:var(--color-bg);border-radius:20px;padding:14px;font-size:13px;line-height:1.55">
+<div style="font-weight:700;margin-bottom:6px">Your wildcard cert expires in 19 days</div>
+<p style="margin:0 0 8px" class="text-muted">Hi Dana — noticed the cert on app.northwind.io renews on the 12th. Not selling you anything today: here's the free checklist we give teams before a wildcard rollover…</p>
+<span class="tag tag-outline" style="font-size:10px">No pricing, no pressure — per your rules</span>
+</div>
+<div style="display:flex;gap:9px"><button class="btn btn-primary" style="font-size:13px">Send it</button><button class="btn btn-secondary" style="font-family:var(--font-body);font-weight:600;font-size:13px">Edit</button><button class="btn btn-ghost" style="font-size:13px">Never this company</button></div>
+</section>
+<section class="card elev-sm" style="padding:18px;gap:8px;background:var(--color-accent-2-100)">
+<h4 style="margin:0">How I score them</h4>
+<div style="font-size:12.5px;color:var(--color-accent-2-900);display:flex;flex-direction:column;gap:5px">
+<div>Signal freshness — a cert expiring in 3 weeks beats one in 6 months.</div>
+<div>Shape of the company — you close 4× faster under 200 people.</div>
+<div>Whether a human at your end already knows them.</div>
+</div>
+</section>
+</div>
+</div>
+</section>
+</sc-if>
+
+<sc-if value="{{ isAppr }}">
+<section data-screen-label="Approvals" style="display:flex;flex-direction:column;gap:18px;max-width:900px">
+<div>
+<h2 style="margin:0 0 3px">{{ apprHeadline }}</h2>
+<p class="text-muted" style="margin:0;font-size:13.5px">Only three things ever reach this queue: money, public claims, and anything I'm under 60% sure about.</p>
+</div>
+<sc-for list="{{ approvals }}" as="a" hint-placeholder-count="3">
+<div class="card elev-sm" style="padding:20px;gap:12px;background:{{ a.bg }};opacity:{{ a.op }}">
+<div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">
+<span class="tag" style="background:{{ a.kindBg }};color:{{ a.kindFg }};font-size:10.5px">{{ a.kind }}</span>
+<span class="text-muted" style="font-size:11.5px">{{ a.when }}</span>
+<span class="tag tag-neutral" style="margin-left:auto;font-size:10.5px">{{ a.status }}</span>
+</div>
+<div style="display:grid;grid-template-columns:minmax(0,1fr) 208px;gap:18px;align-items:start">
+<div>
+<h4 style="margin:0 0 5px">{{ a.title }}</h4>
+<p style="margin:0;font-size:13px;line-height:1.6" class="text-muted">{{ a.body }}</p>
+</div>
+<div style="background:var(--color-bg);border-radius:22px;padding:13px;font-size:12px">
+<div class="card-kicker" style="margin-bottom:3px">Forecast</div>
+<div style="font-family:var(--font-heading);font-size:15px;line-height:1.2;margin-bottom:3px">{{ a.forecast }}</div>
+<div class="text-muted">{{ a.conf }}</div>
+</div>
+</div>
+<div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap">
+<button class="btn btn-primary" onClick="{{ a.onApprove }}" style="font-size:13px">{{ a.yes }}</button>
+<button class="btn btn-secondary" style="font-family:var(--font-body);font-weight:600;font-size:13px">Change it first</button>
+<button class="btn btn-ghost" onClick="{{ a.onDecline }}" style="font-size:13px">No thanks</button>
+<span class="text-muted" style="font-size:11.5px;margin-left:auto">{{ a.rule }}</span>
+</div>
+</div>
+</sc-for>
+<div class="card" style="padding:18px;gap:6px;background:var(--color-neutral-100)">
+<h5 style="margin:0">Tired of approving this kind of thing?</h5>
+<p style="margin:0;font-size:12.5px" class="text-muted">Give me a standing budget and I'll stop asking about spends under it. You can pull it back any time.</p>
+<div style="display:flex;gap:9px;padding-top:4px"><button class="btn btn-secondary" onClick="{{ goAutonomy }}" style="font-family:var(--font-body);font-weight:600;font-size:13px">Set a standing budget</button></div>
+</div>
+</section>
+</sc-if>
+
+<sc-if value="{{ isVis }}">
+<section data-screen-label="AI visibility" style="display:flex;flex-direction:column;gap:18px">
+<div>
+<h2 style="margin:0 0 3px">When people ask an AI, do you come up?</h2>
+<p class="text-muted" style="margin:0;font-size:13.5px">Four of nine answer engines cite you now. Six weeks ago it was one.</p>
+</div>
+<div style="display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:16px;align-items:start">
+<section class="card elev-sm" style="padding:20px;gap:13px">
+<h4 style="margin:0">Citation share by engine</h4>
+<sc-for list="{{ engines }}" as="e" hint-placeholder-count="6">
+<div style="display:flex;align-items:center;gap:12px;font-size:13px">
+<span style="width:104px;flex:none">{{ e.name }}</span>
+<span style="flex:1;height:9px;border-radius:999px;background:var(--color-neutral-200);overflow:hidden"><span style="display:block;height:9px;border-radius:999px;background:{{ e.color }};width:{{ e.w }};transform-origin:left;animation:grow .9s cubic-bezier(.2,.8,.2,1)"></span></span>
+<span style="width:52px;text-align:right;font-variant-numeric:tabular-nums;font-size:12.5px">{{ e.val }}</span>
+<span class="tag tag-accent-2" style="font-size:10px;width:44px;justify-content:center">{{ e.delta }}</span>
+</div>
+</sc-for>
+<div class="text-muted" style="font-size:11.5px">Measured by asking each engine your 40 buying questions, weekly, from three regions.</div>
+</section>
+<div style="display:flex;flex-direction:column;gap:14px">
+<section class="card elev-sm" style="padding:18px;gap:9px;background:var(--color-accent-100)">
+<div style="display:flex;align-items:center;gap:9px"><h4 style="margin:0">Your public health badge</h4><span class="tag tag-accent" style="margin-left:auto">Live</span></div>
+<div style="display:flex;align-items:center;gap:13px;background:var(--color-bg);border-radius:24px;padding:14px">
+<div style="width:66px;height:66px;border-radius:50%;background:conic-gradient(var(--color-accent-2-500) 0 84%, var(--color-neutral-300) 84% 100%);display:grid;place-items:center;flex:none">
+<span style="width:48px;height:48px;border-radius:50%;background:var(--color-bg);display:grid;place-items:center;font-family:var(--font-heading);font-size:18px">84</span>
+</div>
+<div><div style="font-family:var(--font-heading);font-size:15px">Site health: strong</div><div class="text-muted" style="font-size:12px">Speed, structure, schema, accessibility. Embeddable on your site.</div></div>
+</div>
+<div style="font:12px ui-monospace,Menlo,monospace;background:var(--color-neutral-900);color:var(--color-neutral-200);border-radius:16px;padding:11px 13px;overflow:auto">&lt;script src="getmadbot.com/badge.js" data-site="certnotify"&gt;&lt;/script&gt;</div>
+</section>
+<section class="card elev-sm" style="padding:18px;gap:9px;background:var(--color-neutral-100)">
+<h4 style="margin:0">You got cited for</h4>
+<div style="display:flex;flex-direction:column;gap:8px;font-size:12.5px">
+<div style="background:var(--color-bg);border-radius:18px;padding:10px 13px">“What tools alert you before an SSL certificate expires?” <span class="tag tag-accent-2" style="font-size:10px">2nd of 5</span></div>
+<div style="background:var(--color-bg);border-radius:18px;padding:10px 13px">“Cheap cert monitoring for small teams” <span class="tag tag-accent-2" style="font-size:10px">1st of 4</span></div>
+<div style="background:var(--color-bg);border-radius:18px;padding:10px 13px">“How to avoid TLS outages” <span class="tag tag-neutral" style="font-size:10px">not cited</span></div>
+</div>
+</section>
+</div>
+</div>
+</section>
+</sc-if>
+
+<sc-if value="{{ isAut }}">
+<section data-screen-label="Autonomy" style="display:grid;grid-template-columns:minmax(0,1fr) 348px;gap:24px;align-items:start">
+<div style="display:flex;flex-direction:column;align-items:center;gap:8px">
+<h2 style="margin:0;text-align:center">How much rope do I get?</h2>
+<p class="text-muted" style="font-size:13.5px;margin:0 0 4px;text-align:center;max-width:440px">One dial. Turn it up when you trust me, down when you don't. Everything else in MADBOT follows it.</p>
+<div onPointerDown="{{ dialDown }}" onPointerMove="{{ dialMove }}" onPointerUp="{{ dialUp }}" style="position:relative;width:404px;height:404px;display:grid;place-items:center;touch-action:none;cursor:grab;user-select:none">
+<div style="position:absolute;inset:0;border-radius:50%;background:var(--color-surface);box-shadow:var(--shadow-lg)"></div>
+<div style="position:absolute;inset:28px;border-radius:50%;background:var(--color-bg);border:1px solid var(--color-divider)"></div>
+<svg viewBox="0 0 404 404" style="position:absolute;inset:0;width:404px;height:404px;pointer-events:none">
+<circle cx="202" cy="202" r="152" fill="none" stroke="#2A2636" stroke-width="16" stroke-linecap="round" stroke-dasharray="716 955" transform="rotate(135 202 202)"></circle>
+<circle cx="202" cy="202" r="152" fill="none" stroke="#FF6A1A" stroke-width="16" stroke-linecap="round" stroke-dasharray="{{ arc }}" transform="rotate(135 202 202)"></circle>
+</svg>
+<div style="position:absolute;width:34px;height:34px;border-radius:50%;background:var(--color-bg);border:5px solid var(--color-accent);box-shadow:var(--shadow-md);pointer-events:none;transform:translate({{ knobX }},{{ knobY }})"></div>
+<div style="text-align:center;position:relative;pointer-events:none;padding:0 56px">
+<div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--color-accent-700)">Autonomy</div>
+<div style="font-family:var(--font-heading);font-size:44px;line-height:1.05;margin:3px 0 5px">{{ autLabel }}</div>
+<div class="text-muted" style="font-size:12.5px;line-height:1.45">{{ autDesc }}</div>
+</div>
+<span style="position:absolute;left:34px;bottom:48px;font-size:11.5px;font-weight:600;color:var(--color-neutral-600);pointer-events:none">Watch</span>
+<span style="position:absolute;left:8px;top:152px;font-size:11.5px;font-weight:600;color:var(--color-neutral-600);pointer-events:none">Suggest</span>
+<span style="position:absolute;right:6px;top:152px;font-size:11.5px;font-weight:600;color:var(--color-neutral-600);pointer-events:none">Let it rip</span>
+<span style="position:absolute;right:26px;bottom:48px;font-size:11.5px;font-weight:600;color:var(--color-neutral-600);pointer-events:none">Full send</span>
+</div>
+<div style="display:flex;gap:9px;flex-wrap:wrap;justify-content:center;max-width:600px">
+<sc-for list="{{ perms }}" as="p" hint-placeholder-count="6">
+<span class="tag" style="background:{{ p.bg }};color:{{ p.fg }};font-size:11.5px">{{ p.text }}</span>
+</sc-for>
+</div>
+<div class="card elev-sm" style="width:100%;max-width:600px;margin-top:4px;padding:17px 20px;gap:14px;flex-direction:row;align-items:center">
+<div style="flex:1">
+<div style="font-family:var(--font-heading);font-size:15px;margin-bottom:2px">Effort throttle</div>
+<div class="text-muted" style="font-size:12px">{{ thrLabel }}</div>
+</div>
+<div onPointerDown="{{ thrDown }}" onPointerMove="{{ thrMove }}" onPointerUp="{{ thrUp }}" style="flex:1.15;height:26px;display:flex;align-items:center;touch-action:none;cursor:pointer">
+<div style="width:100%;height:10px;border-radius:999px;background:var(--color-neutral-200);position:relative">
+<span style="display:block;height:10px;border-radius:999px;background:var(--color-accent-2-500);width:{{ thrPct }}"></span>
+<span style="position:absolute;top:-6px;left:{{ thrPct }};width:22px;height:22px;border-radius:50%;background:var(--color-bg);border:4px solid var(--color-accent-2-600);transform:translateX(-50%);box-shadow:var(--shadow-sm)"></span>
+</div>
+</div>
+</div>
+</div>
+
+<aside style="display:flex;flex-direction:column;gap:14px">
+<section class="card elev-sm" style="padding:18px;gap:10px;background:var(--color-accent-2-100)">
+<h4 style="margin:0">My rules, in plain English</h4>
+<sc-for list="{{ rules }}" as="r" hint-placeholder-count="4">
+<div style="display:flex;gap:9px;align-items:center;background:var(--color-bg);border-radius:18px;padding:10px 13px;font-size:12.5px">
+<span style="flex:1">{{ r.text }}</span>
+<button class="btn btn-ghost" onClick="{{ r.onRemove }}" style="font-size:11.5px;padding-inline:4px">Remove</button>
+</div>
+</sc-for>
+<div style="display:flex;gap:8px">
+<input class="input" value="{{ draftRule }}" onChange="{{ setRule }}" onKeyDown="{{ ruleKey }}" placeholder="Never mention a customer by name" style="background:var(--color-bg);font-size:12.5px"></input>
+<button class="btn btn-primary" onClick="{{ addRule }}" style="font-size:13px;flex:none">Add</button>
+</div>
+</section>
+<section class="card elev-sm" style="padding:18px;gap:10px">
+<div style="display:flex;align-items:center;gap:8px"><h4 style="margin:0">Brand voice trainer</h4><span class="tag tag-accent" style="margin-left:auto">{{ voicePct }}% you</span></div>
+<p class="card-body" style="margin:0">Twelve of your pages fed in. Tell me which of these two sounds more like you and I get sharper.</p>
+<div style="display:flex;flex-direction:column;gap:8px">
+<button onClick="{{ pickVoiceA }}" style="text-align:left;border:1px solid var(--color-divider);background:{{ voiceABg }};border-radius:20px;padding:12px 14px;font:13px/1.5 var(--font-body);cursor:pointer" style-hover="border-color:var(--color-accent)">“Certs expire. Outages follow. We ping you first.”</button>
+<button onClick="{{ pickVoiceB }}" style="text-align:left;border:1px solid var(--color-divider);background:{{ voiceBBg }};border-radius:20px;padding:12px 14px;font:13px/1.5 var(--font-body);cursor:pointer" style-hover="border-color:var(--color-accent)">“CertNotify provides proactive certificate lifecycle visibility for modern engineering organisations.”</button>
+</div>
+<div class="text-muted" style="font-size:11.5px">{{ voiceNote }}</div>
+</section>
+<section class="card elev-sm" style="padding:18px;gap:9px;background:var(--color-neutral-100)">
+<h4 style="margin:0">How I reach you</h4>
+<div style="display:flex;flex-direction:column;gap:8px;font-size:12.5px">
+<div style="display:flex;align-items:center;gap:8px">Friday digest<span class="tag tag-accent-2" style="margin-left:auto;font-size:10px">Slack + email</span></div>
+<div style="display:flex;align-items:center;gap:8px">A win lands<span class="tag tag-accent-2" style="margin-left:auto;font-size:10px">Slack</span></div>
+<div style="display:flex;align-items:center;gap:8px">Something needs you<span class="tag tag-accent" style="margin-left:auto;font-size:10px">Slack, right away</span></div>
+<div style="display:flex;align-items:center;gap:8px">Everything else<span class="tag tag-neutral" style="margin-left:auto;font-size:10px">Silence</span></div>
+</div>
+</section>
+</aside>
+</section>
+</sc-if>
+
+<sc-if value="{{ isLog }}">
+<section data-screen-label="Activity log" style="display:flex;flex-direction:column;gap:16px">
+<div style="display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap">
+<div>
+<h2 style="margin:0 0 3px">Everything I've ever done here</h2>
+<p class="text-muted" style="margin:0;font-size:13.5px">1,406 actions, each one reversible. Nothing happens off the record.</p>
+</div>
+<div class="seg" style="margin-left:auto;background:var(--color-bg)">
+<label class="seg-opt"><input type="radio" name="lg" checked="{{ filtAll }}" onChange="{{ setFiltAll }}">All</label>
+<label class="seg-opt"><input type="radio" name="lg" checked="{{ filtUndo }}" onChange="{{ setFiltUndo }}">Rolled back</label>
+</div>
+<button class="btn btn-secondary" style="font-family:var(--font-body);font-weight:600;font-size:13px">Export CSV</button>
+</div>
+<div class="card" style="padding:8px 14px;background:var(--color-neutral-100)">
+<table class="table">
+<thead><tr><th>When</th><th>What I did</th><th>Why</th><th>Result</th><th></th></tr></thead>
+<tbody>
+<sc-for list="{{ logRows }}" as="r" hint-placeholder-count="10">
+<tr style="opacity:{{ r.op }}">
+<td style="white-space:nowrap;font-size:12px" class="text-muted">{{ r.ago }}</td>
+<td style="font-size:13px"><span style="text-decoration:{{ r.strike }}">{{ r.text }}</span></td>
+<td style="font-size:12px" class="text-muted">{{ r.why }}</td>
+<td><span class="tag" style="background:{{ r.tagBg }};color:{{ r.tagFg }};font-size:10.5px">{{ r.result }}</span></td>
+<td style="text-align:right"><button class="btn btn-ghost" onClick="{{ r.onUndo }}" style="font-size:12px;font-family:var(--font-body);font-weight:600">{{ r.undoLabel }}</button></td>
+</tr>
+</sc-for>
+</tbody>
+</table>
+</div>
+</section>
+</sc-if>
+
+</div>
+
+<sc-if value="{{ toastOn }}">
+<div style="position:fixed;right:24px;bottom:24px;z-index:60;width:352px;animation:rise .35s cubic-bezier(.2,.8,.2,1)">
+<div class="card elev-lg" style="padding:18px;gap:10px;background:var(--color-accent-2-100)">
+<div style="display:flex;align-items:center;gap:9px">
+<span style="width:28px;height:28px;border-radius:50%;background:var(--color-accent-2-500);flex:none;animation:drift 3s ease-in-out infinite"></span>
+<div style="font-family:var(--font-heading);font-size:16px">A win just landed</div>
+<button class="btn btn-ghost" onClick="{{ closeToast }}" style="margin-left:auto;color:var(--color-accent-2-800);font-size:16px;padding-inline:4px">×</button>
+</div>
+<p style="margin:0;font-size:13.5px;color:var(--color-accent-2-900);line-height:1.5">{{ toastText }}</p>
+<div style="display:flex;gap:8px"><button class="btn btn-primary" onClick="{{ goOpps }}" style="background:var(--color-accent-2-600);font-size:13px">Do more of this</button><button class="btn btn-ghost" onClick="{{ closeToast }}" style="color:var(--color-accent-2-800);font-size:13px">Later</button></div>
+</div>
+</div>
+</sc-if>
+
+</main>
+
+<sc-if value="{{ onboard }}">
+<div style="position:fixed;inset:0;z-index:80;background:radial-gradient(120% 90% at 50% -10%, var(--color-accent-100) 0%, var(--color-bg) 60%);display:grid;place-items:center;padding:32px;overflow:auto">
+<div style="width:min(880px,100%);display:flex;flex-direction:column;align-items:center;gap:22px;animation:rise .4s cubic-bezier(.2,.8,.2,1)">
+
+<div style="display:flex;align-items:center;gap:10px">
+<span style="width:26px;height:26px;border-radius:50%;background:var(--color-accent);display:block"></span>
+<span style="font-family:var(--font-heading);font-size:19px">MADBOT</span>
+<span class="tag tag-neutral" style="margin-left:8px">{{ stepLabel }}</span>
+</div>
+
+<sc-if value="{{ step0 }}">
+<div style="text-align:center;display:flex;flex-direction:column;align-items:center;gap:14px">
+<h1 style="margin:0;font-size:50px;max-width:640px">Give me a website. That's the whole setup.</h1>
+<p class="text-muted" style="margin:0;font-size:16px;max-width:520px">No tags to install, no keyword research, no 40-field form. I'll read the site myself and tell you what I found.</p>
+<div style="display:flex;gap:10px;width:min(520px,100%);margin-top:6px">
+<input class="input" value="{{ url }}" onChange="{{ setUrl }}" placeholder="yourcompany.com" style="flex:1;min-height:52px;font-size:16px;background:var(--color-bg)"></input>
+<button class="btn btn-primary" onClick="{{ next }}" style="min-height:52px;padding-inline:26px">Read my site</button>
+</div>
+<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:4px"><span class="tag tag-neutral">Takes about 90 seconds</span><span class="tag tag-neutral">Nothing published until you say so</span></div>
+</div>
+</sc-if>
+
+<sc-if value="{{ step1 }}">
+<div style="width:100%;display:flex;flex-direction:column;gap:16px">
+<div style="text-align:center">
+<h2 style="margin:0 0 5px;font-size:36px">Right — here's what you actually are.</h2>
+<p class="text-muted" style="margin:0;font-size:14.5px">Correct anything. I learn faster from a correction than from a form.</p>
+</div>
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px">
+<div class="card elev-sm" style="padding:17px;gap:5px"><div class="card-kicker">You sell</div><div style="font-family:var(--font-heading);font-size:17px">SSL &amp; TLS certificate monitoring</div><div class="text-muted" style="font-size:12px">Self-serve SaaS, $19–$99/mo</div></div>
+<div class="card elev-sm" style="padding:17px;gap:5px"><div class="card-kicker">You sell to</div><div style="font-family:var(--font-heading);font-size:17px">Sysadmins &amp; platform teams</div><div class="text-muted" style="font-size:12px">Companies of 20–200 people</div></div>
+<div class="card elev-sm" style="padding:17px;gap:5px"><div class="card-kicker">You compete with</div><div style="font-family:var(--font-heading);font-size:17px">certwatch.dev, uptimekit.io</div><div class="text-muted" style="font-size:12px">Both outranking you on 31 terms</div></div>
+</div>
+<div class="card" style="padding:20px;gap:13px;background:var(--color-neutral-100)">
+<div style="display:flex;align-items:center;gap:10px"><h4 style="margin:0">And here's what I found lying around</h4><span class="tag tag-accent" style="margin-left:auto">83 opportunities</span></div>
+<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px">
+<div style="background:var(--color-bg);border-radius:22px;padding:14px"><div style="font-family:var(--font-heading);font-size:26px">31</div><div class="text-muted" style="font-size:12px">keywords you should own and don't</div></div>
+<div style="background:var(--color-bg);border-radius:22px;padding:14px"><div style="font-family:var(--font-heading);font-size:26px">19</div><div class="text-muted" style="font-size:12px">technical issues costing you rank</div></div>
+<div style="background:var(--color-bg);border-radius:22px;padding:14px"><div style="font-family:var(--font-heading);font-size:26px">24</div><div class="text-muted" style="font-size:12px">places that link to rivals, not you</div></div>
+<div style="background:var(--color-bg);border-radius:22px;padding:14px"><div style="font-family:var(--font-heading);font-size:26px">43</div><div class="text-muted" style="font-size:12px">companies with certs expiring soon</div></div>
+</div>
+</div>
+<div style="display:flex;gap:10px;justify-content:center"><button class="btn btn-secondary" onClick="{{ back }}" style="font-family:var(--font-body);font-weight:600">Fix something</button><button class="btn btn-primary" onClick="{{ next }}">That's us — carry on</button></div>
+</div>
+</sc-if>
+
+<sc-if value="{{ step2 }}">
+<div style="width:100%;display:flex;flex-direction:column;align-items:center;gap:16px">
+<div style="text-align:center">
+<h2 style="margin:0 0 5px;font-size:36px">Last question. How much rope?</h2>
+<p class="text-muted" style="margin:0;font-size:14.5px">You can change this at any moment, and it's the only setting that really matters.</p>
+</div>
+<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;width:100%">
+<button onClick="{{ setAut10 }}" style="text-align:left;border:2px solid {{ b0 }};background:var(--color-bg);border-radius:26px;padding:16px;cursor:pointer;font-family:var(--font-body)" style-hover="border-color:var(--color-accent-400)"><div style="font-family:var(--font-heading);font-size:18px;margin-bottom:4px">Watch</div><div class="text-muted" style="font-size:12px;line-height:1.45">I look, I report, I touch nothing.</div></button>
+<button onClick="{{ setAut40 }}" style="text-align:left;border:2px solid {{ b1 }};background:var(--color-bg);border-radius:26px;padding:16px;cursor:pointer;font-family:var(--font-body)" style-hover="border-color:var(--color-accent-400)"><div style="font-family:var(--font-heading);font-size:18px;margin-bottom:4px">Suggest</div><div class="text-muted" style="font-size:12px;line-height:1.45">A plan every morning. You press the buttons.</div></button>
+<button onClick="{{ setAut62 }}" style="text-align:left;border:2px solid {{ b2 }};background:var(--color-bg);border-radius:26px;padding:16px;cursor:pointer;font-family:var(--font-body)" style-hover="border-color:var(--color-accent-400)"><div style="font-family:var(--font-heading);font-size:18px;margin-bottom:4px">Let it rip</div><div class="text-muted" style="font-size:12px;line-height:1.45">I publish and prospect alone. I ask before spending.</div><span class="tag tag-accent" style="font-size:10px;margin-top:8px">most people</span></button>
+<button onClick="{{ setAut92 }}" style="text-align:left;border:2px solid {{ b3 }};background:var(--color-bg);border-radius:26px;padding:16px;cursor:pointer;font-family:var(--font-body)" style-hover="border-color:var(--color-accent-400)"><div style="font-family:var(--font-heading);font-size:18px;margin-bottom:4px">Full send</div><div class="text-muted" style="font-size:12px;line-height:1.45">I spend too, inside your budget. You get receipts.</div></button>
+</div>
+<div class="card" style="width:100%;padding:16px 20px;gap:6px;background:var(--color-accent-2-100)">
+<div style="font-size:13px;color:var(--color-accent-2-900)"><strong>Whatever you pick:</strong> I never make a claim you haven't approved, never email the same person twice in 30 days, and everything I do can be rolled back in one click.</div>
+</div>
+<button class="btn btn-primary" onClick="{{ next }}" style="min-height:50px;padding-inline:30px">I'm ready</button>
+</div>
+</sc-if>
+
+<sc-if value="{{ step3 }}">
+<div style="display:flex;flex-direction:column;align-items:center;gap:20px;text-align:center">
+<h2 style="margin:0;font-size:40px;max-width:600px">{{ startHeadline }}</h2>
+<p class="text-muted" style="margin:0;font-size:15px;max-width:460px">{{ startSub }}</p>
+<button onClick="{{ startEngine }}" style="position:relative;width:236px;height:236px;border-radius:50%;border:0;cursor:pointer;background:var(--color-accent);color:var(--color-bg);font-family:var(--font-heading);font-size:26px;line-height:1.15;box-shadow:var(--shadow-lg);animation:drift 4s ease-in-out infinite" style-hover="background:var(--color-accent-600)" style-active="background:var(--color-accent-700)">
+<span style="position:absolute;inset:-14px;border-radius:50%;border:2px solid var(--color-accent-400);animation:pulseRing 2.4s ease-out infinite"></span>
+{{ startButton }}
+</button>
+<div style="display:flex;gap:9px;flex-wrap:wrap;justify-content:center;max-width:520px">
+<span class="tag tag-neutral">19 fixes queued</span><span class="tag tag-neutral">4 articles drafting</span><span class="tag tag-neutral">43 prospects scored</span><span class="tag tag-neutral">Rollback always on</span>
+</div>
+<button class="btn btn-ghost" onClick="{{ skipOnboard }}" style="font-size:13px">Skip to the dashboard</button>
+</div>
+</sc-if>
+
+</div>
+</div>
+</sc-if>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;liveFeed&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Demo behaviour&quot;},&quot;celebrations&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Demo behaviour&quot;},&quot;density&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;comfortable&quot;,&quot;compact&quot;],&quot;default&quot;:&quot;comfortable&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Demo behaviour&quot;}}">
+class Component extends DCLogic {
+  state = {
+    screen: 'growth', onboard: false, step: 0, url: 'certnotify.com',
+    site: 'certnotify.com', aut: 62, thr: 58, zoom: 1, sel: 'kw',
+    mins: 0, extra: [], toast: null, undone: {}, appr: {}, taken: {},
+    siteOpen: false, paused: false, draftRule: '', rules: null,
+    voice: 'a', started: false, filt: 'all', drag: null
+  };
+
+  base = [
+    { id: 'b1', m: 2, k: 'content', text: 'Published “SSL expiry alerts: the 2026 guide” — 1,840 words, 4 internal links', undo: true, why: 'Owns a 2.4k/mo keyword you had nothing for', result: 'Live' },
+    { id: 'b2', m: 14, k: 'lead', text: 'Found 6 unanswered threads about certificate monitoring on r/sysadmin', tag: 'Needs you', why: 'Public claim — your rules say ask first', result: 'Waiting' },
+    { id: 'b3', m: 40, k: 'seo', text: 'Fixed 11 missing meta descriptions and 3 orphan pages', undo: true, why: 'Technical debt suppressing 19 pages', result: '+9 impressions' },
+    { id: 'b4', m: 62, k: 'link', text: 'Listed CertNotify in 4 cybersecurity directories', tag: '+2 links', why: 'Rivals are in all four', result: '+2 links' },
+    { id: 'b5', m: 188, k: 'lead', text: 'Scored 43 orgs with expiring certs — routed 12 to outreach', tag: 'Auto', why: 'Cert expiry inside 30 days', result: '12 queued' },
+    { id: 'b6', m: 300, k: 'seo', text: 'Refreshed 3 stale posts and added FAQ schema to 9 pages', undo: true, why: 'Answer engines cite schema-marked pages', result: '+2 citations' },
+    { id: 'b7', m: 420, k: 'win', text: '“ssl expiry alert tool” entered the top 10 — #7 from nowhere', tag: 'Win', why: 'Pillar page + 7 internal links', result: '#7' },
+    { id: 'b8', m: 610, k: 'content', text: 'Drafted a comparison page against uptimekit.io', undo: true, why: 'They shipped pricing; shoppers compare', result: 'Draft' },
+    { id: 'b9', m: 900, k: 'link', text: 'Pitched 5 blogs that link to certwatch.dev but not you', tag: 'Outreach', why: 'Same audience, easy swap', result: '2 replies' },
+    { id: 'b10', m: 1320, k: 'seo', text: 'Rebuilt your sitemap and submitted 24 pages', undo: true, why: 'Google had 6 of your 30 pages', result: '24 indexed' }
+  ];
+
+  pool = [
+    { k: 'seo', text: 'Added FAQ schema to 6 documentation pages', undo: true, why: 'Answer engines cite schema-marked pages', result: 'Live' },
+    { k: 'win', text: '“tls monitoring alerts” just entered the top 10 — #9', tag: 'Win', why: 'Supporting article cluster landed', result: '#9' },
+    { k: 'lead', text: 'Scored 9 new orgs with certs expiring in 21 days', tag: 'Auto', why: 'Fresh expiry signal', result: '9 queued' },
+    { k: 'content', text: 'Drafted “Wildcard vs SAN certificates, plainly”', undo: true, why: 'Question asked 400×/mo, nobody answers it well', result: 'Draft' },
+    { k: 'link', text: 'Pitched 3 blogs that link to certwatch.dev', tag: 'Outreach', why: 'Same readers, better product', result: 'Sent' },
+    { k: 'win', text: 'Perplexity now cites you for “cert expiry alerts”', tag: 'Win', why: 'Quotable definition + schema', result: 'Cited' },
+    { k: 'seo', text: 'Compressed 34 images — homepage now loads in 0.9s', undo: true, why: 'Speed is a ranking input', result: '−1.4s' }
+  ];
+
+  defaultRules = [
+    { id: 'r1', text: "Never say we're SOC 2 certified." },
+    { id: 'r2', text: 'Never email the same person twice in 30 days.' },
+    { id: 'r3', text: 'Ask before anything costs money.' },
+    { id: 'r4', text: 'No competitor names in ad copy.' }
+  ];
+
+  nodeData = [
+    { id: 'kw', x: 322, y: 176, d: 100, label: '“certificate expiry monitoring”', bg: 'var(--color-accent)', fg: 'var(--color-bg)', fs: '11.5px' },
+    { id: 'reddit', x: 88, y: 200, d: 80, label: 'r/sysadmin thread', bg: 'var(--color-accent-2-500)', fg: 'var(--color-bg)', fs: '11px' },
+    { id: 'orgs', x: 392, y: 348, d: 90, label: '12 orgs, certs expiring <30d', bg: 'var(--color-accent-400)', fg: 'var(--color-accent-900)', fs: '10.5px' },
+    { id: 'dead', x: 152, y: 392, d: 72, label: '4 dead links on cyber blogs', bg: 'var(--color-accent-2-300)', fg: 'var(--color-accent-2-900)', fs: '10px' },
+    { id: 'vs', x: 306, y: 452, d: 64, label: 'vs. UptimeKit', bg: 'var(--color-accent-200)', fg: 'var(--color-accent-900)', fs: '10px' },
+    { id: 'gloss', x: 246, y: 92, d: 58, label: 'TLS glossary', bg: 'var(--color-neutral-300)', fg: 'var(--color-text)', fs: '9.5px' },
+    { id: 'pr', x: 512, y: 250, d: 54, label: 'PR: outage season', bg: 'var(--color-neutral-200)', fg: 'var(--color-text)', fs: '9px' },
+    { id: 'faq', x: 62, y: 320, d: 48, label: 'FAQ hub', bg: 'var(--color-neutral-200)', fg: 'var(--color-text)', fs: '9px' },
+    { id: 'yt', x: 372, y: 74, d: 42, label: 'Video', bg: 'var(--color-accent-200)', fg: 'var(--color-accent-900)', fs: '9px' }
+  ];
+
+  oppData = {
+    kw: { title: '“certificate expiry monitoring”', body: '2,400 searches a month, buyer intent, and nobody has written a decent page for it. Your own docs already answer half of it.', v: 'High', d: 'Low', c: '78%', a: 'No', f: '+120 visits/mo by week 7', fm: 'Effort low · confidence 78% · no approval needed', plan: ['Write the pillar page', '3 supporting articles + FAQ schema', 'Internal links from 7 existing pages', 'Pitch 4 blogs that link to rivals'] },
+    reddit: { title: '6 unanswered r/sysadmin threads', body: 'People asking exactly what you solve, with nobody helpful replying. Worth a real answer, not a pitch.', v: 'Medium', d: 'Low', c: '64%', a: 'Yes — public', f: '+40 visits and goodwill', fm: 'Public communication · you send it', plan: ['Draft one honest reply each', 'You approve the tone', 'Post over 6 days, never all at once', 'Link only where it helps'] },
+    orgs: { title: '12 orgs with certs expiring inside 30 days', body: 'Public certificate transparency logs say these teams have a deadline. That is the whole pitch.', v: 'High', d: 'Low', c: '71%', a: 'No', f: '3–4 demos booked', fm: 'Outreach · 40/day cap · your rules apply', plan: ['Verify each expiry date', 'Write one email per company', 'Send the free rollover checklist', 'Stop after one follow-up'] },
+    dead: { title: '4 dead links on cybersecurity blogs', body: 'Four editors are linking to pages that no longer exist. You have a better page for each.', v: 'Medium', d: 'Low', c: '81%', a: 'No', f: '+4 referring domains', fm: 'Effort low · confidence 81%', plan: ['Confirm each broken link', 'Match your closest page', 'One short, useful email', 'Track and never chase twice'] },
+    vs: { title: 'Comparison page vs. UptimeKit', body: 'They just shipped pricing, so shoppers are comparing right now. Fair, factual, no trash talk.', v: 'Medium', d: 'Medium', c: '59%', a: 'Yes — claims', f: '+70 high-intent visits/mo', fm: 'Under 60% confident, so you decide', plan: ['Pull both feature sets honestly', 'Write the page', 'You check every claim', 'Publish and monitor'] },
+    gloss: { title: 'A TLS glossary hub', body: 'Cheap to make, gets cited by answer engines, and feeds internal links to everything else.', v: 'Low', d: 'Low', c: '86%', a: 'No', f: '+30 visits/mo, slow burn', fm: 'Effort low · compounding', plan: ['24 short definitions', 'Schema-mark every one', 'Link to your product pages', 'Refresh quarterly'] },
+    pr: { title: 'Outage-season commentary', body: 'Every autumn the big outage stories run. Being quotable in one is worth a year of blogging.', v: 'High', d: 'High', c: '34%', a: 'Yes', f: 'One tier-1 mention, maybe', fm: 'Low confidence, high ceiling', plan: ['Prepare a data angle', 'Build a journalist list', 'You approve every quote', 'Pitch in the window'] },
+    faq: { title: 'A real FAQ hub', body: 'Nine of your support answers deserve public pages. Free traffic and fewer tickets.', v: 'Medium', d: 'Low', c: '77%', a: 'No', f: '+55 visits/mo, −12 tickets', fm: 'Effort low · confidence 77%', plan: ['Mine your support inbox', 'Write 9 pages', 'FAQ schema on each', 'Link from the docs nav'] },
+    yt: { title: 'A 90-second setup video', body: 'Your signup drop-off is at the install step. A short video usually fixes that.', v: 'Low', d: 'Medium', c: '52%', a: 'No', f: '+6% signup completion', fm: 'Effort medium · confidence 52%', plan: ['Script it from your docs', 'Screen capture, no face', 'Embed on signup', 'Measure for 3 weeks'] }
+  };
+
+  leadData = [
+    { co: 'Northwind Logistics', meta: '140 staff · Rotterdam', why: 'Wildcard cert on app.northwind.io expires in 19 days', fit: 'Hot', state: 'Draft ready' },
+    { co: 'Bramble Health', meta: '80 staff · Leeds', why: 'Hiring a platform engineer; job post mentions TLS incidents', fit: 'Hot', state: 'Sent Tue' },
+    { co: 'Kestrel Payments', meta: '210 staff · Austin', why: 'Asked about cert monitoring in a public Slack community', fit: 'Warm', state: 'Opened 3×' },
+    { co: 'Fen &amp; Co', meta: '35 staff · Bristol', why: 'Two certs expiring in the same week in March', fit: 'Warm', state: 'Queued' },
+    { co: 'Ardent Labs', meta: '60 staff · Berlin', why: 'Left a competitor a one-star review about missed alerts', fit: 'Hot', state: 'Replied' },
+    { co: 'Solstice Retail', meta: '480 staff · Toronto', why: 'Public status page shows a cert-related outage last month', fit: 'Cool', state: 'Watching' }
+  ];
+
+  dayData = [
+    { name: 'Mon', date: '12', items: [{ title: 'SSL expiry alerts: the 2026 guide', kind: 'Pillar', meta: '1,840w' }, { title: 'Directory: SecTools', kind: 'Link', meta: 'auto' }] },
+    { name: 'Tue', date: '13', items: [{ title: 'Wildcard vs SAN, plainly', kind: 'Support', meta: '900w' }] },
+    { name: 'Wed', date: '14', items: [{ title: 'CertNotify vs UptimeKit', kind: 'Compare', meta: 'needs you' }, { title: 'TLS glossary: 8 terms', kind: 'Answer', meta: 'auto' }] },
+    { name: 'Thu', date: '15', items: [{ title: 'What breaks when a cert expires', kind: 'Support', meta: '1,100w' }] },
+    { name: 'Fri', date: '16', items: [{ title: 'Guest post: The New Stack', kind: 'Outreach', meta: 'awaiting you' }, { title: 'Friday digest to you', kind: 'Digest', meta: '9:00' }] },
+    { name: 'Sat', date: '17', items: [] },
+    { name: 'Sun', date: '18', items: [{ title: 'Refresh: 3 stale posts', kind: 'Upkeep', meta: 'auto' }] }
+  ];
+
+  apprData = [
+    { id: 'a1', kind: 'Public communication', when: 'waiting 4 hours', title: 'Guest post pitch to The New Stack', body: 'I wrote 1,200 words on what actually happens during a certificate outage, and a short pitch email to their editor. Your name goes on it, so you send it.', forecast: 'One tier-1 backlink', conf: 'Confidence 48% · no cost', yes: 'Send it', rule: 'Rule: anything public goes past you' },
+    { id: 'a2', kind: 'Spend', when: 'waiting 1 day', title: '$240/mo listing on CyberDirectory', bodyText: '', body: 'Both rivals are listed and it sends real trial signups, not just a link. Cancellable monthly, and I would review it in 8 weeks.', forecast: '+90 visits/mo', conf: 'Confidence 61% · $240/mo', yes: 'Approve the spend', rule: 'Rule: ask before anything costs money' },
+    { id: 'a3', kind: 'Low confidence', when: 'waiting 2 days', title: 'Comparison page against UptimeKit', body: "It needs factual claims about someone else's product, and I'm only 59% sure I have their feature list right. Check me before this goes out.", forecast: '+70 high-intent visits/mo', conf: 'Confidence 59% · under your 60% floor', yes: 'Looks right — publish', rule: "Rule: under 60% sure, I don't act alone" }
+  ];
+
+  engineData = [
+    { name: 'ChatGPT', val: 72, delta: '+38' }, { name: 'Perplexity', val: 54, delta: '+29' },
+    { name: 'Google AI', val: 38, delta: '+18' }, { name: 'Claude', val: 21, delta: '+21' },
+    { name: 'Copilot', val: 14, delta: '+9' }, { name: 'Gemini', val: 9, delta: '+4' }
+  ];
+
+  componentDidMount() {
+    if (this.props.liveFeed === false) return;
+    this.timer = setInterval(() => {
+      this.setState(s => {
+        const item = { ...this.pool[s.extra.length % this.pool.length], id: 'x' + s.extra.length, m: 0, fresh: true };
+        const shifted = s.extra.map(e => ({ ...e, m: e.m + 6, fresh: false }));
+        const win = item.k === 'win' && this.props.celebrations !== false;
+        return { extra: [item, ...shifted].slice(0, 5), mins: s.mins + 6, toast: win ? item.text : s.toast };
+      });
+    }, 5600);
+  }
+  componentWillUnmount() { clearInterval(this.timer); }
+
+  ago(m) {
+    if (m < 1) return 'just now';
+    if (m < 60) return m + ' min';
+    if (m < 1440) return Math.round(m / 60) + ' hr';
+    return Math.round(m / 1440) + ' d';
+  }
+  kindColor(k) {
+    return { seo: 'var(--color-accent-200)', content: 'var(--color-accent-300)', lead: 'var(--color-accent-2-200)', link: 'var(--color-neutral-300)', win: 'var(--color-accent-2-500)' }[k] || 'var(--color-neutral-200)';
+  }
+  autInfo(v) {
+    if (v < 25) return { label: 'Watch only', desc: 'I look, I report, I touch nothing at all.' };
+    if (v < 48) return { label: 'Suggest', desc: 'A plan on your desk each morning. You press the buttons.' };
+    if (v < 80) return { label: 'Let it rip', desc: 'I publish, distribute and prospect on my own. I ask before spending.' };
+    return { label: 'Full send', desc: 'I spend too, inside your budget, and hand you the receipts.' };
+  }
+  go = k => () => this.setState({ screen: k, siteOpen: false, toast: null });
+  navStyle(k) {
+    const on = this.state.screen === k;
+    return { bg: on ? 'var(--color-accent)' : 'transparent', fg: on ? 'var(--color-bg)' : 'var(--color-text)' };
+  }
+  dialVal(e) {
+    const r = e.currentTarget.getBoundingClientRect();
+    let a = Math.atan2(e.clientY - (r.top + r.height / 2), e.clientX - (r.left + r.width / 2)) * 180 / Math.PI;
+    a = (a - 135 + 720) % 360;
+    if (a > 270) a = a < 315 ? 270 : 0;
+    return Math.round(a / 270 * 100);
+  }
+  thrVal(e) {
+    const r = e.currentTarget.getBoundingClientRect();
+    return Math.max(0, Math.min(100, Math.round((e.clientX - r.left) / r.width * 100)));
+  }
+
+  renderVals() {
+    const st = this.state;
+    const rules = st.rules || this.defaultRules;
+    const feedAll = [...st.extra, ...this.base.map(b => ({ ...b, m: b.m + st.mins }))];
+    const mk = f => {
+      const undone = !!st.undone[f.id];
+      return {
+        ...f, ago: this.ago(f.m), dot: this.kindColor(f.k),
+        bg: f.fresh ? 'var(--color-accent-100)' : (f.k === 'win' ? 'var(--color-accent-2-100)' : 'var(--color-bg)'),
+        anim: f.fresh ? 'slideIn .45s cubic-bezier(.2,.8,.2,1)' : 'none',
+        tag: undone ? 'Rolled back' : (f.tag || ''),
+        tagShow: (undone || f.tag) ? 'inline-flex' : 'none',
+        tagBg: undone ? 'var(--color-neutral-100)' : (f.k === 'win' ? 'var(--color-accent-2-200)' : 'var(--color-accent-100)'),
+        tagFg: undone ? 'var(--color-neutral-800)' : (f.k === 'win' ? 'var(--color-accent-2-800)' : 'var(--color-accent-800)'),
+        undoShow: f.undo && !undone ? 'inline-flex' : 'none',
+        onUndo: () => this.setState(s => ({ undone: { ...s.undone, [f.id]: true } }))
+      };
+    };
+    const info = this.autInfo(st.aut);
+    const ang = (135 + st.aut * 2.7) * Math.PI / 180;
+    const permsOn = st.aut >= 48, spendOn = st.aut >= 80;
+    const pending = this.apprData.filter(a => !st.appr[a.id]).length;
+    const opp = this.oppData[st.sel] || this.oppData.kw;
+    const rows = feedAll.filter(f => st.filt === 'all' || st.undone[f.id]);
+    const titles = { growth: 'Growth', opps: 'Opportunities', content: 'Content & calendar', leads: 'Lead discovery', appr: 'Approvals', vis: 'AI search visibility', aut: 'Autonomy & permissions', log: 'Activity log' };
+
+    return {
+      site: st.site, siteOpen: st.siteOpen, onboard: st.onboard,
+      screenTitle: titles[st.screen] || 'Growth',
+      pad: this.props.density === 'compact' ? '18px 22px 40px' : '26px 30px 56px',
+      isGrowth: st.screen === 'growth', isOpps: st.screen === 'opps', isContent: st.screen === 'content',
+      isLeads: st.screen === 'leads', isAppr: st.screen === 'appr', isVis: st.screen === 'vis',
+      isAut: st.screen === 'aut', isLog: st.screen === 'log',
+      navGrowthBg: this.navStyle('growth').bg, navGrowthFg: this.navStyle('growth').fg,
+      navOppsBg: this.navStyle('opps').bg, navOppsFg: this.navStyle('opps').fg,
+      navContentBg: this.navStyle('content').bg, navContentFg: this.navStyle('content').fg,
+      navLeadsBg: this.navStyle('leads').bg, navLeadsFg: this.navStyle('leads').fg,
+      navApprBg: this.navStyle('appr').bg, navApprFg: this.navStyle('appr').fg,
+      navVisBg: this.navStyle('vis').bg, navVisFg: this.navStyle('vis').fg,
+      navAutBg: this.navStyle('aut').bg, navAutFg: this.navStyle('aut').fg,
+      navLogBg: this.navStyle('log').bg, navLogFg: this.navStyle('log').fg,
+      goGrowth: this.go('growth'), goOpps: this.go('opps'), goContent: this.go('content'),
+      goLeads: this.go('leads'), goApprovals: this.go('appr'), goVis: this.go('vis'),
+      goAutonomy: this.go('aut'), goLog: this.go('log'),
+      toggleSites: () => this.setState(s => ({ siteOpen: !s.siteOpen })),
+      pickA: () => this.setState({ site: 'certnotify.com', siteOpen: false }),
+      pickB: () => this.setState({ site: 'docs.certnotify.com', siteOpen: false }),
+      pickC: () => this.setState({ site: 'statuspage.io/cert', siteOpen: false }),
+      statusBg: st.paused ? 'var(--color-neutral-200)' : 'var(--color-accent-2-200)',
+      statusFg: st.paused ? 'var(--color-neutral-700)' : 'var(--color-accent-2-800)',
+      statusLabel: st.paused ? 'Paused by you' : 'Engine running',
+      pulseAnim: st.paused ? 'none' : 'pulseRing 2.2s ease-out infinite',
+      pauseLabel: st.paused ? 'Resume' : 'Pause',
+      togglePause: () => this.setState(s => ({ paused: !s.paused })),
+      actionCount: 112 + st.extra.length,
+      pendingCount: pending,
+      workingOn: st.paused ? 'Paused — I will not touch anything until you resume.' : 'Crawling 2 competitor blogs and re-checking 14 rankings…',
+      feedTop: feedAll.slice(0, 6).map(mk),
+      logRows: rows.map(f => {
+        const u = !!st.undone[f.id];
+        return {
+          ago: this.ago(f.m), text: f.text, why: f.why || '—',
+          result: u ? 'Rolled back' : (f.result || 'Done'),
+          strike: u ? 'line-through' : 'none', op: u ? 0.55 : 1,
+          tagBg: u ? 'var(--color-neutral-100)' : 'var(--color-accent-2-100)',
+          tagFg: u ? 'var(--color-neutral-800)' : 'var(--color-accent-2-800)',
+          undoLabel: u ? 'Restore' : 'Roll back',
+          onUndo: () => this.setState(s => ({ undone: { ...s.undone, [f.id]: !u } }))
+        };
+      }),
+      filtAll: st.filt === 'all', filtUndo: st.filt === 'undo',
+      setFiltAll: () => this.setState({ filt: 'all' }), setFiltUndo: () => this.setState({ filt: 'undo' }),
+      scoreboard: [
+        { label: 'Organic visitors / mo', delta: '1,240 → 1,712', before: '44%', now: '78%' },
+        { label: 'Keywords in the top 10', delta: '6 → 29', before: '18%', now: '66%' },
+        { label: 'Qualified leads / mo', delta: '3 → 46', before: '8%', now: '88%' }
+      ],
+      nodes: this.nodeData.map(n => ({
+        ...n, x: n.x + 'px', y: n.y + 'px', d: n.d + 'px',
+        ring: st.sel === n.id ? '4px solid var(--color-text)' : '0',
+        shadow: st.sel === n.id ? 'var(--shadow-lg)' : 'var(--shadow-sm)',
+        anim: n.id === 'kw' ? 'drift 7s ease-in-out infinite' : 'none',
+        onPick: () => this.setState({ sel: n.id })
+      })),
+      zoom: st.zoom, zoomLabel: Math.round(st.zoom * 100) + '%',
+      zoomIn: () => this.setState(s => ({ zoom: Math.min(1.6, s.zoom + 0.15) })),
+      zoomOut: () => this.setState(s => ({ zoom: Math.max(0.7, s.zoom - 0.15) })),
+      oppTitle: opp.title, oppBody: opp.body, oppValue: opp.v, oppDiff: opp.d, oppConf: opp.c, oppAppr: opp.a,
+      forecast: opp.f, forecastMeta: opp.fm,
+      plan: opp.plan.map((t, i) => ({ n: i + 1, text: t })),
+      takeLabel: st.taken[st.sel] ? 'Queued — I am on it' : 'Go get it',
+      takeOpp: () => this.setState(s => ({ taken: { ...s.taken, [s.sel]: true } })),
+      dismissOpp: () => this.setState(s => ({ sel: 'kw', taken: { ...s.taken, [s.sel]: false } })),
+      days: this.dayData.map(d => ({
+        ...d, bg: d.items.length ? 'var(--color-neutral-100)' : 'transparent',
+        items: d.items.map(c => ({
+          ...c,
+          tagBg: c.meta.indexOf('you') > -1 ? 'var(--color-accent-100)' : 'var(--color-accent-2-100)',
+          tagFg: c.meta.indexOf('you') > -1 ? 'var(--color-accent-800)' : 'var(--color-accent-2-800)'
+        }))
+      })),
+      leads: this.leadData.map(l => ({
+        ...l,
+        fitBg: l.fit === 'Hot' ? 'var(--color-accent-200)' : l.fit === 'Warm' ? 'var(--color-accent-2-200)' : 'var(--color-neutral-200)',
+        fitFg: l.fit === 'Hot' ? 'var(--color-accent-800)' : l.fit === 'Warm' ? 'var(--color-accent-2-800)' : 'var(--color-neutral-800)'
+      })),
+      apprHeadline: pending === 0 ? 'Queue clear. Go do something else.' : pending + (pending === 1 ? ' thing needs a human' : ' things need a human'),
+      approvals: this.apprData.map(a => {
+        const s = st.appr[a.id];
+        return {
+          ...a, status: s === 'yes' ? 'Approved' : s === 'no' ? 'Declined' : 'Waiting on you',
+          op: s ? 0.6 : 1, bg: s ? 'var(--color-neutral-100)' : 'var(--color-surface)',
+          kindBg: a.kind === 'Spend' ? 'var(--color-accent-200)' : a.kind === 'Low confidence' ? 'var(--color-neutral-200)' : 'var(--color-accent-2-200)',
+          kindFg: a.kind === 'Spend' ? 'var(--color-accent-800)' : a.kind === 'Low confidence' ? 'var(--color-neutral-800)' : 'var(--color-accent-2-800)',
+          onApprove: () => this.setState(p => ({ appr: { ...p.appr, [a.id]: 'yes' } })),
+          onDecline: () => this.setState(p => ({ appr: { ...p.appr, [a.id]: 'no' } }))
+        };
+      }),
+      engines: this.engineData.map(e => ({
+        ...e, w: e.val + '%', val: e.val + '%',
+        color: e.val > 50 ? 'var(--color-accent)' : e.val > 25 ? 'var(--color-accent-400)' : 'var(--color-accent-300)'
+      })),
+      arc: (716 * st.aut / 100) + ' 955',
+      knobX: Math.round(152 * Math.cos(ang)) + 'px', knobY: Math.round(152 * Math.sin(ang)) + 'px',
+      autLabel: info.label, autDesc: info.desc,
+      dialDown: e => { this.setState({ drag: 'dial', aut: this.dialVal(e) }); e.currentTarget.setPointerCapture(e.pointerId); },
+      dialMove: e => { if (this.state.drag === 'dial') this.setState({ aut: this.dialVal(e) }); },
+      dialUp: () => this.setState({ drag: null }),
+      thrDown: e => { this.setState({ drag: 'thr', thr: this.thrVal(e) }); e.currentTarget.setPointerCapture(e.pointerId); },
+      thrMove: e => { if (this.state.drag === 'thr') this.setState({ thr: this.thrVal(e) }); },
+      thrUp: () => this.setState({ drag: null }),
+      thrPct: st.thr + '%',
+      thrLabel: '~' + Math.round(6 + st.thr * 0.5) + ' actions a day · about $' + (60 + st.thr * 2) + '/mo in credits',
+      perms: [
+        { text: 'Technical SEO fixes · auto', bg: 'var(--color-accent-2-100)', fg: 'var(--color-accent-2-800)' },
+        { text: permsOn ? 'Publishing content · auto' : 'Publishing content · ask me', bg: permsOn ? 'var(--color-accent-2-100)' : 'var(--color-accent-100)', fg: permsOn ? 'var(--color-accent-2-800)' : 'var(--color-accent-800)' },
+        { text: 'Directory listings · auto', bg: 'var(--color-accent-2-100)', fg: 'var(--color-accent-2-800)' },
+        { text: permsOn ? 'Outreach email · auto, 40/day' : 'Outreach email · ask me', bg: permsOn ? 'var(--color-accent-2-100)' : 'var(--color-accent-100)', fg: permsOn ? 'var(--color-accent-2-800)' : 'var(--color-accent-800)' },
+        { text: spendOn ? 'Anything with a price tag · auto under budget' : 'Anything with a price tag · ask me', bg: spendOn ? 'var(--color-accent-2-100)' : 'var(--color-accent-100)', fg: spendOn ? 'var(--color-accent-2-800)' : 'var(--color-accent-800)' },
+        { text: 'Big public claims · always ask me', bg: 'var(--color-neutral-100)', fg: 'var(--color-neutral-800)' }
+      ],
+      rules: rules.map(r => ({ ...r, onRemove: () => this.setState({ rules: rules.filter(x => x.id !== r.id) }) })),
+      draftRule: st.draftRule,
+      setRule: e => this.setState({ draftRule: e.target.value }),
+      ruleKey: e => { if (e.key === 'Enter') this.addRuleNow(); },
+      addRule: () => this.addRuleNow(),
+      voicePct: st.voice === 'a' ? 91 : 88,
+      voiceABg: st.voice === 'a' ? 'var(--color-accent-100)' : 'var(--color-bg)',
+      voiceBBg: st.voice === 'b' ? 'var(--color-accent-100)' : 'var(--color-bg)',
+      voiceNote: st.voice === 'a' ? 'Noted — short, blunt, no corporate throat-clearing.' : 'Pick one and I recalibrate every draft in the queue.',
+      pickVoiceA: () => this.setState({ voice: 'a' }), pickVoiceB: () => this.setState({ voice: 'b' }),
+      toastOn: !!st.toast, toastText: st.toast || '',
+      closeToast: () => this.setState({ toast: null }),
+      step0: st.step === 0, step1: st.step === 1, step2: st.step === 2, step3: st.step === 3,
+      stepLabel: 'Step ' + (st.step + 1) + ' of 4',
+      url: st.url, setUrl: e => this.setState({ url: e.target.value }),
+      next: () => this.setState(s => ({ step: Math.min(3, s.step + 1) })),
+      back: () => this.setState(s => ({ step: Math.max(0, s.step - 1) })),
+      startOnboard: () => this.setState({ onboard: true, step: 0, siteOpen: false }),
+      skipOnboard: () => this.setState({ onboard: false, step: 0 }),
+      setAut10: () => this.setState({ aut: 10 }), setAut40: () => this.setState({ aut: 40 }),
+      setAut62: () => this.setState({ aut: 62 }), setAut92: () => this.setState({ aut: 92 }),
+      b0: st.aut < 25 ? 'var(--color-accent)' : 'var(--color-divider)',
+      b1: st.aut >= 25 && st.aut < 48 ? 'var(--color-accent)' : 'var(--color-divider)',
+      b2: st.aut >= 48 && st.aut < 80 ? 'var(--color-accent)' : 'var(--color-divider)',
+      b3: st.aut >= 80 ? 'var(--color-accent)' : 'var(--color-divider)',
+      startHeadline: st.started ? 'Off it goes.' : 'One button and I start working.',
+      startSub: st.started ? 'First fixes are already landing. Come back Friday, or watch it happen live.' : 'Nineteen fixes queued, four articles drafting, forty-three prospects scored. Nothing is published until I have your rules straight — and I do.',
+      startButton: st.started ? 'Running' : 'Start marketing',
+      startEngine: () => { this.setState({ started: true }); setTimeout(() => this.setState({ onboard: false, step: 0, started: false, screen: 'growth', toast: 'First 19 technical fixes are live, and “ssl expiry alert tool” is already moving.' }), 1100); }
+    };
+  }
+
+  addRuleNow() {
+    const t = this.state.draftRule.trim();
+    if (!t) return;
+    const rules = this.state.rules || this.defaultRules;
+    this.setState({ rules: [...rules, { id: 'r' + Date.now(), text: t }], draftRule: '' });
+  }
+}
+</script>
+</body>
+</html>

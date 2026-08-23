@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<title>Sign in — MADBOT</title>
+<meta name="description" content="Sign in to MADBOT, the autonomous marketing engine for your website.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="assets/madbot-logo.png">
+<link rel="stylesheet" href="_ds/organic-a199ad72-e1f5-4df1-81f7-b44e40a2fe33/styles.css">
+<script src="_ds/organic-a199ad72-e1f5-4df1-81f7-b44e40a2fe33/_ds_bundle.js"></script>
+<style>
+:root{
+--color-bg:#0A0810;--color-surface:#15121F;--color-text:#FFFFFF;
+--color-accent:#FF6A1A;--color-accent-2:#A855F7;
+--color-divider:rgba(255,255,255,.13);
+--color-neutral-100:#15131C;--color-neutral-200:#1D1A26;--color-neutral-300:#2A2636;
+--color-neutral-400:#3E3950;--color-neutral-500:#5C5670;--color-neutral-600:#8A8499;
+--color-neutral-700:#ADA8BC;--color-neutral-800:#D8D4E2;--color-neutral-900:#F6F4FA;
+--color-accent-100:#26130A;--color-accent-200:#3A1C0C;--color-accent-300:#57290F;
+--color-accent-400:#8A3F12;--color-accent-500:#FF6A1A;--color-accent-600:#FF8036;
+--color-accent-700:#FF9557;--color-accent-800:#FFB284;--color-accent-900:#FFD6C2;
+--color-accent-2-100:#1A0F2E;--color-accent-2-200:#25153F;--color-accent-2-300:#3A2160;
+--color-accent-2-400:#573094;--color-accent-2-500:#A855F7;--color-accent-2-600:#B972FF;
+--color-accent-2-700:#C68FFF;--color-accent-2-800:#DBB6FF;--color-accent-2-900:#EFDCFF;
+--shadow-sm:0 1px 2px rgba(0,0,0,.5);--shadow-md:0 6px 22px rgba(0,0,0,.55);--shadow-lg:0 24px 70px rgba(0,0,0,.7);
+}
+body{margin:0;background:var(--color-bg);color:#fff}
+a{color:var(--color-accent-700)}a:hover{color:var(--color-accent-800)}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes softPulse{0%,100%{opacity:.55}50%{opacity:1}}
+</style>
+</helmet>
+
+<div style="min-height:100vh;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);background:var(--color-bg);font-size:16px;overflow:hidden">
+
+<section style="position:relative;display:flex;flex-direction:column;justify-content:space-between;padding:34px 40px;overflow:hidden;border-right:1px solid var(--color-divider)">
+<div aria-hidden="true" style="position:absolute;left:66%;top:26%;width:1080px;height:1080px;transform:translate(-50%,-50%);pointer-events:none">
+<img src="assets/opportunity-graph.png" width="1600" height="1600" alt="" style="width:100%;height:auto;opacity:.5">
+</div>
+<div aria-hidden="true" style="position:absolute;inset:0;pointer-events:none;background:linear-gradient(to top right, rgba(10,8,16,.96) 0%, rgba(10,8,16,.86) 38%, rgba(10,8,16,.35) 68%, rgba(10,8,16,0) 92%)"></div>
+<a href="MADBOT%20Landing.dc.html" style="position:relative;display:flex;align-items:center;gap:10px;text-decoration:none;color:#fff;width:max-content">
+<span style="position:relative;width:30px;height:30px;border-radius:50%;border:1.8px solid #E4EC1B;display:grid;place-items:center;flex:none"><span style="width:13px;height:13px;border:1.8px solid #E4EC1B;transform:rotate(45deg);display:block"></span></span>
+<span style="font-family:var(--font-body);font-weight:400;font-size:22px;letter-spacing:-.005em;color:#fff">madbot</span>
+</a>
+<div style="position:relative;max-width:26em;animation:fadeUp .7s cubic-bezier(.22,.75,.3,1) both">
+<h2 style="margin:0 0 12px;font-size:34px;line-height:1.1">It kept working while you were away.</h2>
+<p style="margin:0 0 22px;font-size:15px;line-height:1.6;color:rgba(255,255,255,.78)">Since your last sign-in: 112 actions, 24 pages indexed, 43 prospects scored, and two things waiting on a human.</p>
+<div style="display:flex;align-items:center;gap:11px;padding:12px 16px;border:1px solid var(--color-divider);border-radius:999px;background:rgba(10,8,16,.72)">
+<span style="width:8px;height:8px;border-radius:50%;background:var(--color-accent);flex:none;animation:softPulse 2.4s ease-in-out infinite"></span>
+<span style="font-size:12.5px;color:rgba(255,255,255,.55);flex:none">Live now</span>
+<span style="font-size:13px;color:rgba(255,255,255,.82);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ ticker }}</span>
+</div>
+</div>
+<p style="position:relative;margin:0;font-size:12.5px;color:rgba(255,255,255,.35)">getmadbot.com · autonomous website marketing</p>
+</section>
+
+<section style="display:grid;place-items:center;padding:40px 32px">
+<div style="width:min(420px,100%);animation:fadeUp .6s cubic-bezier(.22,.75,.3,1) both">
+<h1 style="margin:0 0 8px;font-size:38px;line-height:1.08">Welcome back</h1>
+<p style="margin:0 0 26px;font-size:15px;color:rgba(255,255,255,.55)">Sign in and see what it did this week.</p>
+
+<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:22px">
+<a class="btn btn-secondary" href="MADBOT%20App.dc.html" style="min-height:48px;font-family:var(--font-body);font-weight:600;font-size:14.5px;color:#fff;border-color:var(--color-divider);background:rgba(255,255,255,.04)" style-hover="background:rgba(255,255,255,.09)">
+<span style="width:18px;height:18px;border-radius:50%;background:linear-gradient(135deg,#FF6A1A,#A855F7);display:block;flex:none"></span>Continue with Google
+</a>
+<a class="btn btn-secondary" href="MADBOT%20App.dc.html" style="min-height:48px;font-family:var(--font-body);font-weight:600;font-size:14.5px;color:#fff;border-color:var(--color-divider);background:rgba(255,255,255,.04)" style-hover="background:rgba(255,255,255,.09)">
+<span style="width:18px;height:18px;border-radius:4px;background:var(--color-neutral-400);display:block;flex:none"></span>Continue with GitHub
+</a>
+</div>
+
+<div style="display:flex;align-items:center;gap:12px;margin-bottom:22px">
+<span style="flex:1;height:1px;background:var(--color-divider)"></span>
+<span style="font-size:12px;color:rgba(255,255,255,.35)">or with email</span>
+<span style="flex:1;height:1px;background:var(--color-divider)"></span>
+</div>
+
+<form onSubmit="{{ signIn }}" style="display:flex;flex-direction:column;gap:16px">
+<div class="field">
+<label for="lg-email" style="color:rgba(255,255,255,.6)">Work email</label>
+<input class="input" id="lg-email" type="email" value="{{ email }}" onChange="{{ setEmail }}" placeholder="you@company.com" style="min-height:50px;font-size:15px;background:var(--color-surface);color:#fff;border-color:var(--color-divider)"></input>
+</div>
+<div class="field">
+<div style="display:flex;align-items:baseline;gap:8px">
+<label for="lg-pass" style="color:rgba(255,255,255,.6)">Password</label>
+<a href="MADBOT%20Login.dc.html" style="margin-left:auto;font-size:12px;margin-bottom:5px">Forgot it?</a>
+</div>
+<input class="input" id="lg-pass" type="password" value="{{ pass }}" onChange="{{ setPass }}" placeholder="••••••••••" style="min-height:50px;font-size:15px;background:var(--color-surface);color:#fff;border-color:var(--color-divider)"></input>
+</div>
+<label class="radio" style="gap:10px;color:rgba(255,255,255,.65);font-size:13.5px">
+<input type="checkbox" checked="{{ remember }}" onChange="{{ toggleRemember }}" style="position:absolute;opacity:0;width:0;height:0"></input>
+<span style="width:18px;height:18px;border-radius:6px;border:1.5px solid {{ boxBorder }};background:{{ boxBg }};flex:none;display:grid;place-items:center;font-size:11px;color:#0A0810;font-weight:800">{{ boxMark }}</span>
+Keep me signed in on this device
+</label>
+<button class="btn btn-primary" type="submit" style="min-height:52px;font-size:16px;color:#0A0810">{{ cta }}</button>
+</form>
+
+<div style="margin-top:18px;padding:14px 16px;border:1px dashed var(--color-accent-400);border-radius:22px;background:var(--color-accent-100)">
+<div style="font-size:12.5px;color:var(--color-accent-800);margin-bottom:8px">Showing this to someone? Skip the credentials.</div>
+<a class="btn btn-primary" href="MADBOT%20App.dc.html" style="min-height:42px;font-size:14px;color:#0A0810;width:100%">Open the demo dashboard</a>
+</div>
+
+<p style="margin:22px 0 0;font-size:13.5px;color:rgba(255,255,255,.5)">No account yet? <a href="MADBOT%20Landing.dc.html">Connect a site free</a> — it audits before it asks for anything.</p>
+</div>
+</section>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { email: 'priya@certnotify.com', pass: '••••••••••', remember: true, tick: 0, busy: false };
+
+  lines = [
+    'Published “SSL expiry alerts: the 2026 guide” — 1,840 words',
+    'Fixed 11 missing meta descriptions and 3 orphan pages',
+    '“ssl expiry alert tool” entered the top 10 — #7 from nowhere',
+    'Scored 43 orgs with certs expiring inside 30 days'
+  ];
+
+  componentDidMount() {
+    this.timer = setInterval(() => this.setState(s => ({ tick: (s.tick + 1) % this.lines.length })), 3400);
+  }
+  componentWillUnmount() { clearInterval(this.timer); }
+
+  renderVals() {
+    const s = this.state;
+    return {
+      ticker: this.lines[s.tick],
+      email: s.email, pass: s.pass,
+      setEmail: e => this.setState({ email: e.target.value }),
+      setPass: e => this.setState({ pass: e.target.value }),
+      remember: s.remember,
+      toggleRemember: () => this.setState(p => ({ remember: !p.remember })),
+      boxBg: s.remember ? 'var(--color-accent)' : 'transparent',
+      boxBorder: s.remember ? 'var(--color-accent)' : 'rgba(255,255,255,.35)',
+      boxMark: s.remember ? '✓' : '',
+      cta: s.busy ? 'Waking the engine…' : 'Sign in',
+      signIn: e => {
+        e.preventDefault();
+        this.setState({ busy: true });
+        setTimeout(() => { window.location.href = 'MADBOT%20App.dc.html'; }, 620);
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>

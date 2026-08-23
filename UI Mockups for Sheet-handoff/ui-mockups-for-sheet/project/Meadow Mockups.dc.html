@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="_ds/organic-a199ad72-e1f5-4df1-81f7-b44e40a2fe33/styles.css">
+<script src="_ds/organic-a199ad72-e1f5-4df1-81f7-b44e40a2fe33/_ds_bundle.js"></script>
+<style>
+body{margin:0;background:#efe3ce;font-family:var(--font-body)}
+.dv-turn{padding:40px 44px 32px;border-bottom:1px solid rgba(0,0,0,.08);scroll-margin-top:16px}
+.dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 20px}
+.dv-tid{font:600 10px ui-monospace,Menlo,monospace;padding:3px 7px;background:#201e1d;color:#f5ead8;border-radius:4px;text-decoration:none}
+.dv-tname{font:600 13px/1.2 var(--font-body);color:#201e1d}
+.dv-opts{display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start}
+.dv-opt{flex:none;display:flex;flex-direction:column;gap:9px;scroll-margin-top:16px}
+.dv-oid{font:600 10.5px ui-monospace,Menlo,monospace;padding:3px 7px;background:rgba(32,30,29,.1);color:#201e1d;border-radius:5px;text-decoration:none}
+.dv-olabel{display:flex;align-items:baseline;gap:8px;font:400 11.5px/1.3 var(--font-body);color:rgba(32,30,29,.6)}
+.dv-card{max-width:100%;background:var(--color-bg);border:1px solid rgba(32,30,29,.1);border-radius:20px;box-shadow:0 2px 10px rgba(46,43,37,.1);overflow:hidden}
+.dv-opt:target .dv-oid{background:#c67139;color:#fff}
+.dv-next{margin:24px 0 0;font:12.5px/1.6 var(--font-body);color:rgba(32,30,29,.55)}
+@keyframes pulseRing{0%{transform:scale(.9);opacity:.55}70%{transform:scale(1.5);opacity:0}100%{transform:scale(1.5);opacity:0}}
+@keyframes drift{0%{transform:translateY(0)}50%{transform:translateY(-5px)}100%{transform:translateY(0)}}
+@keyframes sweep{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
+</style>
+</helmet>
+
+<section class="dv-turn" id="t1">
+<div class="dv-thd"><a class="dv-tid" href="#t1">1</a><span class="dv-tname">Meadow — three directions for the autonomous marketing app</span></div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="1a">
+<div class="dv-olabel"><a class="dv-oid" href="#1a">1a</a>Mission Control — by-the-book workspace, results row + live engine feed</div>
+<div class="dv-card" style="width:1180px">
+<div style="display:grid;grid-template-columns:212px 1fr;min-height:740px">
+
+<aside style="background:var(--color-surface);padding:18px 14px;display:flex;flex-direction:column;gap:18px;border-right:1px solid var(--color-divider)">
+<div style="display:flex;align-items:center;gap:9px;padding:0 6px">
+<span style="width:26px;height:26px;border-radius:50%;background:var(--color-accent);display:block;flex:none"></span>
+<span style="font-family:var(--font-heading);font-size:19px">Meadow</span>
+</div>
+<button class="btn btn-secondary" style="justify-content:space-between;background:var(--color-bg);width:100%;font-family:var(--font-body);font-size:13px">
+<span style="display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:var(--color-accent-2-600)"></span>certnotify.com</span>
+<span style="opacity:.5">3 sites</span>
+</button>
+<nav style="display:flex;flex-direction:column;gap:2px">
+<a href="#1a" style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:999px;background:var(--color-accent);color:var(--color-bg);text-decoration:none;font-size:13.5px;font-weight:600">Growth</a>
+<a href="#1c" style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border-radius:999px;color:var(--color-text);text-decoration:none;font-size:13.5px">Opportunities<span class="tag tag-accent" style="font-size:10px;padding:1px 8px">83</span></a>
+<a href="#1a" style="display:block;padding:9px 12px;border-radius:999px;color:var(--color-text);text-decoration:none;font-size:13.5px">Content &amp; calendar</a>
+<a href="#1a" style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border-radius:999px;color:var(--color-text);text-decoration:none;font-size:13.5px">Leads<span class="tag tag-accent-2" style="font-size:10px;padding:1px 8px">43</span></a>
+<a href="#1a" style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border-radius:999px;color:var(--color-text);text-decoration:none;font-size:13.5px">Approvals<span class="tag tag-accent" style="font-size:10px;padding:1px 8px">2</span></a>
+<a href="#1b" style="display:block;padding:9px 12px;border-radius:999px;color:var(--color-text);text-decoration:none;font-size:13.5px">Autonomy</a>
+<a href="#1a" style="display:block;padding:9px 12px;border-radius:999px;color:var(--color-text);text-decoration:none;font-size:13.5px">Activity log</a>
+</nav>
+<div style="margin-top:auto;background:var(--color-accent-2-100);border-radius:22px;padding:14px">
+<div style="font-family:var(--font-heading);font-size:14px;margin-bottom:4px">Brand voice: 88% you</div>
+<div style="font-size:11.5px;color:var(--color-accent-2-800);line-height:1.45">Fed 12 of your own pages. Teach me 3 more and I'll stop sounding like a robot.</div>
+</div>
+</aside>
+
+<main style="padding:22px 26px 26px;display:flex;flex-direction:column;gap:18px">
+<header style="display:flex;align-items:flex-start;gap:16px">
+<div>
+<h2 style="margin:0 0 2px;font-size:30px">Week 6 was a good week.</h2>
+<p style="margin:0;font-size:13.5px" class="text-muted">I did 112 things. You approved 2. Here's what came of it.</p>
+</div>
+<div style="margin-left:auto;display:flex;align-items:center;gap:10px">
+<span style="display:inline-flex;align-items:center;gap:8px;padding:7px 14px;border-radius:999px;background:var(--color-accent-2-200);font-size:12.5px;font-weight:600;color:var(--color-accent-2-800)">
+<span style="position:relative;width:9px;height:9px"><span style="position:absolute;inset:0;border-radius:50%;background:var(--color-accent-2-600)"></span><span style="position:absolute;inset:0;border-radius:50%;background:var(--color-accent-2-600);animation:pulseRing 2s ease-out infinite"></span></span>
+Engine running
+</span>
+<button class="btn btn-secondary" style="font-family:var(--font-body);font-weight:600;font-size:13px">Pause</button>
+</div>
+</header>
+
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+<div class="card elev-sm" style="gap:4px;padding:16px 18px">
+<div class="card-kicker">Organic visitors</div>
+<div style="font-family:var(--font-heading);font-size:34px;line-height:1">+38%</div>
+<div style="display:flex;align-items:flex-end;gap:3px;height:26px;margin-top:4px">
+<span style="flex:1;height:34%;background:var(--color-accent-300);border-radius:3px"></span><span style="flex:1;height:41%;background:var(--color-accent-300);border-radius:3px"></span><span style="flex:1;height:38%;background:var(--color-accent-300);border-radius:3px"></span><span style="flex:1;height:56%;background:var(--color-accent-400);border-radius:3px"></span><span style="flex:1;height:64%;background:var(--color-accent-400);border-radius:3px"></span><span style="flex:1;height:100%;background:var(--color-accent);border-radius:3px"></span>
+</div>
+</div>
+<div class="card elev-sm" style="gap:4px;padding:16px 18px">
+<div class="card-kicker">Qualified prospects</div>
+<div style="font-family:var(--font-heading);font-size:34px;line-height:1">+43</div>
+<div style="font-size:11.5px" class="text-muted">18 opened · 6 replied</div>
+</div>
+<div class="card elev-sm" style="gap:4px;padding:16px 18px">
+<div class="card-kicker">Referring domains</div>
+<div style="font-family:var(--font-heading);font-size:34px;line-height:1">+17</div>
+<div style="font-size:11.5px" class="text-muted">2 above DR 60</div>
+</div>
+<div class="card elev-sm" style="gap:4px;padding:16px 18px">
+<div class="card-kicker">Pages indexed</div>
+<div style="font-family:var(--font-heading);font-size:34px;line-height:1">+24</div>
+<div style="font-size:11.5px" class="text-muted">of 24 submitted</div>
+</div>
+</div>
+
+<div style="display:grid;grid-template-columns:1.35fr 1fr;gap:16px;flex:1">
+
+<section class="card" style="padding:18px;gap:12px;background:var(--color-neutral-100)">
+<div style="display:flex;align-items:center;gap:10px">
+<h4 style="margin:0">Live engine feed</h4>
+<span class="tag tag-neutral" style="margin-left:auto">Newest first</span>
+</div>
+<ol style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px">
+<li style="display:grid;grid-template-columns:64px 22px 1fr auto;gap:10px;align-items:center;padding:11px 10px;border-radius:16px;background:var(--color-bg)">
+<span style="font-size:11px;font-variant-numeric:tabular-nums" class="text-muted">2 min ago</span>
+<span style="width:22px;height:22px;border-radius:50%;background:var(--color-accent-200)"></span>
+<span style="font-size:13.5px">Published <strong>“SSL expiry alerts: the 2026 guide”</strong> — 1,840 words, 4 internal links</span>
+<button class="btn btn-ghost" style="font-size:12px;font-family:var(--font-body);font-weight:600">Undo</button>
+</li>
+<li style="display:grid;grid-template-columns:64px 22px 1fr auto;gap:10px;align-items:center;padding:11px 10px;border-radius:16px">
+<span style="font-size:11px" class="text-muted">14 min</span>
+<span style="width:22px;height:22px;border-radius:50%;background:var(--color-accent-2-200)"></span>
+<span style="font-size:13.5px">Found 6 unanswered threads about certificate monitoring on r/sysadmin</span>
+<span class="tag tag-outline" style="font-size:10.5px">Needs you</span>
+</li>
+<li style="display:grid;grid-template-columns:64px 22px 1fr auto;gap:10px;align-items:center;padding:11px 10px;border-radius:16px">
+<span style="font-size:11px" class="text-muted">40 min</span>
+<span style="width:22px;height:22px;border-radius:50%;background:var(--color-accent-200)"></span>
+<span style="font-size:13.5px">Fixed 11 missing meta descriptions and 3 orphan pages</span>
+<button class="btn btn-ghost" style="font-size:12px;font-family:var(--font-body);font-weight:600">Undo</button>
+</li>
+<li style="display:grid;grid-template-columns:64px 22px 1fr auto;gap:10px;align-items:center;padding:11px 10px;border-radius:16px">
+<span style="font-size:11px" class="text-muted">1 hr</span>
+<span style="width:22px;height:22px;border-radius:50%;background:var(--color-neutral-300)"></span>
+<span style="font-size:13.5px">Listed CertNotify in 4 cybersecurity directories</span>
+<span class="tag tag-accent-2" style="font-size:10.5px">+2 links</span>
+</li>
+<li style="display:grid;grid-template-columns:64px 22px 1fr auto;gap:10px;align-items:center;padding:11px 10px;border-radius:16px">
+<span style="font-size:11px" class="text-muted">3 hr</span>
+<span style="width:22px;height:22px;border-radius:50%;background:var(--color-accent-2-200)"></span>
+<span style="font-size:13.5px">Scored 43 orgs with expiring certs — routed 12 to outreach</span>
+<span class="tag tag-neutral" style="font-size:10.5px">Auto</span>
+</li>
+<li style="display:grid;grid-template-columns:64px 22px 1fr auto;gap:10px;align-items:center;padding:11px 10px;border-radius:16px">
+<span style="font-size:11px" class="text-muted">5 hr</span>
+<span style="width:22px;height:22px;border-radius:50%;background:var(--color-accent-200)"></span>
+<span style="font-size:13.5px">Refreshed 3 stale posts; added FAQ schema to 9 pages</span>
+<button class="btn btn-ghost" style="font-size:12px;font-family:var(--font-body);font-weight:600">Undo</button>
+</li>
+</ol>
+<div style="display:flex;align-items:center;gap:8px;font-size:12px;padding-top:2px" class="text-muted">
+<span style="width:14px;height:14px;border-radius:50%;border:2px solid var(--color-accent-300);border-top-color:var(--color-accent);animation:sweep 1.4s linear infinite;display:block"></span>
+Crawling 2 competitor blogs…
+</div>
+</section>
+
+<div style="display:flex;flex-direction:column;gap:16px">
+<section class="card elev-sm" style="padding:18px;gap:10px">
+<h4 style="margin:0">AI search visibility</h4>
+<p class="card-body" style="margin:0">You get cited in 4 of 9 tracked answer engines. Up from 1.</p>
+<div style="display:flex;flex-direction:column;gap:7px">
+<div style="display:flex;align-items:center;gap:10px;font-size:12.5px"><span style="width:96px">ChatGPT</span><span style="flex:1;height:8px;border-radius:999px;background:var(--color-neutral-200)"><span style="display:block;width:72%;height:8px;border-radius:999px;background:var(--color-accent)"></span></span><span style="font-variant-numeric:tabular-nums">72</span></div>
+<div style="display:flex;align-items:center;gap:10px;font-size:12.5px"><span style="width:96px">Perplexity</span><span style="flex:1;height:8px;border-radius:999px;background:var(--color-neutral-200)"><span style="display:block;width:54%;height:8px;border-radius:999px;background:var(--color-accent)"></span></span><span style="font-variant-numeric:tabular-nums">54</span></div>
+<div style="display:flex;align-items:center;gap:10px;font-size:12.5px"><span style="width:96px">Google AI</span><span style="flex:1;height:8px;border-radius:999px;background:var(--color-neutral-200)"><span style="display:block;width:38%;height:8px;border-radius:999px;background:var(--color-accent-400)"></span></span><span style="font-variant-numeric:tabular-nums">38</span></div>
+<div style="display:flex;align-items:center;gap:10px;font-size:12.5px"><span style="width:96px">Claude</span><span style="flex:1;height:8px;border-radius:999px;background:var(--color-neutral-200)"><span style="display:block;width:21%;height:8px;border-radius:999px;background:var(--color-accent-300)"></span></span><span style="font-variant-numeric:tabular-nums">21</span></div>
+</div>
+</section>
+<section class="card elev-sm" style="padding:18px;gap:10px;background:var(--color-accent-100)">
+<div style="display:flex;align-items:center;gap:8px"><h4 style="margin:0">Two things need you</h4><span class="tag tag-accent" style="margin-left:auto">Approvals</span></div>
+<div style="background:var(--color-bg);border-radius:18px;padding:12px 14px;font-size:13px">
+<div style="font-weight:600;margin-bottom:3px">Guest post pitch to The New Stack</div>
+<div class="text-muted" style="font-size:12px">Public communication · I drafted it, you send it</div>
+</div>
+<div style="background:var(--color-bg);border-radius:18px;padding:12px 14px;font-size:13px">
+<div style="font-weight:600;margin-bottom:3px">$240/mo directory listing</div>
+<div class="text-muted" style="font-size:12px">Spend · forecast +90 visits/mo, confidence 61%</div>
+</div>
+<button class="btn btn-primary btn-block">Review both (90 seconds)</button>
+</section>
+<section class="card elev-sm" style="padding:18px;gap:8px;background:var(--color-neutral-100)">
+<h4 style="margin:0">Competitor watch</h4>
+<div style="font-size:12.5px;display:flex;flex-direction:column;gap:6px">
+<div style="display:flex;gap:8px"><span class="tag tag-accent-2" style="font-size:10px">new</span><span>uptimekit.io shipped a pricing page — I'm drafting a comparison.</span></div>
+<div style="display:flex;gap:8px"><span class="tag tag-neutral" style="font-size:10px">rank</span><span>certwatch.dev slipped to #6 on “tls monitoring”. Gap open.</span></div>
+</div>
+</section>
+</div>
+
+</div>
+</main>
+</div>
+</div>
+</div>
+
+<div class="dv-opt" id="1b">
+<div class="dv-olabel"><a class="dv-oid" href="#1b">1b</a>The Dial — one physical control, momentum scoreboard, celebratory wins</div>
+<div class="dv-card" style="width:1180px">
+<div style="min-height:740px;padding:26px 34px 30px;display:flex;flex-direction:column;gap:20px;background:radial-gradient(120% 90% at 50% -10%, var(--color-accent-100) 0%, var(--color-bg) 58%)">
+
+<div class="nav" style="padding:0">
+<span class="nav-brand">Meadow</span>
+<a href="#1a">Growth</a><a href="#1c">Opportunities</a><a href="#1b" aria-current="page">Autonomy</a><a href="#1a">Activity</a>
+<button class="btn btn-secondary" style="font-family:var(--font-body);font-weight:600;font-size:13px;margin-left:8px">certnotify.com</button>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 340px;gap:28px;align-items:start;flex:1">
+
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px;padding-top:6px">
+<h2 style="margin:0;font-size:26px;text-align:center">How much rope do I get?</h2>
+<p class="text-muted" style="font-size:13.5px;margin:0 0 6px;text-align:center;max-width:420px">One dial. Turn it up when you trust me, down when you don't. Everything else follows.</p>
+
+<div style="position:relative;width:400px;height:400px;display:grid;place-items:center">
+<div style="position:absolute;inset:0;border-radius:50%;background:var(--color-surface);box-shadow:var(--shadow-lg)"></div>
+<div style="position:absolute;inset:26px;border-radius:50%;background:var(--color-bg);border:1px solid var(--color-divider)"></div>
+<svg viewBox="0 0 400 400" style="position:absolute;inset:0;width:400px;height:400px">
+<circle cx="200" cy="200" r="152" fill="none" stroke="#dcd3c4" stroke-width="16" stroke-linecap="round" stroke-dasharray="716 955" transform="rotate(135 200 200)"></circle>
+<circle cx="200" cy="200" r="152" fill="none" stroke="#c67139" stroke-width="16" stroke-linecap="round" stroke-dasharray="500 955" transform="rotate(135 200 200)"></circle>
+<circle cx="303" cy="303" r="0" fill="none"></circle>
+</svg>
+<div style="position:absolute;width:34px;height:34px;border-radius:50%;background:var(--color-bg);border:5px solid var(--color-accent);box-shadow:var(--shadow-md);transform:translate(122px,-90px)"></div>
+<div style="text-align:center;position:relative">
+<div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--color-accent-700)">Autonomy</div>
+<div style="font-family:var(--font-heading);font-size:52px;line-height:1.05;margin:2px 0 4px">Let it rip</div>
+<div class="text-muted" style="font-size:12.5px;max-width:190px;margin:0 auto">Publish, distribute, and prospect on my own. Ask before spending.</div>
+</div>
+<span style="position:absolute;left:38px;bottom:52px;font-size:11.5px;font-weight:600;color:var(--color-neutral-600)">Watch only</span>
+<span style="position:absolute;left:14px;top:150px;font-size:11.5px;font-weight:600;color:var(--color-neutral-600)">Suggest</span>
+<span style="position:absolute;right:8px;top:150px;font-size:11.5px;font-weight:600;color:var(--color-accent-700)">Let it rip</span>
+<span style="position:absolute;right:34px;bottom:52px;font-size:11.5px;font-weight:600;color:var(--color-neutral-600)">Full send</span>
+</div>
+
+<div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;max-width:560px">
+<span class="tag tag-accent-2">SEO fixes · auto</span>
+<span class="tag tag-accent-2">Content publishing · auto</span>
+<span class="tag tag-accent-2">Directory listings · auto</span>
+<span class="tag tag-accent-2">Outreach email · auto, 40/day</span>
+<span class="tag tag-accent">Anything with a price tag · ask me</span>
+<span class="tag tag-neutral">Big public claims · ask me</span>
+</div>
+
+<div class="card elev-sm" style="width:100%;max-width:560px;margin-top:6px;padding:16px 18px;gap:10px;flex-direction:row;align-items:center">
+<div style="flex:1">
+<div style="font-family:var(--font-heading);font-size:15px;margin-bottom:2px">Effort throttle</div>
+<div class="text-muted" style="font-size:12px">~34 actions/day · est. $180/mo in credits</div>
+</div>
+<div style="flex:1.2;height:10px;border-radius:999px;background:var(--color-neutral-200);position:relative">
+<span style="display:block;width:62%;height:10px;border-radius:999px;background:var(--color-accent-2-500)"></span>
+<span style="position:absolute;left:62%;top:-6px;width:22px;height:22px;border-radius:50%;background:var(--color-bg);border:4px solid var(--color-accent-2-600);transform:translateX(-50%);box-shadow:var(--shadow-sm)"></span>
+</div>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:14px">
+<div class="card elev-md" style="padding:18px;gap:10px;background:var(--color-accent-2-100);animation:drift 6s ease-in-out infinite">
+<div style="display:flex;align-items:center;gap:8px">
+<span style="width:26px;height:26px;border-radius:50%;background:var(--color-accent-2-500);flex:none"></span>
+<div style="font-family:var(--font-heading);font-size:16px">A win just landed</div>
+</div>
+<p style="margin:0;font-size:13.5px;color:var(--color-accent-2-900)">“ssl expiry alert tool” — you went from nowhere to <strong>#7</strong> overnight. First 9 visitors already in.</p>
+<div style="display:flex;gap:8px"><button class="btn btn-primary" style="background:var(--color-accent-2-600);font-size:13px">Do more of this</button><button class="btn btn-ghost" style="color:var(--color-accent-2-800);font-size:13px">See the page</button></div>
+</div>
+
+<section class="card elev-sm" style="padding:18px;gap:12px">
+<h4 style="margin:0">Before Meadow → now</h4>
+<div style="display:flex;flex-direction:column;gap:11px">
+<div>
+<div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px"><span>Organic visitors / mo</span><span style="font-weight:700">1,240 → 1,712</span></div>
+<div style="height:9px;border-radius:999px;background:var(--color-neutral-200);position:relative"><span style="position:absolute;left:0;top:0;height:9px;width:44%;border-radius:999px;background:var(--color-neutral-400)"></span><span style="position:absolute;left:0;top:0;height:9px;width:78%;border-radius:999px;background:var(--color-accent);opacity:.85"></span></div>
+</div>
+<div>
+<div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px"><span>Keywords in top 10</span><span style="font-weight:700">6 → 29</span></div>
+<div style="height:9px;border-radius:999px;background:var(--color-neutral-200);position:relative"><span style="position:absolute;left:0;top:0;height:9px;width:18%;border-radius:999px;background:var(--color-neutral-400)"></span><span style="position:absolute;left:0;top:0;height:9px;width:66%;border-radius:999px;background:var(--color-accent);opacity:.85"></span></div>
+</div>
+<div>
+<div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px"><span>Qualified leads / mo</span><span style="font-weight:700">3 → 46</span></div>
+<div style="height:9px;border-radius:999px;background:var(--color-neutral-200);position:relative"><span style="position:absolute;left:0;top:0;height:9px;width:8%;border-radius:999px;background:var(--color-neutral-400)"></span><span style="position:absolute;left:0;top:0;height:9px;width:88%;border-radius:999px;background:var(--color-accent);opacity:.85"></span></div>
+</div>
+</div>
+<div class="text-muted" style="font-size:11.5px">Baseline = the 30 days before you connected. Never re-based, so it can't flatter itself.</div>
+</section>
+
+<section class="card elev-sm" style="padding:18px;gap:8px;background:var(--color-neutral-100)">
+<div style="display:flex;align-items:baseline;gap:8px"><h4 style="margin:0">Friday digest</h4><span class="tag tag-neutral" style="margin-left:auto">Slack + email</span></div>
+<p style="margin:0;font-size:13px">“6 posts out, 17 new links, 43 prospects, 2 things for you. Read in 40 seconds.”</p>
+<div style="display:flex;gap:8px;flex-wrap:wrap"><span class="tag tag-outline">Weekly</span><span class="tag tag-neutral">Only ping me for wins</span></div>
+</section>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="dv-opt" id="1c">
+<div class="dv-olabel"><a class="dv-oid" href="#1c">1c</a>Opportunity Field — the graph is the interface; pick opportunities off a map</div>
+<div class="dv-card" style="width:1180px">
+<div style="min-height:740px;display:grid;grid-template-columns:1fr 348px">
+
+<div style="position:relative;background:radial-gradient(90% 80% at 30% 20%, var(--color-accent-2-100) 0%, var(--color-bg) 65%);overflow:hidden;padding:22px 26px;display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;align-items:center;gap:12px;position:relative;z-index:2">
+<div>
+<h3 style="margin:0">83 ways to grow, mapped</h3>
+<p class="text-muted" style="margin:0;font-size:13px">Big circle = bigger prize. Closer to the middle = easier for me. Pinch to zoom.</p>
+</div>
+<div class="seg" style="margin-left:auto;background:var(--color-bg)">
+<label class="seg-opt"><input type="radio" name="of" checked>All</label>
+<label class="seg-opt"><input type="radio" name="of">SEO</label>
+<label class="seg-opt"><input type="radio" name="of">Links</label>
+<label class="seg-opt"><input type="radio" name="of">Leads</label>
+</div>
+</div>
+
+<div style="position:relative;flex:1;min-height:560px">
+<div style="position:absolute;left:50%;top:50%;width:520px;height:520px;border-radius:50%;border:1px dashed var(--color-neutral-300);transform:translate(-50%,-50%)"></div>
+<div style="position:absolute;left:50%;top:50%;width:340px;height:340px;border-radius:50%;border:1px dashed var(--color-neutral-300);transform:translate(-50%,-50%)"></div>
+<div style="position:absolute;left:50%;top:50%;width:168px;height:168px;border-radius:50%;border:1px dashed var(--color-neutral-300);transform:translate(-50%,-50%)"></div>
+
+<div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:118px;height:118px;border-radius:50%;background:var(--color-surface);box-shadow:var(--shadow-md);display:grid;place-items:center;text-align:center">
+<div><div style="font-family:var(--font-heading);font-size:15px;line-height:1.1">CertNotify</div><div class="text-muted" style="font-size:10.5px">SSL monitoring</div></div>
+</div>
+
+<div style="position:absolute;left:calc(50% + 96px);top:calc(50% - 118px);width:96px;height:96px;border-radius:50%;background:var(--color-accent);color:var(--color-bg);display:grid;place-items:center;text-align:center;box-shadow:var(--shadow-md);padding:8px;animation:drift 7s ease-in-out infinite">
+<div><div style="font-size:11.5px;font-weight:700;line-height:1.15">“certificate expiry monitoring”</div><div style="font-size:10px;opacity:.85">2.4k/mo</div></div>
+</div>
+<div style="position:absolute;left:calc(50% - 214px);top:calc(50% - 92px);width:78px;height:78px;border-radius:50%;background:var(--color-accent-2-500);color:var(--color-bg);display:grid;place-items:center;text-align:center;padding:8px;box-shadow:var(--shadow-sm)">
+<div style="font-size:11px;font-weight:700;line-height:1.15">r/sysadmin thread</div>
+</div>
+<div style="position:absolute;left:calc(50% + 168px);top:calc(50% + 54px);width:88px;height:88px;border-radius:50%;background:var(--color-accent-400);color:var(--color-accent-900);display:grid;place-items:center;text-align:center;padding:8px;box-shadow:var(--shadow-sm)">
+<div><div style="font-size:11px;font-weight:700;line-height:1.15">12 orgs, certs expiring &lt;30d</div></div>
+</div>
+<div style="position:absolute;left:calc(50% - 148px);top:calc(50% + 96px);width:70px;height:70px;border-radius:50%;background:var(--color-accent-2-300);color:var(--color-accent-2-900);display:grid;place-items:center;text-align:center;padding:6px">
+<div style="font-size:10.5px;font-weight:700;line-height:1.15">4 dead links on cyber blogs</div>
+</div>
+<div style="position:absolute;left:calc(50% + 22px);top:calc(50% + 148px);width:62px;height:62px;border-radius:50%;background:var(--color-accent-200);color:var(--color-accent-900);display:grid;place-items:center;text-align:center;padding:6px">
+<div style="font-size:10px;font-weight:700;line-height:1.15">vs. UptimeKit page</div>
+</div>
+<div style="position:absolute;left:calc(50% - 42px);top:calc(50% - 196px);width:56px;height:56px;border-radius:50%;background:var(--color-neutral-300);display:grid;place-items:center;text-align:center;padding:6px">
+<div style="font-size:10px;font-weight:700;line-height:1.15">TLS glossary</div>
+</div>
+<div style="position:absolute;left:calc(50% + 252px);top:calc(50% - 22px);width:52px;height:52px;border-radius:50%;background:var(--color-neutral-200);display:grid;place-items:center;text-align:center;padding:6px">
+<div style="font-size:9.5px;font-weight:700;line-height:1.15">PR: outage season</div>
+</div>
+<div style="position:absolute;left:calc(50% - 268px);top:calc(50% + 40px);width:46px;height:46px;border-radius:50%;background:var(--color-neutral-200)"></div>
+<div style="position:absolute;left:calc(50% + 62px);top:calc(50% - 218px);width:38px;height:38px;border-radius:50%;background:var(--color-accent-200)"></div>
+<div style="position:absolute;left:calc(50% - 92px);top:calc(50% - 172px);width:32px;height:32px;border-radius:50%;background:var(--color-neutral-200)"></div>
+
+<div class="card elev-lg" style="position:absolute;right:8px;top:calc(50% - 232px);width:250px;padding:14px;gap:6px;background:var(--color-bg)">
+<div class="card-kicker">If I take this</div>
+<div style="font-family:var(--font-heading);font-size:15px;line-height:1.2">+120 visits/mo by week 7</div>
+<div class="text-muted" style="font-size:12px">Effort: low · Confidence 78% · No approval needed</div>
+<div style="display:flex;gap:6px;margin-top:2px"><span class="tag tag-accent" style="font-size:10px">landing page</span><span class="tag tag-accent" style="font-size:10px">3 articles</span><span class="tag tag-accent" style="font-size:10px">schema</span></div>
+</div>
+</div>
+
+<div style="display:flex;align-items:center;gap:10px;position:relative;z-index:2">
+<span class="tag tag-neutral">Ranked by expected value</span>
+<span class="text-muted" style="font-size:12px">54 auto-queued · 27 waiting · 2 need you</span>
+<button class="btn btn-secondary" style="margin-left:auto;font-family:var(--font-body);font-weight:600;font-size:13px">Timeline view</button>
+</div>
+</div>
+
+<aside style="background:var(--color-surface);padding:22px;display:flex;flex-direction:column;gap:14px;border-left:1px solid var(--color-divider)">
+<div style="display:flex;align-items:center;gap:9px">
+<span style="width:24px;height:24px;border-radius:50%;background:var(--color-accent)"></span>
+<span style="font-family:var(--font-heading);font-size:18px">Meadow</span>
+<span class="tag tag-accent-2" style="margin-left:auto">Running</span>
+</div>
+
+<div class="card elev-sm" style="background:var(--color-bg);padding:16px;gap:8px">
+<div class="card-kicker">Selected opportunity</div>
+<div style="font-family:var(--font-heading);font-size:19px;line-height:1.15">“certificate expiry monitoring”</div>
+<p class="card-body" style="margin:0">2,400 searches/mo, buyer intent, and nobody has written a decent page for it. Your docs already answer half of it.</p>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;padding-top:2px">
+<div><div class="text-muted" style="font-size:10.5px">Expected value</div><strong>High</strong></div>
+<div><div class="text-muted" style="font-size:10.5px">Difficulty</div><strong>Low</strong></div>
+<div><div class="text-muted" style="font-size:10.5px">Confidence</div><strong>78%</strong></div>
+<div><div class="text-muted" style="font-size:10.5px">Risk</div><strong>None</strong></div>
+</div>
+<button class="btn btn-primary btn-block">Go get it</button>
+<button class="btn btn-ghost" style="align-self:center;font-size:12.5px">Not for us — and remember why</button>
+</div>
+
+<section style="display:flex;flex-direction:column;gap:8px">
+<h5 style="margin:0">My plan, in order</h5>
+<div style="display:flex;flex-direction:column;gap:6px">
+<div style="display:flex;gap:9px;align-items:center;background:var(--color-bg);border-radius:16px;padding:9px 12px;font-size:12.5px"><span style="font-family:var(--font-heading);color:var(--color-accent)">1</span>Write the pillar page</div>
+<div style="display:flex;gap:9px;align-items:center;background:var(--color-bg);border-radius:16px;padding:9px 12px;font-size:12.5px"><span style="font-family:var(--font-heading);color:var(--color-accent)">2</span>3 supporting articles + FAQ schema</div>
+<div style="display:flex;gap:9px;align-items:center;background:var(--color-bg);border-radius:16px;padding:9px 12px;font-size:12.5px"><span style="font-family:var(--font-heading);color:var(--color-accent)">3</span>Internal links from 7 existing pages</div>
+<div style="display:flex;gap:9px;align-items:center;background:var(--color-bg);border-radius:16px;padding:9px 12px;font-size:12.5px"><span style="font-family:var(--font-heading);color:var(--color-accent)">4</span>Pitch 4 blogs that link to competitors</div>
+</div>
+</section>
+
+<section class="card" style="background:var(--color-accent-2-100);padding:16px;gap:7px">
+<h5 style="margin:0">My rules, in plain English</h5>
+<div style="font-size:12.5px;color:var(--color-accent-2-900);display:flex;flex-direction:column;gap:5px">
+<div>Never say we're SOC 2 certified.</div>
+<div>Never email the same person twice in 30 days.</div>
+<div>Ask before anything costs money.</div>
+</div>
+<button class="btn btn-ghost" style="align-self:flex-start;color:var(--color-accent-2-800);font-size:12.5px">Add a rule</button>
+</section>
+</aside>
+</div>
+</div>
+</div>
+
+</div>
+<p class="dv-next">Try next: “build out <a class="dv-oid" href="#1a">1a</a> with the dial from <a class="dv-oid" href="#1b">1b</a>” · “add the onboarding + Start Marketing flow” · “now do the SEO landing page”</p>
+</section>
+
+</x-dc>
+</body>
+</html>
