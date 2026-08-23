@@ -346,6 +346,72 @@ function DashboardInner() {
       rewriteCount: nextCount,
     });
   }
+  // Whether the server actually has a key, asked once rather than assumed.
+  const [writingEnabled, setWritingEnabled] = useState(false);
+  const [writingId, setWritingId] = useState(null);
+  const [writeError, setWriteError] = useState("");
+
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/generate-content")
+      .then((r) => r.json())
+      .then((d) => {
+        if (alive) setWritingEnabled(!!d.configured);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  async function writeContent(item) {
+    if (!user || !activeSiteId || !site) return;
+    setWritingId(item.id);
+    setWriteError("");
+    try {
+      const idToken = await user.getIdToken();
+      const res = await fetch("/api/generate-content", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          idToken,
+          item: { title: item.title, kind: item.kind, angle: item.angle || null },
+          site: {
+            name: insights?.name,
+            domain: insights?.domain,
+            description: site.description || "",
+            rules,
+            voice,
+            findings: site.audit?.findings || [],
+          },
+        }),
+      });
+      const data = await res.json();
+      if (!data.ok) {
+        setWriteError(data.error || "Couldn't write that piece.");
+        return;
+      }
+      await updateContentItem(user.uid, activeSiteId, item.id, {
+        article: data.article,
+        words: data.words,
+        model: data.model,
+        writtenAt: new Date(),
+      });
+      await addActivity(user.uid, activeSiteId, {
+        k: "content",
+        text: `Wrote "${item.title}" — ${data.words} words`,
+        why: item.angle ? `Your angle: ${item.angle}` : `Drafted as a ${item.kind} piece`,
+        result: "Drafted",
+        undo: true,
+      });
+      setToast(`"${item.title}" drafted — ${data.words} words.`);
+    } catch (err) {
+      setWriteError(err?.message || "Writing failed.");
+    } finally {
+      setWritingId(null);
+    }
+  }
+
   async function askForPiece({ topic, kind, day, angle }) {
     if (!user || !activeSiteId || !insights) return;
     setAsking(true);
@@ -730,6 +796,10 @@ function DashboardInner() {
                   onRewrite={rewriteContent}
                   onAskForPiece={askForPiece}
                   asking={asking}
+                  onWrite={writeContent}
+                  writingId={writingId}
+                  writingEnabled={writingEnabled}
+                  writeError={writeError}
                 />
               )}
               {screen === "leads" && (

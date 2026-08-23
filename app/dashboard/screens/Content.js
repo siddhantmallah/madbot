@@ -105,7 +105,17 @@ function AskDialog({ onSubmit, onClose, busy }) {
   );
 }
 
-export default function Content({ items, onPublish, onRewrite, onAskForPiece, asking }) {
+export default function Content({
+  items,
+  onPublish,
+  onRewrite,
+  onAskForPiece,
+  asking,
+  onWrite,
+  writingId,
+  writingEnabled,
+  writeError,
+}) {
   const [view, setView] = useState("week");
   const [previewId, setPreviewId] = useState(null);
   const [askOpen, setAskOpen] = useState(false);
@@ -151,16 +161,29 @@ export default function Content({ items, onPublish, onRewrite, onAskForPiece, as
         />
       ) : null}
 
-      <div className="card" style={{ padding: "13px 16px", gap: 4, border: "1px dashed var(--color-accent-400)", background: "var(--color-accent-100)" }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--color-accent-800)" }}>
-          These are planned topics, not written articles.
+      {writingEnabled ? (
+        <div className="card" style={{ padding: "13px 16px", gap: 4, border: "1px dashed var(--color-accent-2-400)", background: "var(--color-accent-2-100)" }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--color-accent-2-800)" }}>
+            Writing is switched on.
+          </div>
+          <div style={{ fontSize: 12.5, lineHeight: 1.55, color: "var(--color-accent-2-900)" }}>
+            Pick a piece and hit <strong>Write it</strong> — it&apos;s drafted against your site&apos;s own context and
+            your plain-English rules. Putting a finished page live still needs CMS access, so
+            <strong> nothing reaches your site automatically</strong>.
+          </div>
         </div>
-        <div style={{ fontSize: 12.5, lineHeight: 1.55, color: "var(--color-accent-900)" }}>
-          Each card holds a title and a one-line angle. Writing the actual page needs a content-generation model
-          connected, and putting it live needs access to your CMS — neither is wired up yet, so
-          <strong> nothing is published to your site</strong>. Marking a piece published only updates its status here.
+      ) : (
+        <div className="card" style={{ padding: "13px 16px", gap: 4, border: "1px dashed var(--color-accent-400)", background: "var(--color-accent-100)" }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--color-accent-800)" }}>
+            These are planned topics, not written articles.
+          </div>
+          <div style={{ fontSize: 12.5, lineHeight: 1.55, color: "var(--color-accent-900)" }}>
+            Each card holds a title and an angle. Writing the actual page needs an Anthropic API key set on the
+            server, and putting it live needs access to your CMS — so right now
+            <strong> nothing is published to your site</strong>. Marking a piece published only updates its status here.
+          </div>
         </div>
-      </div>
+      )}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7,minmax(0,1fr))", gap: 10 }}>
         {byDay.map((d) => (
           <div key={d.name} style={{ display: "flex", flexDirection: "column", gap: 8, minHeight: 270, background: d.items.length ? "var(--color-neutral-100)" : "transparent", border: "1px solid var(--color-divider)", borderRadius: 24, padding: "12px 10px" }}>
@@ -202,28 +225,75 @@ export default function Content({ items, onPublish, onRewrite, onAskForPiece, as
       {selected ? (
         <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.2fr) minmax(0,1fr)", gap: 16 }}>
           <section className="card elev-sm" style={{ padding: 20, gap: 10 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-              <span className="tag tag-accent">{selected.status === "published" ? "Marked published" : "Planned topic"}</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap" }}>
+              <span className="tag tag-accent">
+                {selected.status === "published" ? "Marked published" : selected.article ? "Drafted" : "Planned topic"}
+              </span>
+              {selected.article ? <span className="tag tag-accent-2">{selected.words} words</span> : null}
               <span className="text-muted" style={{ fontSize: 11.5, marginLeft: "auto" }}>{selected.meta}</span>
             </div>
             <h3 style={{ margin: 0 }}>{selected.title}</h3>
-            <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.6 }} className="text-muted">
-              {selected.body}
-            </p>
+
+            {selected.article ? (
+              <div
+                style={{
+                  maxHeight: 340,
+                  overflowY: "auto",
+                  background: "var(--color-bg)",
+                  borderRadius: 18,
+                  padding: "14px 16px",
+                  fontSize: 13.5,
+                  lineHeight: 1.7,
+                  whiteSpace: "pre-wrap",
+                  color: "rgba(255,255,255,.82)",
+                }}
+              >
+                {selected.article}
+              </div>
+            ) : (
+              <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.6 }} className="text-muted">
+                {selected.body}
+              </p>
+            )}
+
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", paddingTop: 4 }}>
               <span className="tag tag-accent-2">{selected.kind}</span>
-              <span className="tag tag-outline">Outline only</span>
-              {selected.rewriteCount ? <span className="tag tag-neutral">Rewritten ×{selected.rewriteCount}</span> : null}
+              {!selected.article ? <span className="tag tag-outline">Outline only</span> : null}
+              {selected.angle ? <span className="tag tag-neutral">Your angle</span> : null}
+              {selected.rewriteCount ? <span className="tag tag-neutral">Angle ×{selected.rewriteCount}</span> : null}
             </div>
-            <div style={{ display: "flex", gap: 9, paddingTop: 4 }}>
-              <button className="btn btn-primary" disabled={selected.status === "published"} onClick={() => onPublish(selected.id)}>
+
+            {writeError ? (
+              <div style={{ fontSize: 12.5, lineHeight: 1.5, color: "var(--color-accent-800)", background: "var(--color-accent-100)", borderRadius: 14, padding: "10px 13px" }}>
+                {writeError}
+              </div>
+            ) : null}
+
+            <div style={{ display: "flex", gap: 9, paddingTop: 4, flexWrap: "wrap" }}>
+              {writingEnabled ? (
+                <button className="btn btn-primary" disabled={writingId === selected.id} onClick={() => onWrite(selected)}>
+                  {writingId === selected.id ? "Writing…" : selected.article ? "Write it again" : "Write it"}
+                </button>
+              ) : null}
+              <button
+                className={writingEnabled ? "btn btn-secondary" : "btn btn-primary"}
+                disabled={selected.status === "published"}
+                onClick={() => onPublish(selected.id)}
+                style={writingEnabled ? { fontWeight: 600, fontSize: 13 } : undefined}
+              >
                 {selected.status === "published" ? "Marked published" : "Mark as published"}
               </button>
-              <button className="btn btn-secondary" onClick={() => onRewrite(selected.id)} style={{ fontWeight: 600, fontSize: 13 }}>Try another angle</button>
-              <button className="btn btn-ghost" onClick={() => setPreviewId(selected.id === previewItem?.id ? null : selected.id)} style={{ fontSize: 13 }}>
-                {previewItem ? "Close preview" : "Preview"}
-              </button>
+              {!selected.article ? (
+                <button className="btn btn-ghost" onClick={() => onRewrite(selected.id)} style={{ fontSize: 13 }}>Try another angle</button>
+              ) : null}
             </div>
+
+            {writingId === selected.id ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }} className="text-muted">
+                <span style={{ width: 13, height: 13, borderRadius: "50%", border: "2px solid var(--color-accent-300)", borderTopColor: "var(--color-accent)", animation: "sweep 1s linear infinite", display: "block", flex: "none" }} />
+                Drafting against your site&apos;s context and rules — this takes a minute.
+              </div>
+            ) : null}
           </section>
           <section className="card elev-sm" style={{ padding: 20, gap: 10, background: "var(--color-neutral-100)" }}>
             <h4 style={{ margin: 0 }}>What each piece is for</h4>
