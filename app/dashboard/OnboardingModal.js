@@ -1,19 +1,28 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createSite, addActivity, addApproval } from "../../lib/sites";
-import { baseActivitySeed, approvalSeeds, hostnameOf } from "../../lib/seed";
+import { baseActivitySeed, approvalSeeds, hostnameOf, shortSiteName } from "../../lib/seed";
 
 const STEP_BORDER = (active) => (active ? "var(--color-accent)" : "var(--color-divider)");
 
-export default function OnboardingModal({ uid, canSkip, onClose, onFinish }) {
+export default function OnboardingModal({ uid, canSkip, initialUrl, onClose, onFinish }) {
   const [step, setStep] = useState(0);
-  const [url, setUrl] = useState("");
+  const [url, setUrl] = useState(initialUrl || "");
   const [aut, setAut] = useState(62);
   const [started, setStarted] = useState(false);
   const [reading, setReading] = useState(false);
   const [readError, setReadError] = useState("");
   const [siteInfo, setSiteInfo] = useState(null);
+  const autoReadDone = useRef(false);
 
   const back = () => setStep((s) => Math.max(0, s - 1));
+
+  useEffect(() => {
+    if (initialUrl && !autoReadDone.current) {
+      autoReadDone.current = true;
+      readSite();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialUrl]);
 
   async function readSite() {
     if (!url.trim()) return;
@@ -42,11 +51,12 @@ export default function OnboardingModal({ uid, canSkip, onClose, onFinish }) {
     const domain = hostnameOf(url.trim());
     const title = siteInfo?.title || domain;
     const description = siteInfo?.description || "";
+    const name = shortSiteName({ title, url: url.trim() });
     try {
       const siteId = await createSite(uid, { url: url.trim(), title, description, autonomy: aut });
       await Promise.all([
-        ...baseActivitySeed(domain, title).map((entry) => addActivity(uid, siteId, entry)),
-        ...approvalSeeds(domain, title).map((entry) => addApproval(uid, siteId, entry)),
+        ...baseActivitySeed(domain, name).map((entry) => addActivity(uid, siteId, entry)),
+        ...approvalSeeds(domain, name).map((entry) => addApproval(uid, siteId, entry)),
       ]);
       setTimeout(() => {
         onFinish(siteId, `Connected ${domain}. First fixes are queued and I'm getting to work.`);

@@ -1,7 +1,7 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../providers/AuthProvider";
 import {
   subscribeSites,
@@ -13,7 +13,7 @@ import {
   setActivityUndone,
   setApprovalStatus,
 } from "../../lib/sites";
-import { buildSiteInsights, ACTIVITY_POOL, hostnameOf, siteDisplayName } from "../../lib/seed";
+import { buildSiteInsights, ACTIVITY_POOL, hostnameOf, shortSiteName } from "../../lib/seed";
 import { SCREEN_TITLES } from "./data";
 import OnboardingModal from "./OnboardingModal";
 import Growth from "./screens/Growth";
@@ -62,8 +62,10 @@ function FullScreenLoading() {
   );
 }
 
-export default function DashboardPage() {
+function DashboardInner() {
   const router = useRouter();
+  const params = useSearchParams();
+  const initialUrl = params.get("url") || "";
   const { user, loading, logOut } = useAuth();
 
   const [screen, setScreen] = useState("growth");
@@ -141,7 +143,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!user || !activeSiteId || !site || paused) return undefined;
     const domain = hostnameOf(site.url);
-    const name = siteDisplayName(site);
+    const name = shortSiteName(site);
     const pool = ACTIVITY_POOL(domain, name);
     const id = setInterval(() => {
       const item = pool[poolIndexRef.current % pool.length];
@@ -224,13 +226,15 @@ export default function DashboardPage() {
             className="btn btn-secondary"
             onClick={() => setSiteOpen((v) => !v)}
             disabled={!site}
-            style={{ width: "100%", justifyContent: "space-between", background: "var(--color-bg)", fontWeight: 600, fontSize: 13 }}
+            style={{ width: "100%", justifyContent: "space-between", background: "var(--color-bg)", fontWeight: 600, fontSize: 13, minWidth: 0 }}
           >
-            <span style={{ display: "flex", alignItems: "center", gap: 8, overflow: "hidden" }}>
+            <span style={{ display: "flex", alignItems: "center", gap: 8, overflow: "hidden", minWidth: 0, flex: 1 }}>
               <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--color-accent-2-600)", flex: "none" }} />
-              {site ? siteDisplayName(site) : "No site yet"}
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>
+                {site ? hostnameOf(site.url) : "No site yet"}
+              </span>
             </span>
-            <span style={{ opacity: 0.5, fontSize: 11 }}>{sites?.length || 0} site{sites?.length === 1 ? "" : "s"}</span>
+            <span style={{ opacity: 0.5, fontSize: 11, flex: "none" }}>{sites?.length || 0} site{sites?.length === 1 ? "" : "s"}</span>
           </button>
           {siteOpen ? (
             <div className="card elev-lg" style={{ position: "absolute", top: 44, left: 0, right: 0, zIndex: 30, padding: 8, gap: 2, background: "var(--color-bg)", animation: "pop .18s ease-out" }}>
@@ -415,6 +419,7 @@ export default function DashboardPage() {
         <OnboardingModal
           uid={user.uid}
           canSkip={(sites || []).length > 0}
+          initialUrl={(sites || []).length === 0 ? initialUrl : ""}
           onClose={() => setOnboardOpen(false)}
           onFinish={(newSiteId, text) => {
             setActiveSiteId(newSiteId);
@@ -425,5 +430,13 @@ export default function DashboardPage() {
         />
       ) : null}
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={null}>
+      <DashboardInner />
+    </Suspense>
   );
 }

@@ -104,10 +104,13 @@ function FaqItem({ q, a }) {
 
 export default function LandingPage() {
   const rootRef = usePageReveal();
+  const [heroUrl, setHeroUrl] = useState("");
 
   function handleStartSubmit(e) {
     e.preventDefault();
-    window.location.href = "/login";
+    const url = heroUrl.trim();
+    const qs = url ? `?mode=signup&url=${encodeURIComponent(url)}` : "?mode=signup";
+    window.location.href = `/login${qs}`;
   }
 
   return (
@@ -210,7 +213,11 @@ export default function LandingPage() {
                   </span>
                   <input
                     className="input"
-                    type="url"
+                    type="text"
+                    inputMode="url"
+                    autoComplete="off"
+                    value={heroUrl}
+                    onChange={(e) => setHeroUrl(e.target.value)}
                     placeholder="yourcompany.com"
                     style={{ minHeight: 54, fontSize: 16, background: "var(--color-surface)", color: "#fff", borderColor: "var(--color-divider)" }}
                   />
@@ -300,7 +307,7 @@ export default function LandingPage() {
             <span className="reveal-fade" style={{ fontSize: 12.5, color: "rgba(255,255,255,.4)" }}>
               Running quietly for
             </span>
-            {["Northwind", "Bramble Health", "Kestrel", "Ardent Labs", "Solstice"].map((n) => (
+            {["CertNotify", "Sofaalay", "Regulane", "AuctionBazi"].map((n) => (
               <span key={n} className="reveal-fade" style={{ fontFamily: "var(--font-heading)", fontSize: 17, opacity: 0.55 }}>
                 {n}
               </span>

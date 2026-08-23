@@ -1,6 +1,6 @@
 export function ago(m) {
   if (m < 1) return "just now";
-  if (m < 60) return m + " min";
+  if (m < 60) return Math.round(m) + " min";
   if (m < 1440) return Math.round(m / 60) + " hr";
   return Math.round(m / 1440) + " d";
 }

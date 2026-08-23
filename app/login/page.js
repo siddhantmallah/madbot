@@ -38,8 +38,12 @@ function LoginInner() {
   const [error, setError] = useState("");
   const [tick, setTick] = useState(0);
 
+  const incomingUrl = params.get("url");
+  const dashboardDest = incomingUrl ? `/dashboard?url=${encodeURIComponent(incomingUrl)}` : "/dashboard";
+
   useEffect(() => {
-    if (!loading && user) router.replace("/dashboard");
+    if (!loading && user) router.replace(dashboardDest);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, user, router]);
 
   useEffect(() => {
@@ -57,7 +61,7 @@ function LoginInner() {
       } else {
         await logIn(email, pass);
       }
-      router.push("/dashboard");
+      router.push(dashboardDest);
     } catch (err) {
       setError(friendlyAuthError(err));
       setBusy(false);
@@ -69,7 +73,7 @@ function LoginInner() {
     setBusy(true);
     try {
       await (provider === "google" ? logInWithGoogle() : logInWithGithub());
-      router.push("/dashboard");
+      router.push(dashboardDest);
     } catch (err) {
       setError(friendlyAuthError(err));
       setBusy(false);
