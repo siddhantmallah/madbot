@@ -44,7 +44,7 @@ export default function Autonomy({ aut, setAut, onCommitAut, thr, setThr, onComm
 
   return (
     <section data-screen-label="Autonomy" className="split-side" style={{ "--side": "348px", gap: 24, alignItems: "start" }}>
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+      <div className="dial-column" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
         <h2 style={{ margin: 0, textAlign: "center" }}>How much rope do I get?</h2>
         <p className="text-muted" style={{ fontSize: 13.5, margin: "0 0 4px", textAlign: "center", maxWidth: 440 }}>
           One dial. Turn it up when you trust me, down when you don&apos;t. Everything else in MADBOT follows it.
@@ -64,8 +64,8 @@ export default function Autonomy({ aut, setAut, onCommitAut, thr, setThr, onComm
           <div style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "var(--color-surface)", boxShadow: "var(--shadow-lg)" }} />
           <div style={{ position: "absolute", inset: 28, borderRadius: "50%", background: "var(--color-bg)", border: "1px solid var(--color-divider)" }} />
           <svg viewBox="0 0 404 404" style={{ position: "absolute", inset: 0, width: 404, height: 404, pointerEvents: "none" }}>
-            <circle cx="202" cy="202" r="152" fill="none" stroke="#2A2636" strokeWidth="16" strokeLinecap="round" strokeDasharray="716 955" transform="rotate(135 202 202)" />
-            <circle cx="202" cy="202" r="152" fill="none" stroke="#FF6A1A" strokeWidth="16" strokeLinecap="round" strokeDasharray={arc} transform="rotate(135 202 202)" />
+            <circle cx="202" cy="202" r="152" fill="none" stroke="var(--color-neutral-300)" strokeWidth="16" strokeLinecap="round" strokeDasharray="716 955" transform="rotate(135 202 202)" />
+            <circle cx="202" cy="202" r="152" fill="none" stroke="var(--color-accent)" strokeWidth="16" strokeLinecap="round" strokeDasharray={arc} transform="rotate(135 202 202)" />
           </svg>
           <div style={{ position: "absolute", width: 34, height: 34, borderRadius: "50%", background: "var(--color-bg)", border: "5px solid var(--color-accent)", boxShadow: "var(--shadow-md)", pointerEvents: "none", transform: `translate(${knobX}px,${knobY}px)` }} />
           <div style={{ textAlign: "center", position: "relative", pointerEvents: "none", padding: "0 56px" }}>

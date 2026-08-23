@@ -336,6 +336,11 @@ textarea.input{min-height:90px;resize:vertical;border-radius:var(--radius-md)}
 
 /* ---- the dashboard shell ---- */
 .shell { display: grid; grid-template-columns: 236px 1fr; }
+/* Grid items default to min-width:auto, so they refuse to shrink below their
+   content's intrinsic width and push the whole page sideways instead. Both
+   columns must be allowed to shrink, and then the nav strip and any wide
+   content scroll inside themselves. */
+.shell, .shell > * { min-width: 0; }
 
 @media (max-width: 900px) {
   .shell { grid-template-columns: minmax(0, 1fr); }
@@ -347,6 +352,8 @@ textarea.input{min-height:90px;resize:vertical;border-radius:var(--radius-md)}
     border-right: 0 !important;
     border-bottom: 1px solid var(--color-divider);
   }
+  /* The aside itself must not scroll horizontally — only the strip inside it. */
+  .shell > .shell-nav { overflow-x: hidden !important; max-width: 100%; }
   .shell-nav .nav-links {
     flex-direction: row !important;
     overflow-x: auto;
@@ -399,4 +406,29 @@ textarea.input{min-height:90px;resize:vertical;border-radius:var(--radius-md)}
   .nav { gap: 12px; min-width: 0; }
   .nav > a:not(.btn) { display: none; }
   .nav-brand span { font-size: 19px; }
+}
+
+/* The dashboard header is one non-wrapping flex row of eight controls — title,
+   site, plan, AI state, theme, engine status, pause, sign out. That measured
+   588px inside a 390px viewport, and because nothing clipped it the whole page
+   scrolled sideways. It wraps on narrow screens instead. */
+@media (max-width: 720px) {
+  .dash-header {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    padding: 11px 15px !important;
+  }
+  /* The right-hand cluster stops being pinned once the row has wrapped —
+     margin-left:auto on a wrapped line pushes it onto its own row awkwardly. */
+  .dash-header > div[style*="margin-left"] { margin-left: 0 !important; }
+}
+
+/* The autonomy dial is a fixed 404px square with pixel-computed knob positions,
+   so it can't reflow. Below 470px it scrolls inside its own column instead of
+   widening the page. The dial reads an angle from its bounding rect, so it
+   stays accurate at any offset, and touchAction:none on it means a drag isn't
+   stolen by the scroller. */
+@media (max-width: 470px) {
+  .dial-column { overflow-x: auto; -webkit-overflow-scrolling: touch; align-items: flex-start !important; }
+  .dial-column > h2, .dial-column > p { align-self: stretch; }
 }

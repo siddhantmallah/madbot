@@ -706,6 +706,73 @@ function DashboardInner() {
     }
   }
 
+  // ---- leads ----
+  const [buildingProfile, setBuildingProfile] = useState(false);
+  const [profileError, setProfileError] = useState("");
+  const buyerProfile = site?.buyerProfile || null;
+
+  async function buildProfile() {
+    if (!user || !site?.intelligence) return;
+    setBuildingProfile(true);
+    setProfileError("");
+    try {
+      const idToken = await user.getIdToken();
+      const res = await fetch("/api/leads/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken, intel: site.intelligence }),
+      });
+      const data = await res.json();
+      if (data.ok) await updateSiteSettings(user.uid, activeSiteId, { buyerProfile: data.profile });
+      else setProfileError(data.error || "Couldn't work out a buyer profile.");
+    } catch (err) {
+      setProfileError(String(err?.message || err));
+    } finally {
+      setBuildingProfile(false);
+    }
+  }
+
+  function saveProfile(next) {
+    if (!user || !activeSiteId) return;
+    updateSiteSettings(user.uid, activeSiteId, { buyerProfile: next });
+    setToast(next.needsConfirmation ? "Saved." : "Buyer profile confirmed.");
+  }
+
+  const discoverLeads = () => startJob(JOB_TYPES.LEAD_DISCOVER, { profile: buyerProfile, max: 30 });
+
+  const qualifyLeads = (companies) =>
+    startJob(JOB_TYPES.LEAD_QUALIFY, {
+      profile: buyerProfile,
+      customerDomain: site?.intelligence?.domain || insights?.domain,
+      companies: (companies || []).map((c) => ({
+        name: c.co,
+        domain: c.domain,
+        signals: c.signals || null,
+        why: c.why || null,
+      })),
+    });
+
+  /**
+   * Outreach is drafted, never sent. The draft goes to Approvals and a person
+   * presses send — at every autonomy level, deliberately. An unattended agent
+   * cold-emailing strangers from the customer's own domain risks their sending
+   * reputation and makes any complaint theirs to answer.
+   */
+  async function draftOutreach(lead) {
+    if (!user || !activeSiteId) return;
+    await addApproval(user.uid, activeSiteId, {
+      kind: "outreach",
+      title: `Outreach to ${lead.co || lead.domain}`,
+      detail: lead.openingLine || lead.problemYouSolve || "",
+      to: lead.contactEmail,
+      leadId: lead.id,
+      why: lead.why || null,
+      provenance: lead.contactProvenance || null,
+    });
+    await updateLead(user.uid, activeSiteId, lead.id, { status: "drafted" });
+    setToast("Draft is waiting in Approvals. Nothing has been sent.");
+  }
+
   async function runVisibilityCheck() {
     if (!site || !visQuestions?.questions?.length) return;
     await startJob(JOB_TYPES.AI_VISIBILITY, {
@@ -857,6 +924,7 @@ function DashboardInner() {
 
       <main style={{ overflow: "auto", position: "relative" }}>
         <header
+          className="dash-header"
           style={{
             position: "sticky",
             top: 0,

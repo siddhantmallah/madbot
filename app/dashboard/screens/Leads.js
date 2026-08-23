@@ -232,7 +232,7 @@ export default function Leads({
               {busy === "qualify"
                 ? "Reading their sites…"
                 : shortlisted.length
-                ? `Qualify ${shortlisted.length} shortlisted · ${shortlisted.length} lead credits`
+                ? `Qualify ${shortlisted.length} shortlisted · ${shortlisted.length} lead credit${shortlisted.length === 1 ? "" : "s"}`
                 : "Nothing shortlisted yet"}
             </button>
           </div>
