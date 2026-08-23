@@ -108,7 +108,7 @@ export async function GET(request) {
     const res = await fetch(target.toString(), {
       redirect: "follow",
       signal: controller.signal,
-      headers: { "User-Agent": "MADBOTBot/1.0 (+https://madbot.com)" },
+      headers: { "User-Agent": "MADBOTBot/1.0 (+https://getmadbot.com)" },
     });
     clearTimeout(timeout);
 

@@ -134,7 +134,7 @@ function LoginInner() {
           </div>
         </div>
         <p style={{ position: "relative", margin: 0, fontSize: 12.5, color: "rgba(255,255,255,.35)" }}>
-          madbot.com · autonomous website marketing
+          getmadbot.com · autonomous website marketing
         </p>
       </section>
 

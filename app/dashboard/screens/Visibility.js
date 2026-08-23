@@ -45,7 +45,7 @@ export default function Visibility({ engineData, domain }) {
               </div>
             </div>
             <div style={{ font: "12px ui-monospace,Menlo,monospace", background: "var(--color-neutral-900)", color: "var(--color-neutral-200)", borderRadius: 16, padding: "11px 13px", overflow: "auto" }}>
-              &lt;script src=&quot;madbot.com/badge.js&quot; data-site=&quot;{domain}&quot;&gt;&lt;/script&gt;
+              &lt;script src=&quot;getmadbot.com/badge.js&quot; data-site=&quot;{domain}&quot;&gt;&lt;/script&gt;
             </div>
           </section>
           <section className="card elev-sm" style={{ padding: 18, gap: 9, background: "var(--color-neutral-100)" }}>

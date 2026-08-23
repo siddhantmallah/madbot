@@ -2,7 +2,7 @@ import "./globals.css";
 import { AuthProvider } from "./providers/AuthProvider";
 
 export const metadata = {
-  metadataBase: new URL("https://madbot.com"),
+  metadataBase: new URL("https://getmadbot.com"),
   title: "MADBOT — autonomous website marketing that runs itself",
   description:
     "Connect your website once. MADBOT finds the opportunities, writes and publishes the pages, earns the links, spots the buyers and reports what it did — at the level of autonomy you choose.",
@@ -13,7 +13,7 @@ export const metadata = {
     title: "MADBOT — autonomous website marketing that runs itself",
     description:
       "Give it a website. It finds the work, does the work, and shows you the receipts.",
-    url: "https://madbot.com/",
+    url: "https://getmadbot.com/",
   },
   twitter: {
     card: "summary_large_image",
