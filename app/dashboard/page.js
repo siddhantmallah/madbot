@@ -19,12 +19,15 @@ import {
   addContentItem,
   updateContentItem,
   subscribeCompetitors,
+  subscribeJobs,
   addCompetitor,
   updateCompetitor,
   removeCompetitor,
 } from "../../lib/sites";
 import { diffSnapshots } from "../../lib/auditClient";
 import { buildOpportunities } from "../../lib/opportunities";
+import { enqueueAndRun } from "../../lib/jobClient";
+import { JOB_TYPES } from "../../lib/jobTypes";
 import { buildSiteInsights, CONTENT_BODY, rewriteContentBody, hostnameOf } from "../../lib/seed";
 import { buildDigest, digestData } from "../../lib/digest";
 import { MadbotMark, SiteIcon } from "../components/Brand";
@@ -41,6 +44,7 @@ import Approvals from "./screens/Approvals";
 import Visibility from "./screens/Visibility";
 import Autonomy from "./screens/Autonomy";
 import ActivityLog from "./screens/ActivityLog";
+import AgentRuns from "./screens/AgentRuns";
 
 function NavButton({ label, badge, active, onClick }) {
   return (
@@ -101,6 +105,8 @@ function DashboardInner() {
   const [competitorBusy, setCompetitorBusy] = useState(null);
   const [addingCompetitor, setAddingCompetitor] = useState(false);
   const [digestSentTo, setDigestSentTo] = useState(null);
+  const [jobs, setJobs] = useState([]);
+  const [jobBusy, setJobBusy] = useState(null);
 
   // Search Console. The OAuth access token is session-only by design: Firebase
   // hands back no refresh token, so we never persist it and just reconnect.
@@ -193,6 +199,14 @@ function DashboardInner() {
       return undefined;
     }
     return subscribeCompetitors(user.uid, activeSiteId, setCompetitors);
+  }, [user, activeSiteId]);
+
+  useEffect(() => {
+    if (!user || !activeSiteId) {
+      setJobs([]);
+      return undefined;
+    }
+    return subscribeJobs(user.uid, activeSiteId, setJobs);
   }, [user, activeSiteId]);
 
   // There is deliberately no background timer writing invented activity here.
@@ -541,6 +555,44 @@ function DashboardInner() {
     }
   }
 
+  // Every agent action goes through the job engine, so it gets a lease, step
+  // trace, retry policy and an audit record for free.
+  async function startJob(type, params) {
+    if (!user || !activeSiteId) return;
+    setJobBusy(type);
+    try {
+      const out = await enqueueAndRun(
+        user.uid,
+        activeSiteId,
+        { type, params },
+        {
+          getIdToken: () => user.getIdToken(),
+          onActivity: (entry) => addActivity(user.uid, activeSiteId, entry),
+        }
+      );
+      if (out.completed) setToast(out.outcome?.summary || "Run finished.");
+      else if (out.retrying) setToast("That run hit a problem and is queued to retry.");
+      else if (out.failed) setToast(out.error || "That run failed.");
+    } catch (err) {
+      // Most often an unpublished Firestore rule for the jobs collection.
+      const msg = String(err?.message || err);
+      setToast(
+        /insufficient permissions/i.test(msg)
+          ? "Firestore is refusing to store jobs — the jobs/pages rules need publishing."
+          : msg
+      );
+    } finally {
+      setJobBusy(null);
+    }
+  }
+
+  const runCrawl = () => site && startJob(JOB_TYPES.CRAWL_SITE, { url: site.url, maxPages: 20 });
+  const runAuditJob = () => site && startJob(JOB_TYPES.AUDIT_SITE, { url: site.url });
+  const runCompetitorScan = () =>
+    startJob(JOB_TYPES.COMPETITOR_SCAN, {
+      competitors: competitors.map((c) => ({ id: c.id, url: c.url, snapshot: c.snapshot || null })),
+    });
+
   async function handleSignOut() {
     setSigningOut(true);
     await logOut();
@@ -636,6 +688,7 @@ function DashboardInner() {
           <NavButton label="Approvals" badge={pendingCount} active={screen === "appr"} onClick={() => go("appr")} />
           <NavButton label="AI visibility" active={screen === "vis"} onClick={() => go("vis")} />
           <NavButton label="Autonomy" active={screen === "aut"} onClick={() => go("aut")} />
+          <NavButton label="Agent runs" badge={jobs.filter((j) => ["running","verifying","queued"].includes(j.status)).length || undefined} active={screen === "runs"} onClick={() => go("runs")} />
           <NavButton label="Activity log" active={screen === "log"} onClick={() => go("log")} />
         </nav>
 
@@ -822,6 +875,17 @@ function DashboardInner() {
                   voice={voice}
                   setVoice={saveVoice}
                   brandName={insights.name}
+                />
+              )}
+              {screen === "runs" && (
+                <AgentRuns
+                  jobs={jobs}
+                  onRunCrawl={runCrawl}
+                  onRunAudit={runAuditJob}
+                  onRunCompetitorScan={runCompetitorScan}
+                  busy={jobBusy}
+                  domain={insights.domain}
+                  competitorCount={competitors.length}
                 />
               )}
               {screen === "log" && <ActivityLog feedAll={activity} onToggleUndo={toggleUndo} />}

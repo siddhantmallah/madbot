@@ -31,6 +31,14 @@ service cloud.firestore {
         match /competitors/{competitorId} {
           allow read, create, update, delete: if isOwner(uid);
         }
+
+        match /jobs/{jobId} {
+          allow read, create, update, delete: if isOwner(uid);
+        }
+
+        match /pages/{pageId} {
+          allow read, create, update, delete: if isOwner(uid);
+        }
       }
     }
 

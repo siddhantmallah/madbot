@@ -37,5 +37,6 @@ export const SCREEN_TITLES = {
   appr: "Approvals",
   vis: "AI search visibility",
   aut: "Autonomy & permissions",
+  runs: "Agent runs",
   log: "Activity log",
 };
