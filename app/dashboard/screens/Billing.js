@@ -161,12 +161,21 @@ export default function Billing({ usage, billing = [], siteCount }) {
               saying so. */}
           <div style={{ display: "flex", flexDirection: "column", gap: 7, paddingTop: 4 }}>
             <div style={{ fontSize: 12.5, fontWeight: 700 }}>To start or change a plan</div>
-            <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.6 }} className="text-muted">
-              Card checkout isn&apos;t live yet. Email{" "}
-              <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>{" "}
-              with the plan you want and we&apos;ll set it up and send payment details. Your licence activates as soon
-              as payment clears.
-            </p>
+            {CONTACT_EMAIL ? (
+              <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.6 }} className="text-muted">
+                Card checkout isn&apos;t live yet. Email <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a> with
+                the plan you want and we&apos;ll set it up and send payment details. Your licence activates as soon as
+                payment clears.
+              </p>
+            ) : (
+              // No monitored address configured. Saying nothing beats printing
+              // one that reaches nobody — a customer writing into a black hole
+              // concludes the product is abandoned.
+              <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.6, color: "var(--color-accent-800)" }}>
+                Card checkout isn&apos;t live yet, and no contact address is configured — set
+                NEXT_PUBLIC_CONTACT_EMAIL so customers can reach you to buy.
+              </p>
+            )}
           </div>
         </section>
       </div>
