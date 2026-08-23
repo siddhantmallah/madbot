@@ -20,6 +20,7 @@ import {
   updateContentItem,
 } from "../../lib/sites";
 import { buildSiteInsights, growthStats, ACTIVITY_POOL, CONTENT_BODY, rewriteContentBody, hostnameOf, shortSiteName } from "../../lib/seed";
+import { buildDigest } from "../../lib/digest";
 import { SCREEN_TITLES } from "./data";
 import OnboardingModal from "./OnboardingModal";
 import Growth from "./screens/Growth";
@@ -316,6 +317,27 @@ function DashboardInner() {
     router.replace("/login");
   }
 
+  const [sendingDigest, setSendingDigest] = useState(false);
+  async function sendDigestNow() {
+    if (!user || !site) return;
+    setSendingDigest(true);
+    try {
+      const { subject, html, text } = buildDigest({ site, activity, approvals, leads, content });
+      const idToken = await user.getIdToken();
+      const res = await fetch("/api/send-digest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken, subject, html, text }),
+      });
+      const data = await res.json();
+      setToast(data.ok ? `Digest sent to ${data.to}.` : data.error || "Couldn't send the digest.");
+    } catch (err) {
+      setToast(err?.message || "Couldn't send the digest.");
+    } finally {
+      setSendingDigest(false);
+    }
+  }
+
   const pendingCount = approvals.filter((a) => a.status === "pending").length;
 
   if (loading || (user && sites === null)) return <FullScreenLoading />;
@@ -468,6 +490,8 @@ function DashboardInner() {
                   feedTop={activity.slice(0, 6)}
                   onUndo={toggleUndo}
                   paused={paused}
+                  onSendDigest={sendDigestNow}
+                  sendingDigest={sendingDigest}
                 />
               )}
               {screen === "opps" && (

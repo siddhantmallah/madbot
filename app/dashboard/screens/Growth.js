@@ -1,6 +1,6 @@
 import { ago, kindColor, minutesAgo } from "../data";
 
-export default function Growth({ site, stats, actionCount, pendingCount, goApprovals, goLog, feedTop, onUndo, paused, domain }) {
+export default function Growth({ site, stats, actionCount, pendingCount, goApprovals, goLog, feedTop, onUndo, paused, domain, onSendDigest, sendingDigest }) {
   return (
     <section data-screen-label="Growth" style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       <div style={{ display: "flex", alignItems: "flex-end", gap: 16, flexWrap: "wrap" }}>
@@ -179,6 +179,9 @@ export default function Growth({ site, stats, actionCount, pendingCount, goAppro
               <span className="tag tag-outline">Weekly</span>
               <span className="tag tag-neutral">Ping me for wins only</span>
             </div>
+            <button className="btn btn-secondary" onClick={onSendDigest} disabled={sendingDigest} style={{ fontWeight: 600, fontSize: 13, alignSelf: "flex-start" }}>
+              {sendingDigest ? "Sending…" : "Send me this digest now"}
+            </button>
           </section>
         </div>
       </div>
