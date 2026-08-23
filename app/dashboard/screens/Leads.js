@@ -29,6 +29,9 @@ export default function Leads({
   hasCrawl,
   aiReady,
   leadSearch,
+  onRunCrawl,
+  crawling,
+  domain,
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(null);
@@ -76,10 +79,17 @@ export default function Leads({
   if (!hasCrawl) {
     return (
       <Shell title="Lead intelligence" sub="Companies that appear to need what you sell, and why.">
-        <Notice title="Crawl the site first">
-          The buyer profile is worked out from what your own site says you sell. Without a crawl there&apos;s nothing
-          to infer it from.
-        </Notice>
+        <section className="card elev-sm" style={{ padding: 20, gap: 12, maxWidth: 620, border: "1px dashed var(--color-accent-400)", background: "var(--color-accent-100)" }}>
+          <h4 style={{ margin: 0, color: "var(--color-accent-800)" }}>Read the site first</h4>
+          <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: "var(--color-accent-900)" }}>
+            The buyer profile is worked out from what your own site says you sell, so MADBOT needs to actually read it
+            first. This normally happens on its own right after you connect a site — if you&apos;re seeing this, that
+            first read either hasn&apos;t finished yet or didn&apos;t run. One click starts it now.
+          </p>
+          <button className="btn btn-primary" onClick={onRunCrawl} disabled={crawling} style={{ width: "max-content" }}>
+            {crawling ? "Reading your site…" : `Read ${domain || "your site"} now`}
+          </button>
+        </section>
       </Shell>
     );
   }
@@ -473,14 +483,6 @@ function Shell({ title, sub, children }) {
   );
 }
 
-function Notice({ title, children }) {
-  return (
-    <div className="card" style={{ padding: "13px 16px", gap: 4, border: "1px dashed var(--color-accent-400)", background: "var(--color-accent-100)", maxWidth: 620 }}>
-      <div style={{ fontSize: 13, fontWeight: 700, color: "var(--color-accent-800)" }}>{title}</div>
-      <div style={{ fontSize: 12.5, lineHeight: 1.55, color: "var(--color-accent-900)" }}>{children}</div>
-    </div>
-  );
-}
 
 function Row({ k, v }) {
   if (!v) return null;

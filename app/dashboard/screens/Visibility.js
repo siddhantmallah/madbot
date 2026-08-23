@@ -23,6 +23,8 @@ export default function Visibility({
   onToggleAuto,
   aiState,
   aiMessage,
+  onRunCrawl,
+  crawling,
 }) {
   const v = visibility;
   const pct = v ? Math.round(v.mentionRate * 100) : null;
@@ -65,12 +67,16 @@ export default function Visibility({
           </div>
         </div>
       ) : !hasCrawl ? (
-        <div className="card" style={{ padding: "13px 16px", gap: 4, border: "1px dashed var(--color-accent-400)", background: "var(--color-accent-100)" }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--color-accent-800)" }}>Crawl the site first</div>
+        <div className="card" style={{ padding: "13px 16px", gap: 8, border: "1px dashed var(--color-accent-400)", background: "var(--color-accent-100)" }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--color-accent-800)" }}>Read the site first</div>
           <div style={{ fontSize: 12.5, lineHeight: 1.55, color: "var(--color-accent-900)" }}>
-            The questions come from what the crawl learned about what you sell and where. Without it, MADBOT would be
-            asking generic questions that tell you nothing.
+            The questions come from what MADBOT learned about what you sell and where. This normally runs on its own
+            right after you connect a site — if you&apos;re seeing this, that first read either hasn&apos;t finished
+            yet or didn&apos;t run.
           </div>
+          <button className="btn btn-primary" onClick={onRunCrawl} disabled={crawling} style={{ width: "max-content" }}>
+            {crawling ? "Reading your site…" : `Read ${domain || "your site"} now`}
+          </button>
         </div>
       ) : null}
 

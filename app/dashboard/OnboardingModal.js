@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { createSite, addActivity, addApproval, addLead, addContentItem } from "../../lib/sites";
-import { baseActivitySeed, approvalSeeds, leadSeeds, contentSeeds, hostnameOf, shortSiteName } from "../../lib/seed";
+import { createSite, addActivity } from "../../lib/sites";
+import { baseActivitySeed, hostnameOf, shortSiteName } from "../../lib/seed";
 import { MadbotMark, SiteIcon } from "../components/Brand";
 
 const STEP_BORDER = (active) => (active ? "var(--color-accent)" : "var(--color-divider)");
@@ -69,15 +69,9 @@ export default function OnboardingModal({ uid, canSkip, initialUrl, onClose, onF
         faviconUrl: siteInfo?.faviconUrl || null,
         audit: siteInfo?.audit ? { ...siteInfo.audit, ranAt: new Date().toISOString() } : null,
       });
-      const siteForSeeds = { title, url: url.trim() };
-      await Promise.all([
-        ...baseActivitySeed(domain).map((entry) => addActivity(uid, siteId, entry)),
-        ...approvalSeeds(domain, name).map((entry) => addApproval(uid, siteId, entry)),
-        ...leadSeeds(siteForSeeds).map((entry) => addLead(uid, siteId, entry)),
-        ...contentSeeds(siteForSeeds).map((entry) => addContentItem(uid, siteId, entry)),
-      ]);
+      await Promise.all(baseActivitySeed(domain).map((entry) => addActivity(uid, siteId, entry)));
       setTimeout(() => {
-        onFinish(siteId, `Connected ${domain}. I read the homepage and set up a starting plan for you to review.`);
+        onFinish(siteId, url.trim(), `Connected ${domain}. Reading the full site now to build your opportunity map and starting leads.`);
       }, 900);
     } catch (err) {
       setStarted(false);
@@ -222,7 +216,7 @@ export default function OnboardingModal({ uid, canSkip, initialUrl, onClose, onF
             <p className="text-muted" style={{ margin: 0, fontSize: 15, maxWidth: 460 }}>
               {started
                 ? "Setting up your dashboard now…"
-                : "I'll set up your workspace with a starting plan: topics worth covering, plays worth considering, and the first few things I'd want your sign-off on."}
+                : "I'll read the whole site — every page, not just the homepage — and use that to work out who you sell to, what's worth writing, and the companies worth reaching out to."}
             </p>
             <button
               onClick={startEngine}

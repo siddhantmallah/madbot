@@ -750,17 +750,21 @@ function DashboardInner() {
 
   // Every agent action goes through the job engine, so it gets a lease, step
   // trace, retry policy and an audit record for free.
-  async function startJob(type, params) {
-    if (!user || !activeSiteId) return;
+  async function startJob(type, params, siteIdOverride) {
+    // A siteId can be passed explicitly for the one caller that fires right
+    // after connecting a site, before activeSiteId's state update has landed —
+    // React state set a line above isn't visible in this closure yet.
+    const targetSiteId = siteIdOverride || activeSiteId;
+    if (!user || !targetSiteId) return;
     setJobBusy(type);
     try {
       const out = await enqueueAndRun(
         user.uid,
-        activeSiteId,
+        targetSiteId,
         { type, params },
         {
           getIdToken: () => user.getIdToken(),
-          onActivity: (entry) => addActivity(user.uid, activeSiteId, entry),
+          onActivity: (entry) => addActivity(user.uid, targetSiteId, entry),
         }
       );
       if (out.completed) setToast(out.outcome?.summary || "Run finished.");
@@ -1266,6 +1270,9 @@ function DashboardInner() {
                   hasCrawl={!!site?.intelligence}
                   aiReady={ai.ready}
                   leadSearch={site?.leadSearch || null}
+                  onRunCrawl={runCrawl}
+                  crawling={jobBusy === JOB_TYPES.CRAWL_SITE}
+                  domain={insights?.domain}
                 />
               )}
               {screen === "appr" && (
@@ -1297,6 +1304,8 @@ function DashboardInner() {
                   aiMessage={ai.message}
                   autoOn={!!site?.autoVisibility}
                   onToggleAuto={toggleAutoVisibility}
+                  onRunCrawl={runCrawl}
+                  crawling={jobBusy === JOB_TYPES.CRAWL_SITE}
                 />
               )}
               {screen === "aut" && (
@@ -1359,11 +1368,12 @@ function DashboardInner() {
           canSkip={(sites || []).length > 0}
           initialUrl={(sites || []).length === 0 ? initialUrl : ""}
           onClose={() => setOnboardOpen(false)}
-          onFinish={(newSiteId, text) => {
+          onFinish={(newSiteId, siteUrl, text) => {
             setActiveSiteId(newSiteId);
             setOnboardOpen(false);
             setScreen("growth");
             setToast(text);
+            startJob(JOB_TYPES.CRAWL_SITE, { url: siteUrl, maxPages: 20 }, newSiteId);
           }}
         />
       ) : null}
