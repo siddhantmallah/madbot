@@ -30,10 +30,17 @@ export default function OnboardingModal({ uid, canSkip, initialUrl, onClose, onF
     setReading(true);
     setReadError("");
     try {
-      const res = await fetch(`/api/read-site?url=${encodeURIComponent(url.trim())}`);
+      // Full audit rather than just the title/description read — the findings
+      // become the opportunity map, so they're worth capturing once here.
+      const res = await fetch(`/api/audit?url=${encodeURIComponent(url.trim())}`);
       const data = await res.json();
       if (data.ok) {
-        setSiteInfo({ title: data.title, description: data.description, faviconUrl: data.faviconUrl });
+        setSiteInfo({
+          title: data.title,
+          description: data.description,
+          faviconUrl: data.faviconUrl,
+          audit: { score: data.score, counts: data.counts, findings: data.findings, stats: data.stats },
+        });
       } else {
         setSiteInfo(null);
         setReadError(data.error || "Couldn't read that site automatically — that's fine, I'll still set it up.");
@@ -60,6 +67,7 @@ export default function OnboardingModal({ uid, canSkip, initialUrl, onClose, onF
         description,
         autonomy: aut,
         faviconUrl: siteInfo?.faviconUrl || null,
+        audit: siteInfo?.audit ? { ...siteInfo.audit, ranAt: new Date().toISOString() } : null,
       });
       const siteForSeeds = { title, url: url.trim() };
       await Promise.all([

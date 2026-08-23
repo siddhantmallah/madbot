@@ -24,6 +24,7 @@ import {
   removeCompetitor,
 } from "../../lib/sites";
 import { diffSnapshots } from "../../lib/auditClient";
+import { buildOpportunities } from "../../lib/opportunities";
 import { buildSiteInsights, CONTENT_BODY, rewriteContentBody, hostnameOf } from "../../lib/seed";
 import { buildDigest, digestData } from "../../lib/digest";
 import { MadbotMark, SiteIcon } from "../components/Brand";
@@ -116,7 +117,8 @@ function DashboardInner() {
   const [dismissedOpportunities, setDismissedOpportunities] = useState({});
 
   const [zoom, setZoom] = useState(1);
-  const [sel, setSel] = useState("kw");
+  // Null until the user picks; the panel falls back to the top finding.
+  const [sel, setSel] = useState(null);
 
   useEffect(() => {
     if (!loading && !user) router.replace("/login");
@@ -199,6 +201,44 @@ function DashboardInner() {
   // starts lying to the person paying for it.
 
   const insights = useMemo(() => (site ? buildSiteInsights(site) : null), [site]);
+  const opportunities = useMemo(() => (site ? buildOpportunities(site) : null), [site]);
+  const [rerunning, setRerunning] = useState(false);
+  const [asking, setAsking] = useState(false);
+
+  // Re-reads the live site and replaces the stored audit, so the opportunity
+  // map reflects the site as it is now rather than as it was at signup.
+  async function rerunAudit() {
+    if (!user || !activeSiteId || !site) return;
+    setRerunning(true);
+    try {
+      const res = await fetch(`/api/audit?url=${encodeURIComponent(site.url)}`);
+      const data = await res.json();
+      if (!data.ok) {
+        setToast(data.error || "Couldn't read the site just now.");
+        return;
+      }
+      await updateSiteSettings(user.uid, activeSiteId, {
+        audit: {
+          score: data.score,
+          counts: data.counts,
+          findings: data.findings,
+          stats: data.stats,
+          ranAt: new Date().toISOString(),
+        },
+        title: data.title || site.title,
+        faviconUrl: data.faviconUrl || site.faviconUrl || null,
+      });
+      addActivity(user.uid, activeSiteId, {
+        k: "seo",
+        text: `Re-read ${hostnameOf(site.url)} — score ${data.score}, ${data.counts.critical} critical`,
+        why: "You asked for a fresh audit",
+        result: `Score ${data.score}`,
+      });
+      setToast(`Audit refreshed — score ${data.score}, ${data.counts.critical} critical finding${data.counts.critical === 1 ? "" : "s"}.`);
+    } finally {
+      setRerunning(false);
+    }
+  }
 
   function go(k) {
     setScreen(k);
@@ -247,12 +287,12 @@ function DashboardInner() {
     if (!user || !activeSiteId) return;
     setTakenOpportunities((prev) => ({ ...prev, [oppId]: true }));
     updateSiteSettings(user.uid, activeSiteId, { [`takenOpportunities.${oppId}`]: true });
-    const opp = insights?.oppData?.[oppId];
+    const opp = opportunities?.nodes?.[oppId];
     if (opp) {
       addActivity(user.uid, activeSiteId, {
-        k: "content",
+        k: "seo",
         text: `Queued: ${opp.title}`,
-        why: "You told me to go get it",
+        why: opp.fix || "You told me to go get it",
         result: "Queued",
       });
     }
@@ -306,23 +346,34 @@ function DashboardInner() {
       rewriteCount: nextCount,
     });
   }
-  function askForPiece() {
+  async function askForPiece({ topic, kind, day, angle }) {
     if (!user || !activeSiteId || !insights) return;
-    addContentItem(user.uid, activeSiteId, {
-      day: 5,
-      dayName: "Sat",
-      date: "—",
-      title: "New piece, your request",
-      kind: "Support",
-      meta: "requested",
-      body: CONTENT_BODY.Support(insights.name),
-    });
-    addActivity(user.uid, activeSiteId, {
-      k: "content",
-      text: "Queued a new piece at your request",
-      why: "You asked for one",
-      result: "Queued",
-    });
+    setAsking(true);
+    try {
+      const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+      await addContentItem(user.uid, activeSiteId, {
+        day,
+        dayName: dayNames[day],
+        date: String(12 + day),
+        title: topic,
+        kind,
+        meta: "you asked for this",
+        angle: angle || null,
+        body: angle
+          ? `${angle}. ${CONTENT_BODY[kind] ? CONTENT_BODY[kind](insights.name) : ""}`.trim()
+          : (CONTENT_BODY[kind] || CONTENT_BODY.Support)(insights.name),
+        requested: true,
+      });
+      await addActivity(user.uid, activeSiteId, {
+        k: "content",
+        text: `Added "${topic}" to the ${dayNames[day]} plan at your request`,
+        why: angle ? `Your angle: ${angle}` : "You asked for it",
+        result: "Planned",
+      });
+      setToast(`"${topic}" added to the plan.`);
+    } finally {
+      setAsking(false);
+    }
   }
 
   async function gscCall(action, extra = {}) {
@@ -657,7 +708,6 @@ function DashboardInner() {
               )}
               {screen === "opps" && (
                 <Opportunities
-                  pendingCount={pendingCount}
                   zoom={zoom}
                   setZoom={setZoom}
                   sel={sel}
@@ -666,9 +716,11 @@ function DashboardInner() {
                   dismissed={dismissedOpportunities}
                   onTake={takeOpportunity}
                   onDismiss={dismissOpportunity}
-                  nodeData={insights.nodeData}
-                  oppData={insights.oppData}
+                  opportunities={opportunities}
                   siteName={insights.name}
+                  domain={insights.domain}
+                  onRerunAudit={rerunAudit}
+                  rerunning={rerunning}
                 />
               )}
               {screen === "content" && (
@@ -677,6 +729,7 @@ function DashboardInner() {
                   onPublish={publishContent}
                   onRewrite={rewriteContent}
                   onAskForPiece={askForPiece}
+                  asking={asking}
                 />
               )}
               {screen === "leads" && (

@@ -2,9 +2,113 @@ import { useState } from "react";
 
 const DAY_ORDER = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-export default function Content({ items, onPublish, onRewrite, onAskForPiece }) {
+const KINDS = ["Pillar", "Support", "Compare", "Answer", "Outreach"];
+const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+function AskDialog({ onSubmit, onClose, busy }) {
+  const [topic, setTopic] = useState("");
+  const [kind, setKind] = useState("Support");
+  const [day, setDay] = useState(5);
+  const [angle, setAngle] = useState("");
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      style={{ position: "fixed", inset: 0, zIndex: 90, background: "rgba(4,3,7,.78)", backdropFilter: "blur(5px)", display: "grid", placeItems: "center", padding: 24 }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !busy) onClose();
+      }}
+    >
+      <form
+        className="card elev-lg"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!topic.trim()) return;
+          onSubmit({ topic: topic.trim(), kind, day, angle: angle.trim() });
+        }}
+        style={{ width: "min(500px,100%)", padding: 26, gap: 14, background: "var(--color-bg)", border: "1px solid var(--color-divider)", animation: "rise .3s cubic-bezier(.2,.8,.2,1)" }}
+      >
+        <h3 style={{ margin: 0, fontSize: 22 }}>Ask for a piece</h3>
+        <p style={{ margin: 0, fontSize: 13, lineHeight: 1.55 }} className="text-muted">
+          Tell me what to cover and I&apos;ll add it to the plan with your angle attached.
+        </p>
+
+        <div className="field">
+          <label htmlFor="ask-topic">What should it cover?</label>
+          <input
+            className="input"
+            id="ask-topic"
+            value={topic}
+            onChange={(e) => setTopic(e.target.value)}
+            placeholder="How to choose the right fabric"
+            required
+            autoFocus
+            style={{ fontSize: 14 }}
+          />
+        </div>
+
+        <div className="field">
+          <label htmlFor="ask-angle">Any particular angle? (optional)</label>
+          <input
+            className="input"
+            id="ask-angle"
+            value={angle}
+            onChange={(e) => setAngle(e.target.value)}
+            placeholder="Aimed at first-time buyers, no jargon"
+            style={{ fontSize: 14 }}
+          />
+        </div>
+
+        <div className="field">
+          <label>What kind of piece?</label>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {KINDS.map((k) => (
+              <button
+                type="button"
+                key={k}
+                onClick={() => setKind(k)}
+                className={kind === k ? "tag" : "tag tag-neutral"}
+                style={{ fontSize: 12, cursor: "pointer", background: kind === k ? "var(--color-accent)" : undefined, color: kind === k ? "#0A0810" : undefined }}
+              >
+                {k}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="field">
+          <label>Which day?</label>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {DAYS.map((d, i) => (
+              <button
+                type="button"
+                key={d}
+                onClick={() => setDay(i)}
+                className={day === i ? "tag" : "tag tag-neutral"}
+                style={{ fontSize: 12, cursor: "pointer", background: day === i ? "var(--color-accent)" : undefined, color: day === i ? "#0A0810" : undefined }}
+              >
+                {d}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: 9, paddingTop: 2 }}>
+          <button className="btn btn-primary" type="submit" disabled={busy || !topic.trim()}>
+            {busy ? "Adding…" : "Add it to the plan"}
+          </button>
+          <button className="btn btn-ghost" type="button" onClick={onClose} disabled={busy}>Cancel</button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+export default function Content({ items, onPublish, onRewrite, onAskForPiece, asking }) {
   const [view, setView] = useState("week");
   const [previewId, setPreviewId] = useState(null);
+  const [askOpen, setAskOpen] = useState(false);
 
   const visible = view === "backlog" ? items.filter((c) => c.status !== "published") : items;
   const byDay = DAY_ORDER.map((name, i) => ({
@@ -33,8 +137,19 @@ export default function Content({ items, onPublish, onRewrite, onAskForPiece }) 
             </label>
           ))}
         </div>
-        <button className="btn btn-secondary" onClick={onAskForPiece} style={{ fontWeight: 600, fontSize: 13 }}>Ask for a piece</button>
+        <button className="btn btn-secondary" onClick={() => setAskOpen(true)} style={{ fontWeight: 600, fontSize: 13 }}>Ask for a piece</button>
       </div>
+
+      {askOpen ? (
+        <AskDialog
+          busy={asking}
+          onClose={() => setAskOpen(false)}
+          onSubmit={async (spec) => {
+            await onAskForPiece(spec);
+            setAskOpen(false);
+          }}
+        />
+      ) : null}
 
       <div className="card" style={{ padding: "13px 16px", gap: 4, border: "1px dashed var(--color-accent-400)", background: "var(--color-accent-100)" }}>
         <div style={{ fontSize: 13, fontWeight: 700, color: "var(--color-accent-800)" }}>
