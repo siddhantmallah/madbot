@@ -60,6 +60,15 @@ service cloud.firestore {
         match /pages/{pageId} {
           allow read, create, update, delete: if isOwner(uid);
         }
+
+        // Metered usage. The customer can see what they've spent; only the
+        // server writes it. A client that could edit its own usage counters
+        // could grant itself unlimited paid work, which is the entire point
+        // of metering.
+        match /usage/{period} {
+          allow read: if isOwner(uid);
+          allow write: if false;
+        }
       }
     }
 
