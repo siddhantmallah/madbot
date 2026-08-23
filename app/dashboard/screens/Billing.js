@@ -1,4 +1,4 @@
-import { PLANS, PLAN_ORDER, autonomyLabel, featuresLostOnDowngrade, FEATURE_LABELS } from "../../../lib/plans";
+import { PLANS, PLAN_ORDER, autonomyLabel, featuresLostOnDowngrade, FEATURE_LABELS, formatPrice, priceFor } from "../../../lib/plans";
 import { CONTACT_EMAIL } from "../../../lib/contact";
 import { describeUsage } from "../../../lib/credits";
 
@@ -14,7 +14,7 @@ function when(ts) {
   return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
 }
 
-export default function Billing({ usage, billing = [], siteCount, metered }) {
+export default function Billing({ usage, billing = [], siteCount, metered, region = "US" }) {
   const {
     plan,
     status,
@@ -63,7 +63,7 @@ export default function Billing({ usage, billing = [], siteCount, metered }) {
           </p>
           {intendedPlan ? (
             <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.6 }} className="text-muted">
-              You chose <strong>{intendedPlan.name}</strong> (${intendedPlan.price}/mo).
+              You chose <strong>{intendedPlan.name}</strong> ({formatPrice(priceFor(intendedPlan, region), region)}/mo).
               {losing.length ? (
                 <>
                   {" "}
@@ -211,7 +211,7 @@ export default function Billing({ usage, billing = [], siteCount, metered }) {
                   <span className="text-muted" style={{ fontSize: 12 }}>
                     {p.maxSites} site{p.maxSites === 1 ? "" : "s"}
                   </span>
-                  <span style={{ fontSize: 13, fontVariantNumeric: "tabular-nums" }}>${p.price}/mo</span>
+                  <span style={{ fontSize: 13, fontVariantNumeric: "tabular-nums" }}>{formatPrice(priceFor(p, region), region)}/mo</span>
                   {current ? <span className="tag tag-accent-2" style={{ fontSize: 9.5 }}>current</span> : null}
                 </div>
               );

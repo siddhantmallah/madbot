@@ -1,10 +1,10 @@
-import { PLANS } from "../../../lib/plans";
+import { PLANS, formatPrice, priceFor } from "../../../lib/plans";
 
 /**
  * Shown in place of a screen the current plan doesn't cover. Always names the
  * plan that would unlock it — a locked door with no key is worse than no door.
  */
-export default function LockedFeature({ title, what, access, usage, onSeeBilling }) {
+export default function LockedFeature({ title, what, access, usage, onSeeBilling, region = "US" }) {
   const upgrade = access?.upgradeTo ? PLANS[access.upgradeTo] : null;
   const trialEnded = usage?.trialExpired;
 
@@ -31,7 +31,7 @@ export default function LockedFeature({ title, what, access, usage, onSeeBilling
               <span className="text-muted" style={{ fontSize: 12.5 }}>{upgrade.blurb}</span>
             </div>
             <span style={{ marginLeft: "auto", fontSize: 18, fontFamily: "var(--font-heading)" }}>
-              ${upgrade.price}
+              {formatPrice(priceFor(upgrade, region), region)}
               <span className="text-muted" style={{ fontSize: 12 }}>/mo</span>
             </span>
           </div>

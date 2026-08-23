@@ -33,6 +33,7 @@ import { enqueueAndRun } from "../../lib/jobClient";
 import { JOB_TYPES } from "../../lib/jobTypes";
 import { usageSummary, siteAccess, featureAccess, clampAutonomy } from "../../lib/entitlements";
 import { FEATURES, autonomyLabel } from "../../lib/plans";
+import { useRegion } from "../../lib/useRegion";
 import Billing from "./screens/Billing";
 import LockedFeature from "./screens/LockedFeature";
 import { buildSiteInsights, CONTENT_BODY, rewriteContentBody, hostnameOf } from "../../lib/seed";
@@ -96,6 +97,10 @@ function DashboardInner() {
   const params = useSearchParams();
   const initialUrl = params.get("url") || "";
   const { user, loading, logOut, connectSearchConsole } = useAuth();
+
+  // One region lookup for the whole dashboard, passed to anything that shows
+  // a price.
+  const { region } = useRegion();
 
   const [screen, setScreen] = useState("growth");
   const [siteOpen, setSiteOpen] = useState(false);
@@ -1028,6 +1033,7 @@ function DashboardInner() {
                   what="Researched, written and published articles."
                   access={access.content}
                   usage={usage}
+                  region={region}
                   onSeeBilling={() => go("billing")}
                 />
               )}
@@ -1050,6 +1056,7 @@ function DashboardInner() {
                   what="Companies matching your ideal customer, with outreach drafted."
                   access={access.leads}
                   usage={usage}
+                  region={region}
                   onSeeBilling={() => go("billing")}
                 />
               )}
@@ -1065,6 +1072,7 @@ function DashboardInner() {
                   what="Whether an assistant names you when buyers ask about what you sell."
                   access={access.visibility}
                   usage={usage}
+                  region={region}
                   onSeeBilling={() => go("billing")}
                 />
               )}
@@ -1113,7 +1121,7 @@ function DashboardInner() {
                 />
               )}
               {screen === "log" && <ActivityLog feedAll={activity} onToggleUndo={toggleUndo} />}
-              {screen === "billing" && <Billing usage={usage} billing={billing} siteCount={siteCount} metered={usageNow} />}
+              {screen === "billing" && <Billing usage={usage} billing={billing} siteCount={siteCount} metered={usageNow} region={region} />}
             </>
           ) : (
             <div className="text-muted" style={{ fontSize: 14 }}>Connect a site to get started.</div>

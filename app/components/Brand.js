@@ -52,36 +52,56 @@ export function MadbotMark({ size = 30, stroke = 1.8, color = "#E4EC1B" }) {
 // has none or it fails to load.
 export function SiteIcon({ site, size = 18 }) {
   const letter = (site?.title || site?.url || "?").replace(/^https?:\/\//, "").charAt(0).toUpperCase();
-  if (!site?.faviconUrl) {
-    return (
-      <span
-        style={{
-          width: size,
-          height: size,
-          borderRadius: 4,
-          background: "var(--color-accent-2-400)",
-          display: "grid",
-          placeItems: "center",
-          fontSize: size * 0.6,
-          fontWeight: 700,
-          color: "var(--fg)",
-          flex: "none",
-        }}
-      >
-        {letter}
-      </span>
-    );
-  }
+
+  // The letter tile is always rendered, with the favicon layered over it. When
+  // the image fails the letter is simply revealed — no state, and it covers
+  // every failure mode rather than only a missing URL.
+  //
+  // Failures are routine: a client site may serve its icon with a
+  // Cross-Origin-Resource-Policy header that blocks embedding (certnotify.com
+  // does), or 404, or be slow. Previously onError hid the image and left a gap.
   return (
-    <img
-      src={site.faviconUrl}
-      alt=""
-      width={size}
-      height={size}
-      style={{ width: size, height: size, borderRadius: 4, flex: "none", objectFit: "contain" }}
-      onError={(e) => {
-        e.currentTarget.style.display = "none";
+    <span
+      style={{
+        position: "relative",
+        width: size,
+        height: size,
+        borderRadius: 4,
+        background: "var(--color-accent-2-400)",
+        display: "grid",
+        placeItems: "center",
+        fontSize: size * 0.6,
+        fontWeight: 700,
+        color: "var(--fg)",
+        flex: "none",
+        overflow: "hidden",
       }}
-    />
+    >
+      {letter}
+      {site?.faviconUrl ? (
+        <img
+          src={site.faviconUrl}
+          alt=""
+          width={size}
+          height={size}
+          loading="lazy"
+          // Don't leak which MADBOT customer is looking at which client site.
+          referrerPolicy="no-referrer"
+          style={{
+            position: "absolute",
+            inset: 0,
+            width: size,
+            height: size,
+            borderRadius: 4,
+            objectFit: "contain",
+            background: "var(--color-surface)",
+          }}
+          onError={(e) => {
+            e.currentTarget.style.display = "none";
+          }}
+        />
+      ) : null}
+    </span>
   );
 }
+
