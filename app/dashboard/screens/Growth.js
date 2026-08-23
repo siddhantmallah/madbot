@@ -1,12 +1,6 @@
 import { ago, kindColor, minutesAgo } from "../data";
 
-const SCOREBOARD = [
-  { label: "Organic visitors / mo", delta: "trending up", before: "44%", now: "78%" },
-  { label: "Keywords in the top 10", delta: "trending up", before: "18%", now: "66%" },
-  { label: "Qualified leads / mo", delta: "trending up", before: "8%", now: "88%" },
-];
-
-export default function Growth({ site, actionCount, pendingCount, goApprovals, goLog, feedTop, onUndo, paused, domain }) {
+export default function Growth({ site, stats, actionCount, pendingCount, goApprovals, goLog, feedTop, onUndo, paused, domain }) {
   return (
     <section data-screen-label="Growth" style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       <div style={{ display: "flex", alignItems: "flex-end", gap: 16, flexWrap: "wrap" }}>
@@ -26,9 +20,9 @@ export default function Growth({ site, actionCount, pendingCount, goApprovals, g
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4,minmax(0,1fr))", gap: 14 }}>
         <div className="card elev-sm" style={{ gap: 4, padding: "18px 20px" }}>
           <div className="card-kicker">Organic visitors</div>
-          <div style={{ fontFamily: "var(--font-heading)", fontSize: 36, lineHeight: 1 }}>+38%</div>
+          <div style={{ fontFamily: "var(--font-heading)", fontSize: 36, lineHeight: 1 }}>{stats.organicPct}</div>
           <div style={{ display: "flex", alignItems: "flex-end", gap: 4, height: 30, marginTop: 6 }}>
-            {[34, 41, 37, 56, 66, 100].map((h, i) => (
+            {stats.bars.map((h, i) => (
               <span
                 key={i}
                 style={{
@@ -43,18 +37,18 @@ export default function Growth({ site, actionCount, pendingCount, goApprovals, g
         </div>
         <div className="card elev-sm" style={{ gap: 4, padding: "18px 20px" }}>
           <div className="card-kicker">Qualified prospects</div>
-          <div style={{ fontFamily: "var(--font-heading)", fontSize: 36, lineHeight: 1 }}>+43</div>
-          <div style={{ fontSize: 12 }} className="text-muted">18 opened · 6 replied · 2 demos booked</div>
+          <div style={{ fontFamily: "var(--font-heading)", fontSize: 36, lineHeight: 1 }}>+{stats.prospects}</div>
+          <div style={{ fontSize: 12 }} className="text-muted">{stats.prospectsMeta}</div>
         </div>
         <div className="card elev-sm" style={{ gap: 4, padding: "18px 20px" }}>
           <div className="card-kicker">Referring domains</div>
-          <div style={{ fontFamily: "var(--font-heading)", fontSize: 36, lineHeight: 1 }}>+17</div>
-          <div style={{ fontSize: 12 }} className="text-muted">2 above DR 60</div>
+          <div style={{ fontFamily: "var(--font-heading)", fontSize: 36, lineHeight: 1 }}>+{stats.referring}</div>
+          <div style={{ fontSize: 12 }} className="text-muted">{stats.referringMeta}</div>
         </div>
         <div className="card elev-sm" style={{ gap: 4, padding: "18px 20px" }}>
           <div className="card-kicker">Pages indexed</div>
-          <div style={{ fontFamily: "var(--font-heading)", fontSize: 36, lineHeight: 1 }}>+24</div>
-          <div style={{ fontSize: 12 }} className="text-muted">of 24 submitted</div>
+          <div style={{ fontFamily: "var(--font-heading)", fontSize: 36, lineHeight: 1 }}>+{stats.indexed}</div>
+          <div style={{ fontSize: 12 }} className="text-muted">{stats.indexedMeta}</div>
         </div>
       </div>
 
@@ -126,7 +120,7 @@ export default function Growth({ site, actionCount, pendingCount, goApprovals, g
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <section className="card elev-sm" style={{ padding: 18, gap: 12 }}>
             <h4 style={{ margin: 0 }}>Before MADBOT → now</h4>
-            {SCOREBOARD.map((s) => (
+            {stats.scoreboard.map((s) => (
               <div key={s.label}>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, marginBottom: 5 }}>
                   <span>{s.label}</span>

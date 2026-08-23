@@ -1,6 +1,29 @@
 import { useState } from "react";
 import { ago, minutesAgo } from "../data";
 
+function csvEscape(val) {
+  const s = String(val ?? "");
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+function exportCsv(rows) {
+  const header = ["When", "What I did", "Why", "Result", "Rolled back"];
+  const lines = [header.join(",")];
+  rows.forEach((f) => {
+    const when = f.createdAt?.toDate ? f.createdAt.toDate().toISOString() : "";
+    lines.push([when, f.text, f.why || "", f.result || "", f.undone ? "yes" : "no"].map(csvEscape).join(","));
+  });
+  const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `activity-log-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 export default function ActivityLog({ feedAll, onToggleUndo }) {
   const [filt, setFilt] = useState("all");
   const rows = feedAll.filter((f) => filt === "all" || f.undone);
@@ -22,7 +45,7 @@ export default function ActivityLog({ feedAll, onToggleUndo }) {
             Rolled back
           </label>
         </div>
-        <button className="btn btn-secondary" style={{ fontWeight: 600, fontSize: 13 }}>Export CSV</button>
+        <button className="btn btn-secondary" onClick={() => exportCsv(rows)} disabled={rows.length === 0} style={{ fontWeight: 600, fontSize: 13 }}>Export CSV</button>
       </div>
       <div className="card" style={{ padding: "8px 14px", background: "var(--color-neutral-100)" }}>
         <table className="table">

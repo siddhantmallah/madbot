@@ -8,12 +8,18 @@ import {
   subscribeSite,
   subscribeActivity,
   subscribeApprovals,
+  subscribeLeads,
+  subscribeContent,
   updateSiteSettings,
   addActivity,
   setActivityUndone,
   setApprovalStatus,
+  updateApproval,
+  updateLead,
+  addContentItem,
+  updateContentItem,
 } from "../../lib/sites";
-import { buildSiteInsights, ACTIVITY_POOL, hostnameOf, shortSiteName } from "../../lib/seed";
+import { buildSiteInsights, growthStats, ACTIVITY_POOL, CONTENT_BODY, rewriteContentBody, hostnameOf, shortSiteName } from "../../lib/seed";
 import { SCREEN_TITLES } from "./data";
 import OnboardingModal from "./OnboardingModal";
 import Growth from "./screens/Growth";
@@ -78,6 +84,8 @@ function DashboardInner() {
   const [site, setSite] = useState(null);
   const [activity, setActivity] = useState([]);
   const [approvals, setApprovals] = useState([]);
+  const [leads, setLeads] = useState([]);
+  const [content, setContent] = useState([]);
   const [onboardOpen, setOnboardOpen] = useState(false);
 
   const [aut, setAut] = useState(62);
@@ -85,10 +93,11 @@ function DashboardInner() {
   const [rules, setRules] = useState([]);
   const [voice, setVoice] = useState("a");
   const [paused, setPaused] = useState(false);
+  const [takenOpportunities, setTakenOpportunities] = useState({});
+  const [dismissedOpportunities, setDismissedOpportunities] = useState({});
 
   const [zoom, setZoom] = useState(1);
   const [sel, setSel] = useState("kw");
-  const [taken, setTaken] = useState({});
 
   useEffect(() => {
     if (!loading && !user) router.replace("/login");
@@ -119,6 +128,8 @@ function DashboardInner() {
         setRules(s.rules || []);
         setVoice(s.voice || "a");
         setPaused(!!s.paused);
+        setTakenOpportunities(s.takenOpportunities || {});
+        setDismissedOpportunities(s.dismissedOpportunities || {});
       }
     });
   }, [user, activeSiteId]);
@@ -137,6 +148,22 @@ function DashboardInner() {
       return undefined;
     }
     return subscribeApprovals(user.uid, activeSiteId, setApprovals);
+  }, [user, activeSiteId]);
+
+  useEffect(() => {
+    if (!user || !activeSiteId) {
+      setLeads([]);
+      return undefined;
+    }
+    return subscribeLeads(user.uid, activeSiteId, setLeads);
+  }, [user, activeSiteId]);
+
+  useEffect(() => {
+    if (!user || !activeSiteId) {
+      setContent([]);
+      return undefined;
+    }
+    return subscribeContent(user.uid, activeSiteId, setContent);
   }, [user, activeSiteId]);
 
   const poolIndexRef = useRef(0);
@@ -196,6 +223,91 @@ function DashboardInner() {
   }
   function decline(id) {
     if (user && activeSiteId) setApprovalStatus(user.uid, activeSiteId, id, "no");
+  }
+  function editApproval(id, patch) {
+    if (user && activeSiteId) updateApproval(user.uid, activeSiteId, id, patch);
+  }
+
+  function takeOpportunity(oppId) {
+    if (!user || !activeSiteId) return;
+    setTakenOpportunities((prev) => ({ ...prev, [oppId]: true }));
+    updateSiteSettings(user.uid, activeSiteId, { [`takenOpportunities.${oppId}`]: true });
+    const opp = insights?.oppData?.[oppId];
+    if (opp) {
+      addActivity(user.uid, activeSiteId, {
+        k: "content",
+        text: `Queued: ${opp.title}`,
+        why: "You told me to go get it",
+        result: "Queued",
+      });
+    }
+  }
+  function dismissOpportunity(oppId) {
+    if (!user || !activeSiteId) return;
+    setDismissedOpportunities((prev) => ({ ...prev, [oppId]: true }));
+    updateSiteSettings(user.uid, activeSiteId, { [`dismissedOpportunities.${oppId}`]: true });
+  }
+
+  function sendLead(id) {
+    if (!user || !activeSiteId) return;
+    updateLead(user.uid, activeSiteId, id, { status: "sent" });
+    const lead = leads.find((l) => l.id === id);
+    if (lead) {
+      addActivity(user.uid, activeSiteId, {
+        k: "lead",
+        text: `Sent outreach to ${lead.co}`,
+        why: lead.why,
+        result: "Sent",
+      });
+    }
+  }
+  function declineLead(id) {
+    if (user && activeSiteId) updateLead(user.uid, activeSiteId, id, { status: "declined" });
+  }
+  function saveLeadDraft(id, draft) {
+    if (user && activeSiteId) updateLead(user.uid, activeSiteId, id, { draft });
+  }
+
+  function publishContent(id) {
+    if (!user || !activeSiteId) return;
+    updateContentItem(user.uid, activeSiteId, id, { status: "published" });
+    const item = content.find((c) => c.id === id);
+    if (item) {
+      addActivity(user.uid, activeSiteId, {
+        k: "content",
+        text: `Published "${item.title}"`,
+        why: "You approved this piece",
+        result: "Live",
+      });
+    }
+  }
+  function rewriteContent(id) {
+    if (!user || !activeSiteId) return;
+    const item = content.find((c) => c.id === id);
+    if (!item || !insights) return;
+    const nextCount = (item.rewriteCount || 0) + 1;
+    updateContentItem(user.uid, activeSiteId, id, {
+      body: rewriteContentBody(item.kind, insights.name, nextCount),
+      rewriteCount: nextCount,
+    });
+  }
+  function askForPiece() {
+    if (!user || !activeSiteId || !insights) return;
+    addContentItem(user.uid, activeSiteId, {
+      day: 5,
+      dayName: "Sat",
+      date: "—",
+      title: "New piece, your request",
+      kind: "Support",
+      meta: "requested",
+      body: CONTENT_BODY.Support(insights.name),
+    });
+    addActivity(user.uid, activeSiteId, {
+      k: "content",
+      text: "Queued a new piece at your request",
+      why: "You asked for one",
+      result: "Queued",
+    });
   }
 
   async function handleSignOut() {
@@ -348,6 +460,7 @@ function DashboardInner() {
                 <Growth
                   site={site}
                   domain={insights.domain}
+                  stats={growthStats(site)}
                   actionCount={activity.length}
                   pendingCount={pendingCount}
                   goApprovals={() => go("appr")}
@@ -364,16 +477,29 @@ function DashboardInner() {
                   setZoom={setZoom}
                   sel={sel}
                   setSel={setSel}
-                  taken={taken}
-                  setTaken={setTaken}
+                  taken={takenOpportunities}
+                  dismissed={dismissedOpportunities}
+                  onTake={takeOpportunity}
+                  onDismiss={dismissOpportunity}
                   nodeData={insights.nodeData}
                   oppData={insights.oppData}
                   siteName={insights.name}
                 />
               )}
-              {screen === "content" && <Content dayData={insights.dayData} siteName={insights.name} />}
-              {screen === "leads" && <Leads leadData={insights.leadData} />}
-              {screen === "appr" && <Approvals approvals={approvals} onApprove={approve} onDecline={decline} goAutonomy={() => go("aut")} />}
+              {screen === "content" && (
+                <Content
+                  items={content}
+                  onPublish={publishContent}
+                  onRewrite={rewriteContent}
+                  onAskForPiece={askForPiece}
+                />
+              )}
+              {screen === "leads" && (
+                <Leads leads={leads} onSend={sendLead} onDecline={declineLead} onSaveDraft={saveLeadDraft} />
+              )}
+              {screen === "appr" && (
+                <Approvals approvals={approvals} onApprove={approve} onDecline={decline} onEdit={editApproval} goAutonomy={() => go("aut")} />
+              )}
               {screen === "vis" && <Visibility engineData={insights.engineData} domain={insights.domain} />}
               {screen === "aut" && (
                 <Autonomy

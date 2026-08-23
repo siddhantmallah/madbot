@@ -6,9 +6,29 @@ const FIT_STYLE = {
   Cool: { bg: "var(--color-neutral-200)", fg: "var(--color-neutral-800)" },
 };
 
-export default function Leads({ leadData }) {
+const STATUS_LABEL = { queued: "Draft ready", sent: "Sent", declined: "Declined" };
+
+export default function Leads({ leads, onSend, onDecline, onSaveDraft }) {
   const [view, setView] = useState("hot");
-  const rows = view === "hot" ? leadData.filter((l) => l.fit === "Hot") : view === "replied" ? leadData.filter((l) => l.state.toLowerCase().includes("repl")) : leadData;
+  const [selectedId, setSelectedId] = useState(null);
+  const [editing, setEditing] = useState(false);
+  const [draftText, setDraftText] = useState("");
+
+  const rows =
+    view === "hot" ? leads.filter((l) => l.fit === "Hot" && l.status !== "declined") :
+    view === "sent" ? leads.filter((l) => l.status === "sent") :
+    leads;
+
+  const selected = leads.find((l) => l.id === selectedId) || rows[0] || leads[0];
+
+  function startEdit() {
+    setDraftText(selected.draft || "");
+    setEditing(true);
+  }
+  function saveEdit() {
+    onSaveDraft(selected.id, draftText);
+    setEditing(false);
+  }
 
   return (
     <section data-screen-label="Leads" style={{ display: "flex", flexDirection: "column", gap: 18 }}>
@@ -20,7 +40,7 @@ export default function Leads({ leadData }) {
           </p>
         </div>
         <div className="seg" style={{ marginLeft: "auto", background: "var(--color-bg)" }}>
-          {["hot", "all", "replied"].map((v) => (
+          {["hot", "all", "sent"].map((v) => (
             <label key={v} className="seg-opt">
               <input type="radio" name="lv" checked={view === v} onChange={() => setView(v)} />
               {v[0].toUpperCase() + v.slice(1)}
@@ -35,17 +55,25 @@ export default function Leads({ leadData }) {
               <tr><th>Company</th><th>Why now</th><th>Fit</th><th></th></tr>
             </thead>
             <tbody>
-              {(rows.length ? rows : leadData).map((l) => {
+              {rows.length === 0 ? (
+                <tr><td colSpan={4} className="text-muted" style={{ fontSize: 13, padding: "14px 8px" }}>Nothing in this view yet.</td></tr>
+              ) : null}
+              {rows.map((l) => {
                 const fit = FIT_STYLE[l.fit] || FIT_STYLE.Cool;
+                const isSelected = selected?.id === l.id;
                 return (
-                  <tr key={l.co}>
+                  <tr
+                    key={l.id}
+                    onClick={() => { setSelectedId(l.id); setEditing(false); }}
+                    style={{ cursor: "pointer", background: isSelected ? "rgba(255,255,255,.04)" : undefined, opacity: l.status === "declined" ? 0.5 : 1 }}
+                  >
                     <td style={{ fontWeight: 700 }}>
                       {l.co}
                       <div className="text-muted" style={{ fontSize: 11, fontWeight: 400 }}>{l.meta}</div>
                     </td>
                     <td style={{ fontSize: 12.5 }}>{l.why}</td>
                     <td><span className="tag" style={{ background: fit.bg, color: fit.fg, fontSize: 10.5 }}>{l.fit}</span></td>
-                    <td style={{ textAlign: "right" }}><span className="tag tag-neutral" style={{ fontSize: 10.5 }}>{l.state}</span></td>
+                    <td style={{ textAlign: "right" }}><span className="tag tag-neutral" style={{ fontSize: 10.5 }}>{STATUS_LABEL[l.status] || l.status}</span></td>
                   </tr>
                 );
               })}
@@ -53,25 +81,45 @@ export default function Leads({ leadData }) {
           </table>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <section className="card elev-sm" style={{ padding: 18, gap: 9 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span className="tag tag-accent">Outreach draft</span>
-              <span className="text-muted" style={{ fontSize: 11, marginLeft: "auto" }}>goes out 9:10am, unless you stop it</span>
-            </div>
-            <div style={{ background: "var(--color-bg)", borderRadius: 20, padding: 14, fontSize: 13, lineHeight: 1.55 }}>
-              <div style={{ fontWeight: 700, marginBottom: 6 }}>A signal matching your ideal customer</div>
-              <p style={{ margin: "0 0 8px" }} className="text-muted">
-                Hi — noticed something that suggests you have this problem right now. Not selling you anything
-                today: here&apos;s something genuinely useful first…
-              </p>
-              <span className="tag tag-outline" style={{ fontSize: 10 }}>No pricing, no pressure — per your rules</span>
-            </div>
-            <div style={{ display: "flex", gap: 9 }}>
-              <button className="btn btn-primary" style={{ fontSize: 13 }}>Send it</button>
-              <button className="btn btn-secondary" style={{ fontWeight: 600, fontSize: 13 }}>Edit</button>
-              <button className="btn btn-ghost" style={{ fontSize: 13 }}>Never this company</button>
-            </div>
-          </section>
+          {selected ? (
+            <section className="card elev-sm" style={{ padding: 18, gap: 9 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span className="tag tag-accent">Outreach draft · {selected.co}</span>
+                <span className="text-muted" style={{ fontSize: 11, marginLeft: "auto" }}>
+                  {selected.status === "sent" ? "sent" : selected.status === "declined" ? "declined" : "unless you stop it"}
+                </span>
+              </div>
+              <div style={{ background: "var(--color-bg)", borderRadius: 20, padding: 14, fontSize: 13, lineHeight: 1.55 }}>
+                {editing ? (
+                  <textarea
+                    className="input"
+                    value={draftText}
+                    onChange={(e) => setDraftText(e.target.value)}
+                    style={{ width: "100%", minHeight: 90, background: "var(--color-surface)", color: "#fff", fontSize: 13, lineHeight: 1.55 }}
+                  />
+                ) : (
+                  <p style={{ margin: "0 0 8px" }} className="text-muted">{selected.draft}</p>
+                )}
+                <span className="tag tag-outline" style={{ fontSize: 10 }}>No pricing, no pressure — per your rules</span>
+              </div>
+              <div style={{ display: "flex", gap: 9 }}>
+                {editing ? (
+                  <>
+                    <button className="btn btn-primary" onClick={saveEdit} style={{ fontSize: 13 }}>Save</button>
+                    <button className="btn btn-ghost" onClick={() => setEditing(false)} style={{ fontSize: 13 }}>Cancel</button>
+                  </>
+                ) : (
+                  <>
+                    <button className="btn btn-primary" disabled={selected.status !== "queued"} onClick={() => onSend(selected.id)} style={{ fontSize: 13 }}>
+                      {selected.status === "sent" ? "Sent" : "Send it"}
+                    </button>
+                    <button className="btn btn-secondary" disabled={selected.status !== "queued"} onClick={startEdit} style={{ fontWeight: 600, fontSize: 13 }}>Edit</button>
+                    <button className="btn btn-ghost" disabled={selected.status === "declined"} onClick={() => onDecline(selected.id)} style={{ fontSize: 13 }}>Never this company</button>
+                  </>
+                )}
+              </div>
+            </section>
+          ) : null}
           <section className="card elev-sm" style={{ padding: 18, gap: 8, background: "var(--color-accent-2-100)" }}>
             <h4 style={{ margin: 0 }}>How I score them</h4>
             <div style={{ fontSize: 12.5, color: "var(--color-accent-2-900)", display: "flex", flexDirection: "column", gap: 5 }}>

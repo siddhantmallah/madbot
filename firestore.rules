@@ -19,6 +19,14 @@ service cloud.firestore {
         match /approvals/{approvalId} {
           allow read, create, update, delete: if isOwner(uid);
         }
+
+        match /leads/{leadId} {
+          allow read, create, update, delete: if isOwner(uid);
+        }
+
+        match /content/{contentId} {
+          allow read, create, update, delete: if isOwner(uid);
+        }
       }
     }
 

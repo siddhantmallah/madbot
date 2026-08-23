@@ -1,4 +1,4 @@
-export default function Opportunities({ pendingCount, zoom, setZoom, sel, setSel, taken, setTaken, nodeData, oppData, siteName }) {
+export default function Opportunities({ pendingCount, zoom, setZoom, sel, setSel, taken, dismissed, onTake, onDismiss, nodeData, oppData, siteName }) {
   const opp = oppData[sel] || oppData.kw;
 
   return (
@@ -45,6 +45,8 @@ export default function Opportunities({ pendingCount, zoom, setZoom, sel, setSel
             </div>
             {nodeData.map((n) => {
               const active = sel === n.id;
+              const isTaken = !!taken[n.id];
+              const isDismissed = !!dismissed[n.id];
               return (
                 <button
                   key={n.id}
@@ -56,7 +58,7 @@ export default function Opportunities({ pendingCount, zoom, setZoom, sel, setSel
                     width: n.d,
                     height: n.d,
                     borderRadius: "50%",
-                    border: active ? "4px solid var(--color-text)" : "0",
+                    border: active ? "4px solid var(--color-text)" : isTaken ? "3px solid var(--color-accent)" : "0",
                     cursor: "pointer",
                     display: "grid",
                     placeItems: "center",
@@ -64,9 +66,10 @@ export default function Opportunities({ pendingCount, zoom, setZoom, sel, setSel
                     padding: 9,
                     background: n.bg,
                     color: n.fg,
+                    opacity: isDismissed ? 0.35 : 1,
                     boxShadow: active ? "var(--shadow-lg)" : "var(--shadow-sm)",
                     fontFamily: "var(--font-body)",
-                    animation: n.id === "kw" ? "drift 7s ease-in-out infinite" : "none",
+                    animation: n.id === "kw" && !isDismissed ? "drift 7s ease-in-out infinite" : "none",
                     transition: "transform .2s",
                   }}
                 >
@@ -104,11 +107,11 @@ export default function Opportunities({ pendingCount, zoom, setZoom, sel, setSel
             <div><div className="text-muted" style={{ fontSize: 10.5 }}>Confidence</div><strong>{opp.c}</strong></div>
             <div><div className="text-muted" style={{ fontSize: 10.5 }}>Needs approval</div><strong>{opp.a}</strong></div>
           </div>
-          <button className="btn btn-primary btn-block" onClick={() => setTaken((t) => ({ ...t, [sel]: true }))}>
+          <button className="btn btn-primary btn-block" disabled={!!taken[sel]} onClick={() => onTake(sel)}>
             {taken[sel] ? "Queued — I am on it" : "Go get it"}
           </button>
-          <button className="btn btn-ghost" onClick={() => { setSel("kw"); setTaken((t) => ({ ...t, [sel]: false })); }} style={{ alignSelf: "center", fontSize: 12.5 }}>
-            Not for us — and remember why
+          <button className="btn btn-ghost" disabled={!!dismissed[sel]} onClick={() => onDismiss(sel)} style={{ alignSelf: "center", fontSize: 12.5 }}>
+            {dismissed[sel] ? "Noted — won't suggest this again" : "Not for us — and remember why"}
           </button>
         </div>
         <section style={{ display: "flex", flexDirection: "column", gap: 9 }}>

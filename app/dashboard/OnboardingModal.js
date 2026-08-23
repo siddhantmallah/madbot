@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { createSite, addActivity, addApproval } from "../../lib/sites";
-import { baseActivitySeed, approvalSeeds, hostnameOf, shortSiteName } from "../../lib/seed";
+import { createSite, addActivity, addApproval, addLead, addContentItem } from "../../lib/sites";
+import { baseActivitySeed, approvalSeeds, leadSeeds, contentSeeds, hostnameOf, shortSiteName } from "../../lib/seed";
 
 const STEP_BORDER = (active) => (active ? "var(--color-accent)" : "var(--color-divider)");
 
@@ -54,9 +54,12 @@ export default function OnboardingModal({ uid, canSkip, initialUrl, onClose, onF
     const name = shortSiteName({ title, url: url.trim() });
     try {
       const siteId = await createSite(uid, { url: url.trim(), title, description, autonomy: aut });
+      const siteForSeeds = { title, url: url.trim() };
       await Promise.all([
         ...baseActivitySeed(domain, name).map((entry) => addActivity(uid, siteId, entry)),
         ...approvalSeeds(domain, name).map((entry) => addApproval(uid, siteId, entry)),
+        ...leadSeeds(siteForSeeds).map((entry) => addLead(uid, siteId, entry)),
+        ...contentSeeds(siteForSeeds).map((entry) => addContentItem(uid, siteId, entry)),
       ]);
       setTimeout(() => {
         onFinish(siteId, `Connected ${domain}. First fixes are queued and I'm getting to work.`);
