@@ -732,6 +732,12 @@ function DashboardInner() {
     }
   }
 
+  function saveDataPolicy(next) {
+    if (!user || !activeSiteId) return;
+    updateSiteSettings(user.uid, activeSiteId, { dataPolicy: next });
+    setToast("Data rules updated.");
+  }
+
   function saveProfile(next) {
     if (!user || !activeSiteId) return;
     updateSiteSettings(user.uid, activeSiteId, { buyerProfile: next });
@@ -886,7 +892,7 @@ function DashboardInner() {
           <NavButton label="Growth" active={screen === "growth"} onClick={() => go("growth")} />
           <NavButton label="Opportunities" active={screen === "opps"} onClick={() => go("opps")} />
           <NavButton label="Content" active={screen === "content"} onClick={() => go("content")} />
-          <NavButton label="Leads" active={screen === "leads"} onClick={() => go("leads")} />
+          <NavButton label="Lead intelligence" active={screen === "leads"} onClick={() => go("leads")} />
           <NavButton label="Approvals" badge={pendingCount} active={screen === "appr"} onClick={() => go("appr")} />
           <NavButton label="AI visibility" active={screen === "vis"} onClick={() => go("vis")} />
           <NavButton label="Autonomy" active={screen === "aut"} onClick={() => go("aut")} />
@@ -1109,7 +1115,7 @@ function DashboardInner() {
               )}
               {screen === "leads" && !access.leads.allowed && (
                 <LockedFeature
-                  title="Lead discovery"
+                  title="Lead intelligence"
                   what="Companies matching your ideal customer, with outreach drafted."
                   access={access.leads}
                   usage={usage}
@@ -1184,6 +1190,8 @@ function DashboardInner() {
                   setRules={saveRules}
                   voice={voice}
                   setVoice={saveVoice}
+                  dataPolicy={site?.dataPolicy || null}
+                  onDataPolicyChange={saveDataPolicy}
                   brandName={insights.name}
                 />
               )}

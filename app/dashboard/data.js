@@ -33,7 +33,7 @@ export const SCREEN_TITLES = {
   growth: "Growth",
   opps: "Opportunities",
   content: "Content & calendar",
-  leads: "Lead discovery",
+  leads: "Lead intelligence",
   appr: "Approvals",
   vis: "AI search visibility",
   aut: "Autonomy & permissions",

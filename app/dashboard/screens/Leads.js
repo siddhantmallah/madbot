@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { explainProvenance, LEVEL_META } from "../../../lib/dataPolicy";
 
 const FIT = {
   Hot: { bg: "var(--color-accent-100)", fg: "var(--color-accent-800)" },
@@ -74,7 +75,7 @@ export default function Leads({
   // ---- gate 1: nothing to work from ----
   if (!hasCrawl) {
     return (
-      <Shell title="Lead discovery" sub="Companies that look like they need what you sell.">
+      <Shell title="Lead intelligence" sub="Companies that appear to need what you sell, and why.">
         <Notice title="Crawl the site first">
           The buyer profile is worked out from what your own site says you sell. Without a crawl there&apos;s nothing
           to infer it from.
@@ -86,7 +87,7 @@ export default function Leads({
   // ---- gate 2: no profile yet ----
   if (!profile) {
     return (
-      <Shell title="Lead discovery" sub="Companies that look like they need what you sell.">
+      <Shell title="Lead intelligence" sub="Companies that appear to need what you sell, and why.">
         <section className="card elev-sm" style={{ padding: 20, gap: 12, maxWidth: 620 }}>
           <h4 style={{ margin: 0 }}>Who buys from you?</h4>
           <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.6 }} className="text-muted">
@@ -368,16 +369,25 @@ function Detail({ lead, onDraftOutreach, onDecline, busy }) {
         </span>
       ) : null}
 
-      {/* Contact provenance is shown, not hidden. Under GDPR a customer may be
-          asked where an address came from and has to be able to answer. */}
+      {/* "Why do we have this?" is answerable because the answer was recorded
+          at collection time. Under GDPR the customer may actually be asked. */}
       {lead.contactEmail ? (
-        <div style={{ padding: "10px 12px", borderRadius: 9, background: "var(--wash-1)", display: "flex", flexDirection: "column", gap: 3 }}>
-          <span style={{ fontSize: 13 }}>{lead.contactEmail}</span>
-          <span className="text-muted" style={{ fontSize: 11.5 }}>
-            {lead.contactIsGeneric ? "A company inbox, not a named person. " : ""}
-            {lead.contactProvenance}
-          </span>
+        <div style={{ padding: "10px 12px", borderRadius: 9, background: "var(--wash-1)", display: "flex", flexDirection: "column", gap: 5 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 13 }}>{lead.contactEmail}</span>
+            {lead.provenance?.level ? (
+              <span className="tag tag-neutral" style={{ fontSize: 9.5 }}>
+                {LEVEL_META[lead.provenance.level]?.label || lead.provenance.level}
+              </span>
+            ) : null}
+            {lead.contactIsGeneric ? (
+              <span className="tag tag-accent-2" style={{ fontSize: 9.5 }}>company inbox</span>
+            ) : null}
+          </div>
+          <Provenance provenance={lead.provenance} />
         </div>
+      ) : lead.contactSkipped ? (
+        <p style={{ margin: 0, fontSize: 12, color: "var(--color-accent-800)" }}>{lead.contactSkipped}</p>
       ) : lead.stage === "qualified" ? (
         <p style={{ margin: 0, fontSize: 12 }} className="text-muted">
           No published address on their site. MADBOT doesn&apos;t guess addresses or buy them from a broker.
@@ -415,9 +425,45 @@ function Detail({ lead, onDraftOutreach, onDecline, busy }) {
   );
 }
 
+/**
+ * The provenance disclosure. Collapsed by default because it isn't needed on
+ * every glance, but one click away because "where did you get this?" is a
+ * question a customer can be asked and has to be able to answer.
+ */
+function Provenance({ provenance }) {
+  const lines = explainProvenance(provenance);
+  return (
+    <details style={{ fontSize: 11.5 }}>
+      <summary style={{ cursor: "pointer", color: "var(--color-accent)" }}>Why do we have this?</summary>
+      <div style={{ display: "flex", flexDirection: "column", gap: 5, marginTop: 7 }}>
+        {lines.map((l) => (
+          <p key={l} style={{ margin: 0, lineHeight: 1.55 }} className="text-muted">{l}</p>
+        ))}
+        {provenance ? (
+          <dl style={{ margin: "4px 0 0", display: "grid", gridTemplateColumns: "auto 1fr", gap: "3px 10px" }}>
+            {[
+              ["Lawful basis", provenance.lawfulBasis],
+              ["Jurisdiction", `${provenance.jurisdiction} · ${provenance.regime}`],
+              ["Source", provenance.enrichmentSource || provenance.source],
+              ["Collected", provenance.collectedAt ? new Date(provenance.collectedAt).toLocaleDateString() : "—"],
+              ["Delete by", provenance.retentionUntil ? new Date(provenance.retentionUntil).toLocaleDateString() : "not retained"],
+              ["Objection", provenance.optOutStatus === "objected" ? "recorded — never contact" : "none recorded"],
+            ].map(([k, v]) => (
+              <div key={k} style={{ display: "contents" }}>
+                <dt style={{ color: "var(--fg-45)" }}>{k}</dt>
+                <dd style={{ margin: 0 }}>{v || "—"}</dd>
+              </div>
+            ))}
+          </dl>
+        ) : null}
+      </div>
+    </details>
+  );
+}
+
 function Shell({ title, sub, children }) {
   return (
-    <section data-screen-label="Leads" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+    <section data-screen-label="Lead intelligence" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div>
         <h2 style={{ margin: "0 0 3px" }}>{title}</h2>
         <p className="text-muted" style={{ margin: 0, fontSize: 13.5 }}>{sub}</p>

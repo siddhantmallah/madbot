@@ -14,7 +14,9 @@ function thrValFromEvent(e) {
   return Math.max(0, Math.min(100, Math.round(((e.clientX - r.left) / r.width) * 100)));
 }
 
-export default function Autonomy({ aut, setAut, onCommitAut, thr, setThr, onCommitThr, rules, setRules, voice, setVoice, brandName }) {
+import DataRules from "./DataRules";
+
+export default function Autonomy({ aut, setAut, onCommitAut, thr, setThr, onCommitThr, rules, setRules, voice, setVoice, brandName, dataPolicy, onDataPolicyChange }) {
   const [drag, setDrag] = useState(null);
   const [draftRule, setDraftRule] = useState("");
 
@@ -30,7 +32,10 @@ export default function Autonomy({ aut, setAut, onCommitAut, thr, setThr, onComm
     { text: "Technical SEO fixes · auto", bg: "var(--color-accent-2-100)", fg: "var(--color-accent-2-800)" },
     { text: permsOn ? "Publishing content · auto" : "Publishing content · ask me", bg: permsOn ? "var(--color-accent-2-100)" : "var(--color-accent-100)", fg: permsOn ? "var(--color-accent-2-800)" : "var(--color-accent-800)" },
     { text: "Directory listings · auto", bg: "var(--color-accent-2-100)", fg: "var(--color-accent-2-800)" },
-    { text: permsOn ? "Outreach email · auto, 40/day" : "Outreach email · ask me", bg: permsOn ? "var(--color-accent-2-100)" : "var(--color-accent-100)", fg: permsOn ? "var(--color-accent-2-800)" : "var(--color-accent-800)" },
+    // Not affected by the dial. Outreach is drafted and queued at every level —
+    // the screen used to promise "auto, 40/day" at higher settings, which the
+    // engine deliberately never does.
+    { text: "Outreach email · always drafted for you to send", bg: "var(--color-neutral-100)", fg: "var(--color-neutral-800)" },
     { text: spendOn ? "Anything with a price tag · auto under budget" : "Anything with a price tag · ask me", bg: spendOn ? "var(--color-accent-2-100)" : "var(--color-accent-100)", fg: spendOn ? "var(--color-accent-2-800)" : "var(--color-accent-800)" },
     { text: "Big public claims · always ask me", bg: "var(--color-neutral-100)", fg: "var(--color-neutral-800)" },
   ];
@@ -169,6 +174,12 @@ export default function Autonomy({ aut, setAut, onCommitAut, thr, setThr, onComm
           </div>
         </section>
       </aside>
+
+      {/* Full width, below both columns: the data rules are as important as the
+          dial and don't belong squeezed into a sidebar. */}
+      <div style={{ gridColumn: "1 / -1" }}>
+        <DataRules policy={dataPolicy} onChange={onDataPolicyChange} />
+      </div>
     </section>
   );
 }
