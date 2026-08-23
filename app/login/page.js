@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { useAuth } from "../providers/AuthProvider";
+import { GoogleMark, GithubMark, MadbotMark } from "../components/Brand";
 
 const PREVIEW_LINES = [
   'Publishes "SSL expiry alerts: the 2026 guide" — 1,840 words, 4 internal links',
@@ -115,9 +116,7 @@ function LoginInner() {
           }}
         />
         <Link href="/" style={{ position: "relative", display: "flex", alignItems: "center", gap: 10, textDecoration: "none", color: "#fff", width: "max-content" }}>
-          <span style={{ position: "relative", width: 30, height: 30, borderRadius: "50%", border: "1.8px solid #E4EC1B", display: "grid", placeItems: "center", flex: "none" }}>
-            <span style={{ width: 13, height: 13, border: "1.8px solid #E4EC1B", transform: "rotate(45deg)", display: "block" }} />
-          </span>
+          <MadbotMark size={30} />
           <span style={{ fontFamily: "var(--font-body)", fontWeight: 400, fontSize: 22, letterSpacing: "-.005em", color: "#fff" }}>madbot</span>
         </Link>
         <div style={{ position: "relative", maxWidth: "26em", animation: "fadeUp .7s cubic-bezier(.22,.75,.3,1) both" }}>
@@ -155,7 +154,7 @@ function LoginInner() {
               onClick={() => handleOAuth("google")}
               style={{ minHeight: 48, fontWeight: 600, fontSize: 14.5, color: "#fff", borderColor: "var(--color-divider)", background: "rgba(255,255,255,.04)" }}
             >
-              <span style={{ width: 18, height: 18, borderRadius: "50%", background: "linear-gradient(135deg,#FF6A1A,#A855F7)", display: "block", flex: "none" }} />
+              <GoogleMark />
               Continue with Google
             </button>
             <button
@@ -165,7 +164,7 @@ function LoginInner() {
               onClick={() => handleOAuth("github")}
               style={{ minHeight: 48, fontWeight: 600, fontSize: 14.5, color: "#fff", borderColor: "var(--color-divider)", background: "rgba(255,255,255,.04)" }}
             >
-              <span style={{ width: 18, height: 18, borderRadius: 4, background: "var(--color-neutral-400)", display: "block", flex: "none" }} />
+              <GithubMark />
               Continue with GitHub
             </button>
           </div>

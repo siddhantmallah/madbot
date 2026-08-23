@@ -33,7 +33,9 @@ export default function ActivityLog({ feedAll, onToggleUndo }) {
       <div style={{ display: "flex", alignItems: "flex-end", gap: 14, flexWrap: "wrap" }}>
         <div>
           <h2 style={{ margin: "0 0 3px" }}>Everything I&apos;ve ever done here</h2>
-          <p className="text-muted" style={{ margin: 0, fontSize: 13.5 }}>{feedAll.length} actions, each one reversible. Nothing happens off the record.</p>
+          <p className="text-muted" style={{ margin: 0, fontSize: 13.5 }}>
+            {feedAll.length} {feedAll.length === 1 ? "action" : "actions"}, each one reversible. Nothing happens off the record.
+          </p>
         </div>
         <div className="seg" style={{ marginLeft: "auto", background: "var(--color-bg)" }}>
           <label className="seg-opt">

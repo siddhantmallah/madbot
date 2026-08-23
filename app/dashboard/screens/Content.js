@@ -36,6 +36,16 @@ export default function Content({ items, onPublish, onRewrite, onAskForPiece }) 
         <button className="btn btn-secondary" onClick={onAskForPiece} style={{ fontWeight: 600, fontSize: 13 }}>Ask for a piece</button>
       </div>
 
+      <div className="card" style={{ padding: "13px 16px", gap: 4, border: "1px dashed var(--color-accent-400)", background: "var(--color-accent-100)" }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--color-accent-800)" }}>
+          These are planned topics, not written articles.
+        </div>
+        <div style={{ fontSize: 12.5, lineHeight: 1.55, color: "var(--color-accent-900)" }}>
+          Each card holds a title and a one-line angle. Writing the actual page needs a content-generation model
+          connected, and putting it live needs access to your CMS — neither is wired up yet, so
+          <strong> nothing is published to your site</strong>. Marking a piece published only updates its status here.
+        </div>
+      </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7,minmax(0,1fr))", gap: 10 }}>
         {byDay.map((d) => (
           <div key={d.name} style={{ display: "flex", flexDirection: "column", gap: 8, minHeight: 270, background: d.items.length ? "var(--color-neutral-100)" : "transparent", border: "1px solid var(--color-divider)", borderRadius: 24, padding: "12px 10px" }}>
@@ -78,7 +88,7 @@ export default function Content({ items, onPublish, onRewrite, onAskForPiece }) 
         <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.2fr) minmax(0,1fr)", gap: 16 }}>
           <section className="card elev-sm" style={{ padding: 20, gap: 10 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-              <span className="tag tag-accent">{selected.status === "published" ? "Published" : "Draft · in your voice"}</span>
+              <span className="tag tag-accent">{selected.status === "published" ? "Marked published" : "Planned topic"}</span>
               <span className="text-muted" style={{ fontSize: 11.5, marginLeft: "auto" }}>{selected.meta}</span>
             </div>
             <h3 style={{ margin: 0 }}>{selected.title}</h3>
@@ -87,14 +97,14 @@ export default function Content({ items, onPublish, onRewrite, onAskForPiece }) 
             </p>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", paddingTop: 4 }}>
               <span className="tag tag-accent-2">{selected.kind}</span>
-              <span className="tag tag-outline">Sounds 88% like you</span>
+              <span className="tag tag-outline">Outline only</span>
               {selected.rewriteCount ? <span className="tag tag-neutral">Rewritten ×{selected.rewriteCount}</span> : null}
             </div>
             <div style={{ display: "flex", gap: 9, paddingTop: 4 }}>
               <button className="btn btn-primary" disabled={selected.status === "published"} onClick={() => onPublish(selected.id)}>
-                {selected.status === "published" ? "Published" : "Publish now"}
+                {selected.status === "published" ? "Marked published" : "Mark as published"}
               </button>
-              <button className="btn btn-secondary" onClick={() => onRewrite(selected.id)} style={{ fontWeight: 600, fontSize: 13 }}>Rewrite it</button>
+              <button className="btn btn-secondary" onClick={() => onRewrite(selected.id)} style={{ fontWeight: 600, fontSize: 13 }}>Try another angle</button>
               <button className="btn btn-ghost" onClick={() => setPreviewId(selected.id === previewItem?.id ? null : selected.id)} style={{ fontSize: 13 }}>
                 {previewItem ? "Close preview" : "Preview"}
               </button>

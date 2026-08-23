@@ -138,11 +138,24 @@ export async function GET(request) {
       extract(html, /<meta[^>]+name=["']description["'][^>]*content=["']([^"']*)["']/i) ||
       extract(html, /<meta[^>]+content=["']([^"']*)["'][^>]+name=["']description["']/i);
 
+    // Prefer a <link rel="icon"> the page declares; fall back to /favicon.ico.
+    const iconHref =
+      extract(html, /<link[^>]+rel=["'](?:shortcut )?icon["'][^>]*href=["']([^"']+)["']/i) ||
+      extract(html, /<link[^>]+href=["']([^"']+)["'][^>]*rel=["'](?:shortcut )?icon["']/i) ||
+      extract(html, /<link[^>]+rel=["']apple-touch-icon["'][^>]*href=["']([^"']+)["']/i);
+    let faviconUrl = null;
+    try {
+      faviconUrl = new URL(iconHref || "/favicon.ico", res.url || target.toString()).toString();
+    } catch {
+      faviconUrl = null;
+    }
+
     return NextResponse.json({
       ok: true,
       url: target.toString(),
       title: title || null,
       description: description || null,
+      faviconUrl,
     });
   } catch {
     clearTimeout(timeout);

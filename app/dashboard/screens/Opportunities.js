@@ -6,9 +6,9 @@ export default function Opportunities({ pendingCount, zoom, setZoom, sel, setSel
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <div style={{ display: "flex", alignItems: "flex-end", gap: 12, flexWrap: "wrap" }}>
           <div>
-            <h2 style={{ margin: "0 0 3px" }}>83 ways to grow, mapped</h2>
+            <h2 style={{ margin: "0 0 3px" }}>{nodeData.length} plays worth considering</h2>
             <p className="text-muted" style={{ margin: 0, fontSize: 13.5 }}>
-              Bigger circle, bigger prize. Closer to the middle, easier for me. Click one.
+              Standard growth plays, not yet ranked against your real data. Bigger circle, bigger prize. Click one.
             </p>
           </div>
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
@@ -87,12 +87,14 @@ export default function Opportunities({ pendingCount, zoom, setZoom, sel, setSel
                 <span key={i} style={{ flex: 1, height: `${h}%`, background: h >= 100 ? "var(--color-accent)" : h >= 48 ? "var(--color-accent-400)" : h >= 31 ? "var(--color-accent-300)" : "var(--color-neutral-300)", borderRadius: 2 }} />
               ))}
             </div>
-            <div className="text-muted" style={{ fontSize: 10.5 }}>Modelled on 41 sites like yours. Week 1 → 7.</div>
+            <div className="text-muted" style={{ fontSize: 10.5 }}>Illustrative shape, not a forecast from your data.</div>
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-          <span className="tag tag-neutral">Ranked by expected value</span>
-          <span className="text-muted" style={{ fontSize: 12 }}>54 auto-queued · 27 waiting · {pendingCount} need you</span>
+          <span className="tag tag-neutral">Estimates are illustrative</span>
+          <span className="text-muted" style={{ fontSize: 12 }}>
+            {Object.keys(taken).length} queued by you · {Object.keys(dismissed).length} dismissed · {pendingCount} in approvals
+          </span>
         </div>
       </div>
 

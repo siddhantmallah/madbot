@@ -36,7 +36,8 @@ export default function Leads({ leads, onSend, onDecline, onSaveDraft }) {
         <div>
           <h2 style={{ margin: "0 0 3px" }}>People who have your problem right now</h2>
           <p className="text-muted" style={{ margin: 0, fontSize: 13.5 }}>
-            Found in public signals — hiring posts, forum questions, public news. Never bought lists.
+            The idea: companies surfaced from public signals — hiring posts, forum questions, public news. Never
+            bought lists.
           </p>
         </div>
         <div className="seg" style={{ marginLeft: "auto", background: "var(--color-bg)" }}>
@@ -46,6 +47,16 @@ export default function Leads({ leads, onSend, onDecline, onSaveDraft }) {
               {v[0].toUpperCase() + v.slice(1)}
             </label>
           ))}
+        </div>
+      </div>
+      <div className="card" style={{ padding: "13px 16px", gap: 4, border: "1px dashed var(--color-accent-400)", background: "var(--color-accent-100)" }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--color-accent-800)" }}>
+          These are example companies, not real prospects.
+        </div>
+        <div style={{ fontSize: 12.5, lineHeight: 1.55, color: "var(--color-accent-900)" }}>
+          Real lead discovery needs a company-data source connected, and sending outreach needs verified sender
+          setup. Until both are wired up, nothing here has a real email address and <strong>no message is ever
+          delivered</strong> — the buttons below only move a card&apos;s status in your own dashboard.
         </div>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.35fr) minmax(0,1fr)", gap: 16, alignItems: "start" }}>
@@ -86,7 +97,7 @@ export default function Leads({ leads, onSend, onDecline, onSaveDraft }) {
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span className="tag tag-accent">Outreach draft · {selected.co}</span>
                 <span className="text-muted" style={{ fontSize: 11, marginLeft: "auto" }}>
-                  {selected.status === "sent" ? "sent" : selected.status === "declined" ? "declined" : "unless you stop it"}
+                  {selected.status === "sent" ? "marked sent · not delivered" : selected.status === "declined" ? "declined" : "draft only"}
                 </span>
               </div>
               <div style={{ background: "var(--color-bg)", borderRadius: 20, padding: 14, fontSize: 13, lineHeight: 1.55 }}>
@@ -111,7 +122,7 @@ export default function Leads({ leads, onSend, onDecline, onSaveDraft }) {
                 ) : (
                   <>
                     <button className="btn btn-primary" disabled={selected.status !== "queued"} onClick={() => onSend(selected.id)} style={{ fontSize: 13 }}>
-                      {selected.status === "sent" ? "Sent" : "Send it"}
+                      {selected.status === "sent" ? "Marked sent" : "Mark as sent"}
                     </button>
                     <button className="btn btn-secondary" disabled={selected.status !== "queued"} onClick={startEdit} style={{ fontWeight: 600, fontSize: 13 }}>Edit</button>
                     <button className="btn btn-ghost" disabled={selected.status === "declined"} onClick={() => onDecline(selected.id)} style={{ fontSize: 13 }}>Never this company</button>
@@ -121,11 +132,12 @@ export default function Leads({ leads, onSend, onDecline, onSaveDraft }) {
             </section>
           ) : null}
           <section className="card elev-sm" style={{ padding: 18, gap: 8, background: "var(--color-accent-2-100)" }}>
-            <h4 style={{ margin: 0 }}>How I score them</h4>
+            <h4 style={{ margin: 0 }}>How scoring would work</h4>
             <div style={{ fontSize: 12.5, color: "var(--color-accent-2-900)", display: "flex", flexDirection: "column", gap: 5 }}>
-              <div>Signal freshness — a signal from this week beats one from 6 months ago.</div>
-              <div>Shape of the company — you close 4× faster under 200 people.</div>
-              <div>Whether a human at your end already knows them.</div>
+              <div>Signal freshness — a signal from this week beats one from six months ago.</div>
+              <div>Shape of the company — weighted toward whatever size you actually close.</div>
+              <div>Whether someone at your end already knows them.</div>
+              <div style={{ opacity: 0.75, paddingTop: 2 }}>Needs your real win/loss history to calibrate.</div>
             </div>
           </section>
         </div>

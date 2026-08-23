@@ -136,7 +136,7 @@ export default function Autonomy({ aut, setAut, onCommitAut, thr, setThr, onComm
         <section className="card elev-sm" style={{ padding: 18, gap: 10 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <h4 style={{ margin: 0 }}>Brand voice trainer</h4>
-            <span className="tag tag-accent" style={{ marginLeft: "auto" }}>{voice === "a" ? 91 : 88}% you</span>
+            <span className="tag tag-accent" style={{ marginLeft: "auto" }}>{voice ? "Preference saved" : "Not set"}</span>
           </div>
           <p className="card-body" style={{ margin: 0 }}>
             I read your pages when you connected. Tell me which of these two sounds more like you and I get sharper.

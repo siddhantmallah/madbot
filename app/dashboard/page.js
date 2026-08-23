@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../providers/AuthProvider";
 import {
   subscribeSites,
@@ -19,8 +19,9 @@ import {
   addContentItem,
   updateContentItem,
 } from "../../lib/sites";
-import { buildSiteInsights, growthStats, ACTIVITY_POOL, CONTENT_BODY, rewriteContentBody, hostnameOf, shortSiteName } from "../../lib/seed";
+import { buildSiteInsights, CONTENT_BODY, rewriteContentBody, hostnameOf } from "../../lib/seed";
 import { buildDigest } from "../../lib/digest";
+import { MadbotMark, SiteIcon } from "../components/Brand";
 import { SCREEN_TITLES } from "./data";
 import OnboardingModal from "./OnboardingModal";
 import Growth from "./screens/Growth";
@@ -167,22 +168,10 @@ function DashboardInner() {
     return subscribeContent(user.uid, activeSiteId, setContent);
   }, [user, activeSiteId]);
 
-  const poolIndexRef = useRef(0);
-  useEffect(() => {
-    if (!user || !activeSiteId || !site || paused) return undefined;
-    const domain = hostnameOf(site.url);
-    const name = shortSiteName(site);
-    const pool = ACTIVITY_POOL(domain, name);
-    const id = setInterval(() => {
-      const item = pool[poolIndexRef.current % pool.length];
-      poolIndexRef.current += 1;
-      addActivity(user.uid, activeSiteId, item).then(() => {
-        if (item.k === "win") setToast(item.text);
-      });
-    }, 60000);
-    return () => clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, activeSiteId, site?.id, paused]);
+  // There is deliberately no background timer writing invented activity here.
+  // The feed only grows when something real happens — a fetch at setup, or an
+  // action the user takes. Faking "wins" on an interval is how a dashboard
+  // starts lying to the person paying for it.
 
   const insights = useMemo(() => (site ? buildSiteInsights(site) : null), [site]);
 
@@ -256,9 +245,9 @@ function DashboardInner() {
     if (lead) {
       addActivity(user.uid, activeSiteId, {
         k: "lead",
-        text: `Sent outreach to ${lead.co}`,
+        text: `Marked outreach to ${lead.co} as sent (no email delivered)`,
         why: lead.why,
-        result: "Sent",
+        result: "Marked sent",
       });
     }
   }
@@ -276,9 +265,9 @@ function DashboardInner() {
     if (item) {
       addActivity(user.uid, activeSiteId, {
         k: "content",
-        text: `Published "${item.title}"`,
+        text: `Marked "${item.title}" as published (not live on your site)`,
         why: "You approved this piece",
-        result: "Live",
+        result: "Marked published",
       });
     }
   }
@@ -349,9 +338,7 @@ function DashboardInner() {
     <div style={{ height: "100vh", display: "grid", gridTemplateColumns: "236px 1fr", fontSize: 15, color: "var(--color-text)", background: "var(--color-bg)", overflow: "hidden" }}>
       <aside style={{ background: "var(--color-surface)", padding: "18px 14px 14px", display: "flex", flexDirection: "column", gap: 16, borderRight: "1px solid var(--color-divider)", overflow: "auto" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "0 6px" }}>
-          <span style={{ position: "relative", width: 29, height: 29, borderRadius: "50%", border: "1.8px solid #E4EC1B", display: "grid", placeItems: "center", flex: "none" }}>
-            <span style={{ width: 13, height: 13, border: "1.8px solid #E4EC1B", transform: "rotate(45deg)", display: "block" }} />
-          </span>
+          <MadbotMark size={29} />
           <span style={{ fontFamily: "var(--font-body)", fontWeight: 400, fontSize: 21, letterSpacing: "-.005em", color: "#fff" }}>madbot</span>
         </div>
 
@@ -363,7 +350,7 @@ function DashboardInner() {
             style={{ width: "100%", justifyContent: "space-between", background: "var(--color-bg)", fontWeight: 600, fontSize: 13, minWidth: 0 }}
           >
             <span style={{ display: "flex", alignItems: "center", gap: 8, overflow: "hidden", minWidth: 0, flex: 1 }}>
-              <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--color-accent-2-600)", flex: "none" }} />
+              {site ? <SiteIcon site={site} size={16} /> : <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--color-accent-2-600)", flex: "none" }} />}
               <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>
                 {site ? hostnameOf(site.url) : "No site yet"}
               </span>
@@ -377,8 +364,9 @@ function DashboardInner() {
                   key={s.id}
                   className="btn btn-ghost"
                   onClick={() => { setActiveSiteId(s.id); setSiteOpen(false); }}
-                  style={{ justifyContent: "flex-start", color: "var(--color-text)", fontWeight: 600, fontSize: 13 }}
+                  style={{ justifyContent: "flex-start", gap: 8, color: "var(--color-text)", fontWeight: 600, fontSize: 13 }}
                 >
+                  <SiteIcon site={s} size={16} />
                   {hostnameOf(s.url)}
                 </button>
               ))}
@@ -406,9 +394,9 @@ function DashboardInner() {
             onClick={() => go("aut")}
             style={{ border: 0, cursor: "pointer", textAlign: "left", background: "var(--color-accent-2-100)", borderRadius: 26, padding: 14, fontFamily: "var(--font-body)" }}
           >
-            <div style={{ fontFamily: "var(--font-heading)", fontSize: 14, marginBottom: 3 }}>Brand voice: {voice === "a" ? 91 : 88}% you</div>
+            <div style={{ fontFamily: "var(--font-heading)", fontSize: 14, marginBottom: 3 }}>Brand voice</div>
             <div style={{ fontSize: 11.5, color: "var(--color-accent-2-800)", lineHeight: 1.45 }}>
-              Teach me 3 more pages and I&apos;ll stop sounding like a robot.
+              {voice ? "Preference saved. Pick again any time." : "Tell me which sample sounds like you."}
             </div>
           </button>
           <button className="btn btn-secondary" onClick={() => setOnboardOpen(true)} style={{ fontWeight: 600, fontSize: 12.5 }}>
@@ -444,7 +432,12 @@ function DashboardInner() {
           }}
         >
           <div style={{ fontFamily: "var(--font-heading)", fontSize: 17 }}>{SCREEN_TITLES[screen] || "Growth"}</div>
-          {site ? <span className="tag tag-neutral" style={{ fontSize: 11 }}>{hostnameOf(site.url)}</span> : null}
+          {site ? (
+            <span className="tag tag-neutral" style={{ fontSize: 11, gap: 6 }}>
+              <SiteIcon site={site} size={13} />
+              {hostnameOf(site.url)}
+            </span>
+          ) : null}
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
             {site ? (
               <>
@@ -482,8 +475,10 @@ function DashboardInner() {
                 <Growth
                   site={site}
                   domain={insights.domain}
-                  stats={growthStats(site)}
-                  actionCount={activity.length}
+                  activity={activity}
+                  content={content}
+                  leads={leads}
+                  approvals={approvals}
                   pendingCount={pendingCount}
                   goApprovals={() => go("appr")}
                   goLog={() => go("log")}
@@ -524,7 +519,7 @@ function DashboardInner() {
               {screen === "appr" && (
                 <Approvals approvals={approvals} onApprove={approve} onDecline={decline} onEdit={editApproval} goAutonomy={() => go("aut")} />
               )}
-              {screen === "vis" && <Visibility engineData={insights.engineData} domain={insights.domain} />}
+              {screen === "vis" && <Visibility domain={insights.domain} />}
               {screen === "aut" && (
                 <Autonomy
                   aut={aut}

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createSite, addActivity, addApproval, addLead, addContentItem } from "../../lib/sites";
 import { baseActivitySeed, approvalSeeds, leadSeeds, contentSeeds, hostnameOf, shortSiteName } from "../../lib/seed";
+import { MadbotMark, SiteIcon } from "../components/Brand";
 
 const STEP_BORDER = (active) => (active ? "var(--color-accent)" : "var(--color-divider)");
 
@@ -32,7 +33,7 @@ export default function OnboardingModal({ uid, canSkip, initialUrl, onClose, onF
       const res = await fetch(`/api/read-site?url=${encodeURIComponent(url.trim())}`);
       const data = await res.json();
       if (data.ok) {
-        setSiteInfo({ title: data.title, description: data.description });
+        setSiteInfo({ title: data.title, description: data.description, faviconUrl: data.faviconUrl });
       } else {
         setSiteInfo(null);
         setReadError(data.error || "Couldn't read that site automatically — that's fine, I'll still set it up.");
@@ -53,16 +54,22 @@ export default function OnboardingModal({ uid, canSkip, initialUrl, onClose, onF
     const description = siteInfo?.description || "";
     const name = shortSiteName({ title, url: url.trim() });
     try {
-      const siteId = await createSite(uid, { url: url.trim(), title, description, autonomy: aut });
+      const siteId = await createSite(uid, {
+        url: url.trim(),
+        title,
+        description,
+        autonomy: aut,
+        faviconUrl: siteInfo?.faviconUrl || null,
+      });
       const siteForSeeds = { title, url: url.trim() };
       await Promise.all([
-        ...baseActivitySeed(domain, name).map((entry) => addActivity(uid, siteId, entry)),
+        ...baseActivitySeed(domain).map((entry) => addActivity(uid, siteId, entry)),
         ...approvalSeeds(domain, name).map((entry) => addApproval(uid, siteId, entry)),
         ...leadSeeds(siteForSeeds).map((entry) => addLead(uid, siteId, entry)),
         ...contentSeeds(siteForSeeds).map((entry) => addContentItem(uid, siteId, entry)),
       ]);
       setTimeout(() => {
-        onFinish(siteId, `Connected ${domain}. First fixes are queued and I'm getting to work.`);
+        onFinish(siteId, `Connected ${domain}. I read the homepage and set up a starting plan for you to review.`);
       }, 900);
     } catch (err) {
       setStarted(false);
@@ -85,8 +92,8 @@ export default function OnboardingModal({ uid, canSkip, initialUrl, onClose, onF
     >
       <div style={{ width: "min(880px,100%)", display: "flex", flexDirection: "column", alignItems: "center", gap: 22, animation: "rise .4s cubic-bezier(.2,.8,.2,1)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ width: 26, height: 26, borderRadius: "50%", background: "var(--color-accent)", display: "block" }} />
-          <span style={{ fontFamily: "var(--font-heading)", fontSize: 19 }}>MADBOT</span>
+          <MadbotMark size={26} stroke={1.6} />
+          <span style={{ fontFamily: "var(--font-body)", fontWeight: 400, fontSize: 21, letterSpacing: "-.005em" }}>madbot</span>
           <span className="tag tag-neutral" style={{ marginLeft: 8 }}>Step {step + 1} of 4</span>
         </div>
 
@@ -129,7 +136,10 @@ export default function OnboardingModal({ uid, canSkip, initialUrl, onClose, onF
               </p>
             </div>
             <div className="card elev-sm" style={{ padding: 20, gap: 8 }}>
-              <div className="card-kicker">{hostnameOf(url)}</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <SiteIcon site={{ ...siteInfo, url }} size={16} />
+                <div className="card-kicker">{hostnameOf(url)}</div>
+              </div>
               <div style={{ fontFamily: "var(--font-heading)", fontSize: 22 }}>{siteInfo?.title || hostnameOf(url)}</div>
               <div className="text-muted" style={{ fontSize: 13.5 }}>
                 {siteInfo?.description || "No description found — I'll learn your voice from the pages as I go."}
@@ -140,10 +150,19 @@ export default function OnboardingModal({ uid, canSkip, initialUrl, onClose, onF
                 <h4 style={{ margin: 0 }}>Here&apos;s what I&apos;ll start looking for</h4>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(4,minmax(0,1fr))", gap: 12 }}>
-                <div style={{ background: "var(--color-bg)", borderRadius: 22, padding: 14 }}><div style={{ fontFamily: "var(--font-heading)", fontSize: 26 }}>~30</div><div className="text-muted" style={{ fontSize: 12 }}>keywords you should own and don&apos;t</div></div>
-                <div style={{ background: "var(--color-bg)", borderRadius: 22, padding: 14 }}><div style={{ fontFamily: "var(--font-heading)", fontSize: 26 }}>~20</div><div className="text-muted" style={{ fontSize: 12 }}>technical issues costing you rank</div></div>
-                <div style={{ background: "var(--color-bg)", borderRadius: 22, padding: 14 }}><div style={{ fontFamily: "var(--font-heading)", fontSize: 26 }}>~25</div><div className="text-muted" style={{ fontSize: 12 }}>places that link to rivals, not you</div></div>
-                <div style={{ background: "var(--color-bg)", borderRadius: 22, padding: 14 }}><div style={{ fontFamily: "var(--font-heading)", fontSize: 26 }}>~40</div><div className="text-muted" style={{ fontSize: 12 }}>companies who fit your ideal customer</div></div>
+                {[
+                  "Keywords you should own and don't",
+                  "Technical issues costing you rank",
+                  "Places that link to rivals, not you",
+                  "Companies who fit your ideal customer",
+                ].map((t) => (
+                  <div key={t} style={{ background: "var(--color-bg)", borderRadius: 22, padding: 14, fontSize: 12.5, lineHeight: 1.5 }} className="text-muted">
+                    {t}
+                  </div>
+                ))}
+              </div>
+              <div className="text-muted" style={{ fontSize: 11.5 }}>
+                Counts appear once the data sources behind each are connected.
               </div>
             </div>
             <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
@@ -195,7 +214,7 @@ export default function OnboardingModal({ uid, canSkip, initialUrl, onClose, onF
             <p className="text-muted" style={{ margin: 0, fontSize: 15, maxWidth: 460 }}>
               {started
                 ? "Setting up your dashboard now…"
-                : "I'll queue the first technical fixes and start drafting content. Nothing is published until I have your rules straight — and I do."}
+                : "I'll set up your workspace with a starting plan: topics worth covering, plays worth considering, and the first few things I'd want your sign-off on."}
             </p>
             <button
               onClick={startEngine}
