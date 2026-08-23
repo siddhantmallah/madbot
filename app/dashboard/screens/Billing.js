@@ -55,8 +55,9 @@ export default function Billing({ usage, billing = [], siteCount, contactEmail }
             </span>
           </div>
           <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6 }}>
-            You have everything in <strong>{plan.name}</strong> for the trial, whichever plan you picked — so you can
-            see the whole thing working before paying for it. No card was taken and nothing renews automatically.
+            You have <strong>everything MADBOT does</strong>, across up to <strong>{maxSites} sites</strong>, whichever
+            plan you picked — so you can see the whole thing working, including running several client sites at once,
+            before paying for it. No card was taken and nothing renews automatically.
           </p>
           {intendedPlan ? (
             <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.6 }} className="text-muted">

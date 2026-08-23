@@ -18,7 +18,7 @@ async function sendWelcome(uid, intendedPlan) {
 
     const { subject, html, text } = buildWelcomeEmail({
       name: user.displayName,
-      planName: PLANS[TRIAL_PLAN].name,
+      maxSites: PLANS[TRIAL_PLAN].maxSites,
       intendedPlanName: intendedPlan ? PLANS[intendedPlan].name : null,
       trialDays: TRIAL_DAYS,
       siteUrl: null,
@@ -113,16 +113,28 @@ export async function POST(request) {
       return { started: true, subscription };
     });
 
-    // Welcome mail rides on the trial starting, because that happens exactly
-    // once per account. A failure is recorded, not thrown — losing the email is
-    // bad, losing the trial because of the email is worse.
+    // Welcome mail rides on the trial starting. A failure is recorded, not
+    // thrown — losing the email is bad, losing the trial because of the email is
+    // worse.
+    //
+    // It also retries on a later sign-in if it previously failed. Without that,
+    // every account created before the sending domain was verified would never
+    // get one, since the trial only ever starts once.
     let email = null;
-    if (result.started) {
-      email = await sendWelcome(uid, intent);
-      await userRef.set({ welcomeEmail: email }, { merge: true });
+    const previous = (await userRef.get()).data()?.welcomeEmail || null;
+    const shouldSend = result.started || (previous && previous.ok === false);
+    if (shouldSend) {
+      email = await sendWelcome(uid, intent || result.subscription?.intendedPlan || null);
+      await userRef.set({ welcomeEmail: { ...email, retried: !result.started } }, { merge: true });
     }
 
-    return NextResponse.json({ ok: true, ...result, trialDays: TRIAL_DAYS, email });
+    return NextResponse.json({
+      ok: true,
+      ...result,
+      trialDays: TRIAL_DAYS,
+      email,
+      emailRetried: shouldSend && !result.started,
+    });
   } catch (err) {
     return NextResponse.json({ ok: false, error: String(err?.message || err) }, { status: 500 });
   }
