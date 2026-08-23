@@ -3,136 +3,175 @@
 import Link from "next/link";
 import { useState } from "react";
 import { MadbotMark } from "../components/Brand";
-
-const PLANS = [
-  {
-    id: "scout",
-    name: "Scout",
-    price: 29,
-    tagline: "One site, watch and suggest. It finds everything and hands you the plan.",
-    features: ["Full opportunity map", "Technical audit, weekly", "Friday digest", "Watch and Suggest autonomy"],
-    cta: "Start with Scout",
-  },
-  {
-    id: "madbot",
-    name: "MADBOT",
-    price: 79,
-    badge: "most people",
-    featured: true,
-    tagline: "One site, full autonomy up to Let it rip. It publishes, distributes and prospects.",
-    features: [
-      "Everything in Scout",
-      "~30 actions a day",
-      "Content, links and lead discovery",
-      "AI visibility tracking",
-      "Rollback and full audit trail",
-    ],
-    cta: "Get MADBOT",
-  },
-  {
-    id: "swarm",
-    name: "Swarm",
-    price: 249,
-    tagline: "Up to ten sites, Full send, standing budgets, one dashboard across all of them.",
-    features: ["Everything in MADBOT", "Up to 10 sites", "Standing spend budgets", "Shared guardrails and voice"],
-    cta: "Talk to us",
-  },
-];
+import ThemeToggle from "../components/ThemeToggle";
+import { PLANS, PLAN_ORDER, REGIONS, formatPrice, priceFor, highlightsFor } from "../../lib/plans";
+import { TOPUPS } from "../../lib/credits";
+import { useRegion } from "../../lib/useRegion";
 
 export default function PricingPage() {
   const [annual, setAnnual] = useState(false);
-  const priceOf = (p) => (annual ? Math.round(p.price * 10) : p.price);
+  const { region, pending, detected, choose } = useRegion();
+  const plans = PLAN_ORDER.map((id) => PLANS[id]);
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--color-bg)", fontSize: 16 }}>
       <header style={{ borderBottom: "1px solid var(--color-divider)" }}>
-        <div style={{ maxWidth: 1180, margin: "0 auto", padding: "15px 28px", display: "flex", alignItems: "center", gap: 11 }}>
-          <Link href="/" style={{ display: "flex", alignItems: "center", gap: 11, textDecoration: "none", color: "var(--fg)" }}>
-            <MadbotMark size={28} />
-            <span style={{ fontFamily: "var(--font-body)", fontWeight: 400, fontSize: 21, letterSpacing: "-.005em" }}>madbot</span>
+        <div className="nav pad-responsive" style={{ maxWidth: 1180, margin: "0 auto", padding: "15px 28px" }}>
+          <Link href="/" style={{ display: "flex", alignItems: "center", gap: 11, textDecoration: "none", color: "var(--fg)", marginRight: "auto" }}>
+            <MadbotMark size={29} />
+            <span style={{ fontFamily: "var(--font-body)", fontSize: 21, color: "var(--fg)" }}>madbot</span>
           </Link>
-          <Link href="/login" className="btn btn-secondary" style={{ marginLeft: "auto", fontWeight: 600, fontSize: 13.5, color: "var(--fg)", borderColor: "var(--color-divider)" }}>
+          <ThemeToggle compact />
+          <Link className="btn btn-primary" href="/login" style={{ color: "var(--on-accent)" }}>
             Sign in
           </Link>
         </div>
       </header>
 
-      <main style={{ maxWidth: 1180, margin: "0 auto", padding: "62px 28px 90px" }}>
-        <div style={{ textAlign: "center", marginBottom: 40 }}>
-          <h1 style={{ margin: "0 0 12px", fontSize: "clamp(24px,9.3vw,50px)", lineHeight: 1.06 }}>Pay for the work, not the seats</h1>
-          <p style={{ margin: "0 auto 24px", fontSize: 17, maxWidth: "34em", color: "var(--fg-60)" }}>
-            Every plan includes the whole engine. What changes is how much it&apos;s allowed to do each month, and how
-            many sites it looks after.
-          </p>
-          <div className="seg" style={{ background: "var(--color-bg)" }}>
-            <label className="seg-opt">
-              <input type="radio" name="billing" checked={!annual} onChange={() => setAnnual(false)} />
-              Monthly
-            </label>
-            <label className="seg-opt">
-              <input type="radio" name="billing" checked={annual} onChange={() => setAnnual(true)} />
-              Yearly — 2 months free
-            </label>
+      <main className="pad-responsive" style={{ maxWidth: 1180, margin: "0 auto", padding: "56px 28px 90px" }}>
+        <h1 style={{ margin: "0 0 12px", fontSize: "clamp(29px,7vw,50px)", maxWidth: "20em" }}>
+          Pay for the work, not the seats
+        </h1>
+        <p className="text-muted" style={{ margin: "0 0 26px", maxWidth: "44em", fontSize: 16.5, lineHeight: 1.6 }}>
+          Every plan includes the whole engine. What changes is how much of it is allowed to run each month.
+        </p>
+
+        {/* Region and billing cycle. The region is a guess until someone says
+            otherwise, so it's a visible control rather than a silent decision. */}
+        <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", marginBottom: 30 }}>
+          <div className="seg" role="group" aria-label="Billing period">
+            {[
+              { k: false, label: "Monthly" },
+              { k: true, label: "Annual · 2 months free" },
+            ].map((o) => (
+              <label key={String(o.k)} className="seg-opt">
+                <input type="radio" name="cycle" checked={annual === o.k} onChange={() => setAnnual(o.k)} />
+                {o.label}
+              </label>
+            ))}
           </div>
-        </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 18, alignItems: "start" }}>
-          {PLANS.map((p) => (
-            <article
-              key={p.id}
-              className="card"
-              style={{
-                padding: 30,
-                gap: 12,
-                background: p.featured ? "linear-gradient(165deg, rgba(255,106,26,.16), var(--color-surface) 55%)" : "var(--color-surface)",
-                border: `1px solid ${p.featured ? "var(--color-accent)" : "var(--color-divider)"}`,
-                boxShadow: p.featured ? "0 0 60px rgba(255,106,26,.12)" : undefined,
-              }}
+          <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+            <span className="text-muted">Prices in</span>
+            <select
+              className="input"
+              value={region}
+              onChange={(e) => choose(e.target.value)}
+              style={{ width: "auto", minHeight: 34, paddingBlock: 0 }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <h3 style={{ margin: 0, fontSize: 23 }}>{p.name}</h3>
-                {p.badge ? (
-                  <span className="tag" style={{ marginLeft: "auto", background: "var(--color-accent)", color: "var(--on-accent)" }}>{p.badge}</span>
-                ) : null}
-              </div>
-              <p style={{ margin: 0 }}>
-                <span style={{ fontFamily: "var(--font-heading)", fontSize: "clamp(24px,7.8vw,42px)" }}>${priceOf(p)}</span>
-                <span style={{ fontSize: 14, color: "var(--fg-45)" }}>{annual ? " /yr" : " /mo"}</span>
-              </p>
-              <p style={{ margin: 0, fontSize: 14, lineHeight: 1.55, color: "var(--fg-60)" }}>{p.tagline}</p>
-              <ul style={{ listStyle: "none", margin: "4px 0 0", padding: 0, display: "flex", flexDirection: "column", gap: 9, fontSize: 14 }}>
-                {p.features.map((f) => (
-                  <li key={f} style={{ display: "flex", gap: 9, color: "var(--fg-80)" }}>
-                    <span style={{ color: "var(--color-accent)", flex: "none" }}>✓</span>
-                    {f}
-                  </li>
-                ))}
-              </ul>
-              <Link
-                className={p.featured ? "btn btn-primary btn-block" : "btn btn-secondary btn-block"}
-                href={`/login?mode=signup&plan=${p.id}`}
-                style={p.featured ? { color: "var(--on-accent)" } : { fontWeight: 600, color: "var(--fg)", borderColor: "var(--color-divider)" }}
+              {Object.entries(REGIONS).map(([code, r]) => (
+                <option key={code} value={code}>
+                  {r.label} ({r.currency})
+                </option>
+              ))}
+            </select>
+          </label>
+
+          {detected ? (
+            <span className="text-muted" style={{ fontSize: 12 }}>
+              Set from where you seem to be. Change it if that&apos;s wrong.
+            </span>
+          ) : null}
+        </div>
+
+        <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))", gap: 14, alignItems: "start" }}>
+          {plans.map((p) => {
+            const amount = priceFor(p, region, annual ? "annual" : "monthly");
+            const monthly = annual && amount ? Math.round(amount / 12) : amount;
+            return (
+              <section
+                key={p.id}
+                className="card elev-sm"
+                style={{
+                  padding: 20,
+                  gap: 11,
+                  border: p.featured ? "1px solid var(--color-accent)" : "1px solid var(--color-divider)",
+                  background: p.featured ? "var(--color-accent-100)" : "var(--color-surface)",
+                }}
               >
-                {p.cta}
-              </Link>
-            </article>
-          ))}
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <h2 style={{ margin: 0, fontSize: 21 }}>{p.name}</h2>
+                  {p.featured ? (
+                    <span className="tag" style={{ fontSize: 10, background: "var(--color-accent)", color: "var(--on-accent)" }}>
+                      ★ Most popular
+                    </span>
+                  ) : null}
+                </div>
+
+                <div style={{ display: "flex", alignItems: "baseline", gap: 5, flexWrap: "wrap" }}>
+                  <span style={{ fontFamily: "var(--font-heading)", fontSize: "clamp(26px,4.4vw,36px)", lineHeight: 1 }}>
+                    {/* Dashes until the region resolves, rather than a price
+                        that changes under the reader. */}
+                    {pending ? "—" : formatPrice(annual ? monthly : amount, region)}
+                  </span>
+                  {amount ? (
+                    <span className="text-muted" style={{ fontSize: 12.5 }}>/mo</span>
+                  ) : null}
+                </div>
+                {annual && amount ? (
+                  <span className="text-muted" style={{ fontSize: 11.5 }}>
+                    {formatPrice(amount, region)} billed yearly
+                  </span>
+                ) : null}
+
+                <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, minHeight: "2.8em" }} className="text-muted">
+                  {p.blurb}
+                </p>
+
+                <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 6, fontSize: 12.5 }}>
+                  {highlightsFor(p).map((h) => (
+                    <li key={h} style={{ display: "flex", gap: 7 }}>
+                      <span style={{ color: "var(--color-accent)", flex: "none" }} aria-hidden="true">→</span>
+                      <span>{h}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                <Link
+                  className={p.featured ? "btn btn-primary btn-block" : "btn btn-secondary btn-block"}
+                  href={`/login?mode=signup&plan=${p.id}`}
+                  style={p.featured ? { color: "var(--on-accent)" } : undefined}
+                >
+                  {p.id === "free" ? "Start free" : `Start with ${p.name}`}
+                </Link>
+              </section>
+            );
+          })}
         </div>
 
-        <div className="card" style={{ marginTop: 34, padding: 24, gap: 8, background: "var(--color-neutral-100)", border: "1px dashed var(--color-accent-400)" }}>
-          <h4 style={{ margin: 0, fontSize: 17 }}>Checkout isn&apos;t connected yet</h4>
-          <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.6, color: "var(--fg-80)" }}>
-            These buttons create an account so you can look around — they don&apos;t take payment, because no payment
-            processor is wired up on this build. Nobody is charged anything today, and the prices above aren&apos;t
-            final.
+        {/* Top-ups. Hitting a limit mid-month should be a purchase, not a wall. */}
+        <section style={{ marginTop: 44 }}>
+          <h2 style={{ margin: "0 0 6px", fontSize: "clamp(21px,4vw,28px)" }}>Need more part-way through a month?</h2>
+          <p className="text-muted" style={{ margin: "0 0 18px", maxWidth: "42em", fontSize: 14.5 }}>
+            Buy what you need without moving plan. Top-ups don&apos;t expire while your plan is active.
           </p>
-        </div>
+          <div className="grid-4" style={{ gap: 12 }}>
+            {Object.entries(TOPUPS).map(([id, t]) => (
+              <div key={id} className="card elev-sm" style={{ padding: 16, gap: 4 }}>
+                <span className="card-kicker">{t.label}</span>
+                <span style={{ fontFamily: "var(--font-heading)", fontSize: 22, lineHeight: 1 }}>
+                  {pending ? "—" : formatPrice(t.price[region] ?? t.price.US, region)}
+                  {t.recurring ? <span className="text-muted" style={{ fontSize: 12 }}>/mo</span> : null}
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
 
-        <div style={{ marginTop: 46, textAlign: "center" }}>
-          <p style={{ margin: 0, fontSize: 14.5, color: "var(--fg-60)" }}>
-            Not sure yet? <Link href="/">Run the free report on your site</Link> — no account needed.
+        <section style={{ marginTop: 44, maxWidth: "46em" }}>
+          <h2 style={{ margin: "0 0 6px", fontSize: "clamp(21px,4vw,28px)" }}>What&apos;s an autonomous action?</h2>
+          <p className="text-muted" style={{ margin: 0, fontSize: 14.5, lineHeight: 1.65 }}>
+            One piece of work MADBOT does on its own — reading a page, analysing a competitor&apos;s move, writing an
+            article, checking whether an AI assistant names you. Bigger jobs use more than one, because they cost more
+            to run. Your Billing screen shows what&apos;s been used and on what, so nothing is a mystery at the end of
+            the month.
           </p>
-        </div>
+        </section>
+
+        <p className="text-muted" style={{ marginTop: 36, fontSize: 12.5 }}>
+          Card checkout isn&apos;t live yet — starting a plan gets you a 14-day trial and we&apos;ll be in touch with
+          payment details. Prices exclude any tax that applies where you are.
+        </p>
       </main>
     </div>
   );

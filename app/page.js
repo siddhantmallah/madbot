@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import { usePageReveal } from "./components/useReveal";
 import AuditModal from "./components/AuditModal";
 import ThemeToggle from "./components/ThemeToggle";
+import { PLANS, PLAN_ORDER, REGIONS, formatPrice, priceFor, highlightsFor } from "../lib/plans";
+import { useRegion } from "../lib/useRegion";
 
 // Illustrative examples of the kind of work the engine does — deliberately
 // phrased as capability, not as a live feed of things happening right now.
@@ -110,6 +112,7 @@ export default function LandingPage() {
   const rootRef = usePageReveal();
   const [heroUrl, setHeroUrl] = useState("");
   const [auditUrl, setAuditUrl] = useState(null);
+  const { region, pending: regionPending } = useRegion();
 
   // The free report runs before any account exists — that's the whole point of
   // it. Signing up is what happens after they've seen it's worth something.
@@ -501,74 +504,68 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* PRICING */}
-        <section id="pricing" aria-labelledby="price-h" style={{ maxWidth: 1180, margin: "0 auto", padding: "20px 28px 78px" }}>
+        {/* PRICING — rendered from lib/plans.js. There were three separate
+            hardcoded copies of the price list before this (here, the pricing
+            page, and the plan definitions), and they had already drifted apart. */}
+        <section id="pricing" aria-labelledby="price-h" className="pad-responsive" style={{ maxWidth: 1180, margin: "0 auto", padding: "20px 28px 78px" }}>
           <h2 id="price-h" style={{ margin: "0 0 12px", fontSize: "clamp(24px,8.1vw,44px)" }}>Pay for the work, not the seats</h2>
-          <p style={{ margin: "0 0 36px", fontSize: 17, maxWidth: "32em", color: "var(--fg-60)" }}>
-            Every plan includes the whole engine. What changes is how much it&apos;s allowed to do each month.
+          <p style={{ margin: "0 0 22px", fontSize: 17, maxWidth: "32em", color: "var(--fg-60)" }}>
+            Every plan includes the whole engine. What changes is how much of it is allowed to run each month.
           </p>
-          <div data-reveal data-stagger="70" className="grid-3" style={{ gap: 18, alignItems: "start" }}>
-            <article className="card reveal" style={{ padding: 28, gap: 11, background: "var(--color-surface)", border: "1px solid var(--color-divider)" }}>
-              <h3 style={{ margin: 0, fontSize: 22 }}>Scout</h3>
-              <p style={{ margin: 0 }}>
-                <span style={{ fontFamily: "var(--font-heading)", fontSize: "clamp(24px,7.4vw,40px)" }}>$29</span>
-                <span style={{ fontSize: 14, color: "var(--fg-45)" }}> /mo</span>
-              </p>
-              <p className="card-body" style={{ fontSize: 14, opacity: 1, color: "var(--fg-60)" }}>
-                One site, Watch and Suggest. It finds everything and hands you the plan.
-              </p>
-              <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 8, fontSize: 14, color: "var(--fg-80)" }}>
-                <li>Full opportunity map</li>
-                <li>Technical audit, weekly</li>
-                <li>Friday digest</li>
-              </ul>
-              <Link className="btn btn-secondary btn-block" href="/login" style={{ fontWeight: 600, color: "var(--fg)", borderColor: "var(--color-divider)" }}>
-                Start free
-              </Link>
-            </article>
-            <article
-              className="card reveal"
-              style={{ padding: 28, gap: 11, background: "linear-gradient(165deg, rgba(255,106,26,.16), var(--color-surface) 55%)", border: "1px solid var(--color-accent)", boxShadow: "0 0 60px rgba(255,106,26,.12)" }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <h3 style={{ margin: 0, fontSize: 22 }}>MADBOT</h3>
-                <span className="tag" style={{ marginLeft: "auto", background: "var(--color-accent)", color: "var(--on-accent)" }}>most people</span>
-              </div>
-              <p style={{ margin: 0 }}>
-                <span style={{ fontFamily: "var(--font-heading)", fontSize: "clamp(24px,7.4vw,40px)" }}>$79</span>
-                <span style={{ fontSize: 14, color: "var(--fg-45)" }}> /mo</span>
-              </p>
-              <p className="card-body" style={{ fontSize: 14, opacity: 1, color: "var(--fg-80)" }}>
-                One site, full autonomy up to Let it rip. It publishes, distributes and prospects.
-              </p>
-              <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 8, fontSize: 14 }}>
-                <li>~30 actions a day</li>
-                <li>Content, links and lead discovery</li>
-                <li>AI visibility tracking</li>
-                <li>Rollback and audit trail</li>
-              </ul>
-              <Link className="btn btn-primary btn-block" href="/login" style={{ color: "var(--on-accent)" }}>
-                Connect a site
-              </Link>
-            </article>
-            <article className="card reveal" style={{ padding: 28, gap: 11, background: "var(--color-surface)", border: "1px solid var(--color-accent-2-400)" }}>
-              <h3 style={{ margin: 0, fontSize: 22 }}>Swarm</h3>
-              <p style={{ margin: 0 }}>
-                <span style={{ fontFamily: "var(--font-heading)", fontSize: "clamp(24px,7.4vw,40px)" }}>$249</span>
-                <span style={{ fontSize: 14, color: "var(--fg-45)" }}> /mo</span>
-              </p>
-              <p className="card-body" style={{ fontSize: 14, opacity: 1, color: "var(--fg-60)" }}>
-                Up to ten sites, Full send, standing budgets, and one dashboard across all of them.
-              </p>
-              <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 8, fontSize: 14, color: "var(--fg-80)" }}>
-                <li>Multi-site switcher</li>
-                <li>Standing spend budgets</li>
-                <li>Shared guardrails and voice</li>
-              </ul>
-              <a className="btn btn-secondary btn-block" href="#start" style={{ fontWeight: 600, color: "var(--color-accent-2-800)", borderColor: "var(--color-accent-2-400)" }}>
-                Talk to us
-              </a>
-            </article>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 26 }}>
+            <span className="tag tag-neutral" style={{ fontSize: 11.5 }}>
+              Prices in {REGIONS[region].label} ({REGIONS[region].currency})
+            </span>
+            <Link href="/pricing" style={{ fontSize: 13 }}>
+              Change currency, compare annually, and see top-ups →
+            </Link>
+          </div>
+          <div data-reveal data-stagger="70" className="grid" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 14, alignItems: "start" }}>
+            {PLAN_ORDER.map((id) => PLANS[id]).map((p) => (
+              <article
+                key={p.id}
+                className="card reveal"
+                style={{
+                  padding: 22,
+                  gap: 10,
+                  background: p.featured ? "var(--color-accent-100)" : "var(--color-surface)",
+                  border: p.featured ? "1px solid var(--color-accent)" : "1px solid var(--color-divider)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
+                  <h3 style={{ margin: 0, fontSize: 20 }}>{p.name}</h3>
+                  {p.featured ? (
+                    <span className="tag" style={{ fontSize: 9.5, background: "var(--color-accent)", color: "var(--on-accent)" }}>
+                      ★ Most popular
+                    </span>
+                  ) : null}
+                </div>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
+                  <span style={{ fontFamily: "var(--font-heading)", fontSize: "clamp(23px,5.4vw,34px)" }}>
+                    {regionPending ? "—" : formatPrice(priceFor(p, region), region)}
+                  </span>
+                  {p.price[region] ? <span style={{ fontSize: 12, color: "var(--fg-45)" }}>/mo</span> : null}
+                </div>
+                <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.5, color: "var(--fg-60)", minHeight: "3em" }}>
+                  {p.blurb}
+                </p>
+                <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 5, fontSize: 12.5 }}>
+                  {highlightsFor(p).slice(0, 6).map((h) => (
+                    <li key={h} style={{ display: "flex", gap: 6 }}>
+                      <span style={{ color: "var(--color-accent)", flex: "none" }} aria-hidden="true">→</span>
+                      <span>{h}</span>
+                    </li>
+                  ))}
+                </ul>
+                <Link
+                  className={p.featured ? "btn btn-primary btn-block" : "btn btn-secondary btn-block"}
+                  href={`/login?mode=signup&plan=${p.id}`}
+                  style={p.featured ? { color: "var(--on-accent)" } : { fontWeight: 600 }}
+                >
+                  {p.id === "free" ? "Start free" : `Start with ${p.name}`}
+                </Link>
+              </article>
+            ))}
           </div>
         </section>
 
