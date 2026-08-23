@@ -19,6 +19,7 @@ import {
   setApprovalStatus,
   updateApproval,
   updateLead,
+  addApproval,
   addContentItem,
   updateContentItem,
   subscribeCompetitors,
@@ -402,24 +403,12 @@ function DashboardInner() {
     updateSiteSettings(user.uid, activeSiteId, { [`dismissedOpportunities.${oppId}`]: true });
   }
 
-  function sendLead(id) {
-    if (!user || !activeSiteId) return;
-    updateLead(user.uid, activeSiteId, id, { status: "sent" });
-    const lead = leads.find((l) => l.id === id);
-    if (lead) {
-      addActivity(user.uid, activeSiteId, {
-        k: "lead",
-        text: `Marked outreach to ${lead.co} as sent (no email delivered)`,
-        why: lead.why,
-        result: "Marked sent",
-      });
-    }
-  }
+  // sendLead and saveLeadDraft are gone. sendLead marked a lead "sent" while
+  // delivering nothing, which was honest in its wording and confusing in
+  // practice. Outreach now goes to Approvals and is sent from there, so there
+  // is one path and it actually delivers.
   function declineLead(id) {
     if (user && activeSiteId) updateLead(user.uid, activeSiteId, id, { status: "declined" });
-  }
-  function saveLeadDraft(id, draft) {
-    if (user && activeSiteId) updateLead(user.uid, activeSiteId, id, { draft });
   }
 
   function publishContent(id) {
@@ -1061,7 +1050,28 @@ function DashboardInner() {
                 />
               )}
               {screen === "leads" && access.leads.allowed && (
-                <Leads leads={leads} onSend={sendLead} onDecline={declineLead} onSaveDraft={saveLeadDraft} />
+                <Leads
+                  leads={leads}
+                  profile={buyerProfile}
+                  onBuildProfile={buildProfile}
+                  onSaveProfile={saveProfile}
+                  onDiscover={discoverLeads}
+                  onQualify={qualifyLeads}
+                  onDraftOutreach={draftOutreach}
+                  onDecline={declineLead}
+                  busy={
+                    jobBusy === JOB_TYPES.LEAD_DISCOVER
+                      ? "discover"
+                      : jobBusy === JOB_TYPES.LEAD_QUALIFY
+                      ? "qualify"
+                      : null
+                  }
+                  buildingProfile={buildingProfile}
+                  profileError={profileError}
+                  hasCrawl={!!site?.intelligence}
+                  aiReady={ai.ready}
+                  leadSearch={site?.leadSearch || null}
+                />
               )}
               {screen === "appr" && (
                 <Approvals approvals={approvals} onApprove={approve} onDecline={decline} onEdit={editApproval} goAutonomy={() => go("aut")} />

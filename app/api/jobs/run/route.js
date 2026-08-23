@@ -16,6 +16,10 @@ const METERED = {
   [JOB_TYPES.AUDIT_SITE]: { action: "AUDIT_SITE" },
   [JOB_TYPES.COMPETITOR_SCAN]: { action: "COMPETITOR_SNAPSHOT" },
   [JOB_TYPES.AI_VISIBILITY]: { action: "VISIBILITY_CHECK", job: "visibility_answer" },
+  // Discovery is cheap and searches; qualification is the expensive half and is
+  // metered per company by the caller, which passes leadCredits.
+  [JOB_TYPES.LEAD_DISCOVER]: { action: "LEAD_DISCOVER", job: "lead_classify" },
+  [JOB_TYPES.LEAD_QUALIFY]: { action: "LEAD_ANALYSE", job: "lead_analyse" },
 };
 
 /**
@@ -65,6 +69,9 @@ export async function POST(request) {
       subscription: auth.subscription,
       action: meter.action,
       job: meter.job,
+      // One lead credit per company actually assessed — the cost driver is the
+      // company, not the job.
+      leadCredits: job.type === JOB_TYPES.LEAD_QUALIFY ? (job.params?.companies?.length || 0) : 0,
     });
     if (!gate.ok) {
       // 429 rather than 402: they have a valid plan, they've used this period's
@@ -89,7 +96,7 @@ export async function POST(request) {
   // Replace the reservation's estimate with what it actually cost. A failed job
   // refunds its credits — the customer shouldn't pay for work they didn't get.
   if (hold) {
-    const u = outcome.result?.usage || outcome.writes?.site?.aiVisibility?.usage || {};
+    const u = outcome.usage || outcome.result?.usage || outcome.writes?.site?.aiVisibility?.usage || {};
     await record(hold, {
       inputTokens: u.inputTokens || 0,
       outputTokens: u.outputTokens || 0,
