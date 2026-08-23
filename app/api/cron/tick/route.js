@@ -4,6 +4,7 @@ import { adminDb, adminAvailable } from "../../../../lib/firebaseAdmin";
 import { createJob, runJobAdmin } from "../../../../lib/jobAdmin";
 import { dueWorkFor } from "../../../../lib/scheduler";
 import { JOB_TYPES } from "../../../../lib/jobTypes";
+import { visibilityReadiness } from "../../../../lib/aiVisibilityClient";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -73,14 +74,27 @@ async function handle(request) {
     if (Date.now() - startedAt > TIME_BUDGET_MS) break;
 
     const { type } = due[0];
-    const params =
-      type === JOB_TYPES.COMPETITOR_SCAN
-        ? await loadCompetitors(db, uid, site.id)
-        : { url: site.url, ...(type === JOB_TYPES.CRAWL_SITE ? { maxPages: 20 } : {}) };
-
-    if (type === JOB_TYPES.COMPETITOR_SCAN && !params.competitors?.length) {
-      skipped.push({ site: site.url, why: "no competitors" });
-      continue;
+    let params;
+    if (type === JOB_TYPES.COMPETITOR_SCAN) {
+      params = await loadCompetitors(db, uid, site.id);
+      if (!params.competitors?.length) {
+        skipped.push({ site: site.url, why: "no competitors" });
+        continue;
+      }
+    } else if (type === JOB_TYPES.AI_VISIBILITY) {
+      // The handler derives its own questions from intelligence — no user is
+      // around to approve a set on a scheduled run.
+      params = {
+        domain: site.intelligence?.domain || null,
+        brandName: site.intelligence?.business?.name || null,
+        intel: site.intelligence || null,
+      };
+      if (!visibilityReadiness(site.intelligence).ready) {
+        skipped.push({ site: site.url, why: "not enough crawl data for visibility" });
+        continue;
+      }
+    } else {
+      params = { url: site.url, ...(type === JOB_TYPES.CRAWL_SITE ? { maxPages: 20 } : {}) };
     }
 
     try {

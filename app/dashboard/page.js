@@ -593,6 +593,62 @@ function DashboardInner() {
       competitors: competitors.map((c) => ({ id: c.id, url: c.url, snapshot: c.snapshot || null })),
     });
 
+  // Two steps on purpose: working out the questions is cheap, answering them
+  // with live web search is not. The user sees and approves the questions
+  // before anything expensive runs.
+  const [visQuestions, setVisQuestions] = useState(null);
+  const [visPlanning, setVisPlanning] = useState(false);
+  const [visError, setVisError] = useState(null);
+
+  // A different site's questions must not linger on screen.
+  useEffect(() => {
+    setVisQuestions(null);
+    setVisError(null);
+  }, [activeSiteId]);
+
+  async function planVisibility() {
+    if (!user || !site?.intelligence) return;
+    setVisPlanning(true);
+    setVisError(null);
+    try {
+      const idToken = await user.getIdToken();
+      const res = await fetch("/api/visibility/questions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken, intel: site.intelligence }),
+      });
+      const data = await res.json();
+      if (data.ok) setVisQuestions(data);
+      else setVisError(data.error || "Couldn't work out the questions.");
+    } catch (err) {
+      setVisError(String(err?.message || err));
+    } finally {
+      setVisPlanning(false);
+    }
+  }
+
+  async function runVisibilityCheck() {
+    if (!site || !visQuestions?.questions?.length) return;
+    await startJob(JOB_TYPES.AI_VISIBILITY, {
+      domain: site.intelligence?.domain || insights.domain,
+      brandName: site.intelligence?.business?.name || null,
+      questions: visQuestions.questions,
+    });
+    // Drop the approved set so the primary button can't fire a second paid run
+    // on a stray click.
+    setVisQuestions(null);
+  }
+
+  async function toggleAutoVisibility(next) {
+    if (!user || !activeSiteId) return;
+    try {
+      await updateSiteSettings(user.uid, activeSiteId, { autoVisibility: next });
+      setToast(next ? "MADBOT will re-check this weekly." : "Weekly re-checks turned off.");
+    } catch (err) {
+      setToast(String(err?.message || err));
+    }
+  }
+
   async function handleSignOut() {
     setSigningOut(true);
     await logOut();
@@ -861,7 +917,22 @@ function DashboardInner() {
               {screen === "appr" && (
                 <Approvals approvals={approvals} onApprove={approve} onDecline={decline} onEdit={editApproval} goAutonomy={() => go("aut")} />
               )}
-              {screen === "vis" && <Visibility domain={insights.domain} />}
+              {screen === "vis" && (
+                <Visibility
+                  domain={insights.domain}
+                  visibility={site?.aiVisibility || null}
+                  plan={visQuestions}
+                  planning={visPlanning}
+                  planError={visError}
+                  onPlan={planVisibility}
+                  onRunCheck={runVisibilityCheck}
+                  running={jobBusy === JOB_TYPES.AI_VISIBILITY}
+                  writingEnabled={writingEnabled}
+                  hasCrawl={!!site?.intelligence}
+                  autoOn={!!site?.autoVisibility}
+                  onToggleAuto={toggleAutoVisibility}
+                />
+              )}
               {screen === "aut" && (
                 <Autonomy
                   aut={aut}

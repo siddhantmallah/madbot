@@ -128,12 +128,15 @@ function LoginInner() {
           <MadbotMark size={30} />
           <span style={{ fontFamily: "var(--font-body)", fontWeight: 400, fontSize: 22, letterSpacing: "-.005em", color: "#fff" }}>madbot</span>
         </Link>
-        <div style={{ position: "relative", maxWidth: "26em", animation: "fadeUp .7s cubic-bezier(.22,.75,.3,1) both" }}>
-          <h2 style={{ margin: "0 0 12px", fontSize: 34, lineHeight: 1.1 }}>It keeps working while you're away.</h2>
-          <p style={{ margin: "0 0 22px", fontSize: 15, lineHeight: 1.6, color: "rgba(255,255,255,.78)" }}>
+        {/* The text column stays narrow for readability; the pill is a UI
+            element, not body copy, so it gets room for its longest line rather
+            than truncating one mid-sentence. */}
+        <div style={{ position: "relative", maxWidth: "34em", animation: "fadeUp .7s cubic-bezier(.22,.75,.3,1) both" }}>
+          <h2 style={{ margin: "0 0 12px", maxWidth: "22em", fontSize: 34, lineHeight: 1.1 }}>It keeps working while you&apos;re away.</h2>
+          <p style={{ margin: "0 0 22px", maxWidth: "26em", fontSize: 15, lineHeight: 1.6, color: "rgba(255,255,255,.78)" }}>
             Connect a site once. From then on, this is what a normal week looks like.
           </p>
-          <div style={{ display: "flex", alignItems: "center", gap: 11, padding: "12px 16px", border: "1px solid var(--color-divider)", borderRadius: 999, background: "rgba(10,8,16,.72)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 11, width: "max-content", maxWidth: "100%", padding: "12px 16px", border: "1px solid var(--color-divider)", borderRadius: 999, background: "rgba(10,8,16,.72)" }}>
             <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--color-accent)", flex: "none", animation: "softPulse 2.4s ease-in-out infinite" }} />
             <span style={{ fontSize: 12.5, color: "rgba(255,255,255,.55)", flex: "none" }}>For example</span>
             <span key={tick} style={{ fontSize: 13, color: "rgba(255,255,255,.82)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", animation: "revealFade .45s ease" }}>
