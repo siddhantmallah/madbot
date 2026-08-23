@@ -21,6 +21,8 @@ export default function Visibility({
   hasCrawl,
   autoOn,
   onToggleAuto,
+  aiState,
+  aiMessage,
 }) {
   const v = visibility;
   const pct = v ? Math.round(v.mentionRate * 100) : null;
@@ -54,10 +56,12 @@ export default function Visibility({
 
       {!writingEnabled ? (
         <div className="card" style={{ padding: "13px 16px", gap: 4, border: "1px dashed var(--color-accent-400)", background: "var(--color-accent-100)" }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--color-accent-800)" }}>Needs an API key to measure</div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--color-accent-800)" }}>
+            {aiState === "rejected" ? "The AI key is being rejected" : "Needs an API key to measure"}
+          </div>
           <div style={{ fontSize: 12.5, lineHeight: 1.55, color: "var(--color-accent-900)" }}>
-            Measuring this means actually asking an assistant your buyers&apos; questions and reading the answer. That
-            needs an Anthropic API key set on the server.
+            {aiMessage ||
+              "Measuring this means actually asking an assistant your buyers' questions and reading the answer. That needs an Anthropic API key set on the server."}
           </div>
         </div>
       ) : !hasCrawl ? (

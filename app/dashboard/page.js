@@ -13,6 +13,7 @@ import {
   updateSiteSettings,
   subscribeSubscription,
   subscribeBilling,
+  subscribeUsage,
   addActivity,
   setActivityUndone,
   setApprovalStatus,
@@ -237,6 +238,17 @@ function DashboardInner() {
     };
   }, [user]);
 
+  // What this site has actually spent this month, so the allowance isn't a
+  // number that only exists on the pricing page.
+  const [usageNow, setUsageNow] = useState(null);
+  useEffect(() => {
+    if (!user || !activeSiteId) {
+      setUsageNow(null);
+      return undefined;
+    }
+    return subscribeUsage(user.uid, activeSiteId, setUsageNow);
+  }, [user, activeSiteId]);
+
   const siteCount = (sites || []).length;
   const usage = useMemo(() => usageSummary(subscription, { siteCount }), [subscription, siteCount]);
   const canAddSite = useMemo(() => siteAccess(subscription, siteCount), [subscription, siteCount]);
@@ -428,19 +440,24 @@ function DashboardInner() {
       rewriteCount: nextCount,
     });
   }
-  // Whether the server actually has a key, asked once rather than assumed.
-  const [writingEnabled, setWritingEnabled] = useState(false);
+  // Whether the model features can actually run — probed, not assumed. A key
+  // that exists but has been disabled or revoked used to report as ready, so
+  // every button was enabled and every click failed with an uninterpretable 401.
+  const [ai, setAi] = useState({ state: "checking", ready: false, message: null });
+  const writingEnabled = ai.ready;
   const [writingId, setWritingId] = useState(null);
   const [writeError, setWriteError] = useState("");
 
   useEffect(() => {
     let alive = true;
-    fetch("/api/generate-content")
+    fetch("/api/ai-status")
       .then((r) => r.json())
       .then((d) => {
-        if (alive) setWritingEnabled(!!d.configured);
+        if (alive) setAi(d);
       })
-      .catch(() => {});
+      .catch(() => {
+        if (alive) setAi({ state: "unreachable", ready: false, message: "Couldn't check whether AI features are available." });
+      });
     return () => {
       alive = false;
     };
@@ -893,6 +910,16 @@ function DashboardInner() {
               : usage.plan.name}
           </button>
 
+          {!ai.ready && ai.state !== "checking" ? (
+            <span
+              className="tag"
+              title={ai.message || ""}
+              style={{ fontSize: 10.5, background: "var(--color-accent-100)", color: "var(--color-accent-800)" }}
+            >
+              {ai.state === "absent" ? "AI off" : ai.state === "rejected" ? "AI key rejected" : "AI unavailable"}
+            </span>
+          ) : null}
+
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
             <ThemeToggle compact />
             {site ? (
@@ -1053,6 +1080,8 @@ function DashboardInner() {
                   running={jobBusy === JOB_TYPES.AI_VISIBILITY}
                   writingEnabled={writingEnabled}
                   hasCrawl={!!site?.intelligence}
+                  aiState={ai.state}
+                  aiMessage={ai.message}
                   autoOn={!!site?.autoVisibility}
                   onToggleAuto={toggleAutoVisibility}
                 />
@@ -1084,7 +1113,7 @@ function DashboardInner() {
                 />
               )}
               {screen === "log" && <ActivityLog feedAll={activity} onToggleUndo={toggleUndo} />}
-              {screen === "billing" && <Billing usage={usage} billing={billing} siteCount={siteCount} />}
+              {screen === "billing" && <Billing usage={usage} billing={billing} siteCount={siteCount} metered={usageNow} />}
             </>
           ) : (
             <div className="text-muted" style={{ fontSize: 14 }}>Connect a site to get started.</div>

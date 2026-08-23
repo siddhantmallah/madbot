@@ -1,5 +1,6 @@
 import { PLANS, PLAN_ORDER, autonomyLabel, featuresLostOnDowngrade, FEATURE_LABELS } from "../../../lib/plans";
 import { CONTACT_EMAIL } from "../../../lib/contact";
+import { describeUsage } from "../../../lib/credits";
 
 function money(minor, currency) {
   if (minor === null || minor === undefined) return "—";
@@ -13,7 +14,7 @@ function when(ts) {
   return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
 }
 
-export default function Billing({ usage, billing = [], siteCount }) {
+export default function Billing({ usage, billing = [], siteCount, metered }) {
   const {
     plan,
     status,
@@ -86,6 +87,67 @@ export default function Billing({ usage, billing = [], siteCount }) {
           <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6 }}>
             Your sites and everything MADBOT found are still here. Audits and the opportunity map keep working;
             writing, lead discovery and AI visibility need a plan.
+          </p>
+        </section>
+      ) : null}
+
+      {/* What's actually been used this month. The allowances mean nothing to a
+          customer who can't see their own consumption until they hit a wall. */}
+      {metered ? (
+        <section className="card elev-sm" style={{ padding: 20, gap: 13 }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 9, flexWrap: "wrap" }}>
+            <h4 style={{ margin: 0 }}>This month on this site</h4>
+            <span className="text-muted" style={{ fontSize: 12, marginLeft: "auto" }}>{metered.period}</span>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
+            {[
+              { label: "Autonomous actions", used: metered.credits || 0, allowance: plan.credits },
+              { label: "Lead credits", used: metered.leadCredits || 0, allowance: plan.leadCredits },
+              { label: "Content pieces", used: metered.contentPieces || 0, allowance: plan.contentPieces },
+              { label: "Outreach emails", used: metered.emails || 0, allowance: plan.emails },
+            ].map((row) => {
+              const d = describeUsage({ used: row.used, allowance: row.allowance });
+              return (
+                <div key={row.label} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 8, fontSize: 13 }}>
+                    <span style={{ flex: 1 }}>{row.label}</span>
+                    <span
+                      style={{
+                        fontVariantNumeric: "tabular-nums",
+                        color: d.exhausted ? "var(--color-accent-800)" : d.nearlyOut ? "var(--color-accent-700)" : undefined,
+                        fontWeight: d.exhausted || d.nearlyOut ? 700 : 400,
+                      }}
+                    >
+                      {d.text}
+                    </span>
+                  </div>
+                  <span style={{ height: 6, borderRadius: 999, background: "var(--color-neutral-200)", overflow: "hidden" }}>
+                    <span
+                      style={{
+                        display: "block",
+                        height: 6,
+                        width: `${d.pct}%`,
+                        borderRadius: 999,
+                        background: d.exhausted
+                          ? "var(--color-accent-400)"
+                          : d.nearlyOut
+                          ? "var(--color-accent)"
+                          : "var(--color-accent-2-500)",
+                      }}
+                    />
+                  </span>
+                  {d.exhausted && row.allowance ? (
+                    <span style={{ fontSize: 11.5, color: "var(--color-accent-800)" }}>
+                      Used up. MADBOT has paused this kind of work until next month, or top up to carry on.
+                    </span>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+          <p style={{ margin: 0, fontSize: 11.5, lineHeight: 1.5 }} className="text-muted">
+            An action is one piece of work MADBOT does on its own. Bigger jobs use more than one, because they cost
+            more to run — a full AI visibility check is the most expensive single thing it does.
           </p>
         </section>
       ) : null}
