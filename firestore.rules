@@ -69,6 +69,14 @@ service cloud.firestore {
           allow read: if isOwner(uid);
           allow write: if false;
         }
+
+        // GitHub connection. Server-only in both directions — the token is a
+        // real credential, and unlike a plan or a usage counter there is no
+        // safe partial view of it to hand the client. The repo name and
+        // connection status the UI needs come back from the API route instead.
+        match /integrations/{provider} {
+          allow read, write: if false;
+        }
       }
     }
 

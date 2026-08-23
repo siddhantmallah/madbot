@@ -411,6 +411,8 @@ function DashboardInner() {
     if (user && activeSiteId) updateLead(user.uid, activeSiteId, id, { status: "declined" });
   }
 
+  // No GitHub repo connected: publishing is honestly just a status flag, and
+  // says so. Once a repo is connected, publishGithub takes over below.
   function publishContent(id) {
     if (!user || !activeSiteId) return;
     updateContentItem(user.uid, activeSiteId, id, { status: "published" });
@@ -422,6 +424,99 @@ function DashboardInner() {
         why: "You approved this piece",
         result: "Marked published",
       });
+    }
+  }
+
+  // ---- publish by GitHub PR ----
+  const [github, setGithub] = useState({ checked: false, connected: false, repo: null });
+  const [connectingGithub, setConnectingGithub] = useState(false);
+  const [githubError, setGithubError] = useState("");
+  const [publishingId, setPublishingId] = useState(null);
+
+  useEffect(() => {
+    let alive = true;
+    if (!user || !activeSiteId) {
+      setGithub({ checked: false, connected: false, repo: null });
+      return undefined;
+    }
+    user.getIdToken().then((idToken) =>
+      fetch(`/api/integrations/github?siteId=${activeSiteId}`, { headers: { "x-id-token": idToken } })
+        .then((r) => r.json())
+        .then((d) => {
+          if (alive) setGithub({ checked: true, connected: !!d.connected, repo: d.repo || null, defaultBranch: d.defaultBranch || null });
+        })
+        .catch(() => {
+          if (alive) setGithub({ checked: true, connected: false, repo: null });
+        })
+    );
+    return () => {
+      alive = false;
+    };
+  }, [user, activeSiteId]);
+
+  async function connectGithub({ token, repo, contentPath }) {
+    if (!user || !activeSiteId) return;
+    setConnectingGithub(true);
+    setGithubError("");
+    try {
+      const idToken = await user.getIdToken();
+      const res = await fetch("/api/integrations/github", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken, siteId: activeSiteId, token, repo, contentPath: contentPath || null }),
+      });
+      const data = await res.json();
+      if (!data.ok) {
+        setGithubError(data.error || "Couldn't connect that repository.");
+        return;
+      }
+      setGithub({ checked: true, connected: true, repo: data.repo, defaultBranch: data.defaultBranch });
+      setToast(`Connected to ${data.repo}. Publishing opens a pull request there.`);
+    } catch (err) {
+      setGithubError(String(err?.message || err));
+    } finally {
+      setConnectingGithub(false);
+    }
+  }
+
+  async function disconnectGithub() {
+    if (!user || !activeSiteId) return;
+    const idToken = await user.getIdToken();
+    await fetch("/api/integrations/github", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ idToken, siteId: activeSiteId }),
+    });
+    setGithub({ checked: true, connected: false, repo: null });
+  }
+
+  async function publishViaGithub(id) {
+    if (!user || !activeSiteId) return;
+    setPublishingId(id);
+    try {
+      const idToken = await user.getIdToken();
+      const res = await fetch("/api/publish/github", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken, siteId: activeSiteId, contentId: id }),
+      });
+      const data = await res.json();
+      if (!data.ok) {
+        setToast(data.error || "Couldn't open a pull request.");
+        return;
+      }
+      const item = content.find((c) => c.id === id);
+      await addActivity(user.uid, activeSiteId, {
+        k: "content",
+        text: `Opened a pull request for "${item?.title || "a piece"}"`,
+        why: "Publishing is by pull request, so nothing goes live without a review",
+        result: `PR #${data.prNumber}`,
+      });
+      setToast(`Pull request opened — nothing is live until it's merged.`);
+    } catch (err) {
+      setToast(String(err?.message || err));
+    } finally {
+      setPublishingId(null);
     }
   }
   function rewriteContent(id) {
@@ -468,6 +563,7 @@ function DashboardInner() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           idToken,
+          siteId: activeSiteId,
           item: { title: item.title, kind: item.kind, angle: item.angle || null },
           site: {
             name: insights?.name,
@@ -475,7 +571,10 @@ function DashboardInner() {
             description: site.description || "",
             rules,
             voice,
-            findings: site.audit?.findings || [],
+            // Real pages for the pipeline's internal-linking stage. Without
+            // these it can only invent plausible-looking paths, which the
+            // pipeline itself then strips — better to give it the real list.
+            pages: site.intelligence?.structure?.topPages || [],
           },
         }),
       });
@@ -486,18 +585,33 @@ function DashboardInner() {
       }
       await updateContentItem(user.uid, activeSiteId, item.id, {
         article: data.article,
+        title: data.title || item.title,
+        description: data.description || null,
         words: data.words,
-        model: data.model,
+        faqs: data.faqs || [],
+        schema: data.schema || null,
+        internalLinks: data.internalLinks || [],
+        sources: data.sources || [],
+        factCheck: data.factCheck || null,
+        // A piece with unsupported claims doesn't publish with one click —
+        // Content.js gates the publish button on this.
+        publishable: !!data.publishable,
+        needsReview: !!data.needsReview,
         writtenAt: new Date(),
       });
+      const flagged = data.factCheck?.unsupportedCount || 0;
       await addActivity(user.uid, activeSiteId, {
         k: "content",
-        text: `Wrote "${item.title}" — ${data.words} words`,
-        why: item.angle ? `Your angle: ${item.angle}` : `Drafted as a ${item.kind} piece`,
-        result: "Drafted",
+        text: `Wrote "${data.title || item.title}" — ${data.words} words`,
+        why: item.angle ? `Your angle: ${item.angle}` : `Researched, drafted and fact-checked as a ${item.kind} piece`,
+        result: flagged ? `${flagged} claim${flagged === 1 ? "" : "s"} need review` : "Drafted, all claims checked",
         undo: true,
       });
-      setToast(`"${item.title}" drafted — ${data.words} words.`);
+      setToast(
+        flagged
+          ? `"${data.title || item.title}" drafted — ${data.words} words, ${flagged} claim${flagged === 1 ? "" : "s"} to check before publishing.`
+          : `"${data.title || item.title}" drafted — ${data.words} words, every claim checked.`
+      );
     } catch (err) {
       setWriteError(err?.message || "Writing failed.");
     } finally {
@@ -1111,6 +1225,13 @@ function DashboardInner() {
                   writingId={writingId}
                   writingEnabled={writingEnabled}
                   writeError={writeError}
+                  github={github}
+                  onConnectGithub={connectGithub}
+                  onDisconnectGithub={disconnectGithub}
+                  connectingGithub={connectingGithub}
+                  githubError={githubError}
+                  onPublishViaGithub={publishViaGithub}
+                  publishingId={publishingId}
                 />
               )}
               {screen === "leads" && !access.leads.allowed && (
