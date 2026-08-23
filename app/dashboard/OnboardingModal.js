@@ -157,7 +157,7 @@ export default function OnboardingModal({ uid, canSkip, initialUrl, onClose, onF
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <h4 style={{ margin: 0 }}>Here&apos;s what I&apos;ll start looking for</h4>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4,minmax(0,1fr))", gap: 12 }}>
+              <div className="grid-4" style={{ gap: 12 }}>
                 {[
                   "Keywords you should own and don't",
                   "Technical issues costing you rank",
@@ -186,7 +186,7 @@ export default function OnboardingModal({ uid, canSkip, initialUrl, onClose, onF
               <h2 style={{ margin: "0 0 5px", fontSize: 36 }}>Last question. How much rope?</h2>
               <p className="text-muted" style={{ margin: 0, fontSize: 14.5 }}>You can change this at any moment, and it&apos;s the only setting that really matters.</p>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4,minmax(0,1fr))", gap: 12, width: "100%" }}>
+            <div className="grid-4" style={{ gap: 12, width: "100%" }}>
               {[
                 { v: 10, label: "Watch", desc: "I look, I report, I touch nothing." },
                 { v: 40, label: "Suggest", desc: "A plan every morning. You press the buttons." },

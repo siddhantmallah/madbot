@@ -66,7 +66,7 @@ export default function Approvals({ approvals, onApprove, onDecline, onEdit, goA
                 />
               </div>
             ) : (
-              <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 208px", gap: 18, alignItems: "start" }}>
+              <div className="split-side" style={{ "--side": "208px", gap: 18, alignItems: "start" }}>
                 <div>
                   <h4 style={{ margin: "0 0 5px" }}>{a.title}</h4>
                   <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6 }} className="text-muted">{a.body}</p>

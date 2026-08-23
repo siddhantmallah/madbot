@@ -36,12 +36,16 @@
 html{scroll-behavior:smooth}
 body{margin:0;background:var(--color-bg);color:#fff;font-family:var(--font-body);font-size:15px;line-height:1.55;font-weight:400}
 h1,h2,h3,h4,h5,h6{font-family:var(--font-heading);font-weight:var(--font-heading-weight);line-height:1.12;letter-spacing:-0.015em;margin:0 0 var(--space-2)}
-h1{font-size:42px}
-h2{font-size:32px}
-h3{font-size:25px}
-h4{font-size:20px}
+/* Fluid, so a display heading can't push a phone into sideways scroll. The
+   upper bound of each clamp is the size the desktop design was built at. */
+h1{font-size:clamp(30px,7.4vw,42px)}
+h2{font-size:clamp(23px,5.4vw,32px)}
+h3{font-size:clamp(20px,4.2vw,25px)}
+h4{font-size:clamp(17px,3.2vw,20px)}
 h5{font-size:16px}
 h6{font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+/* Long display words ("marketing.") would otherwise overflow a narrow screen. */
+h1,h2,h3{overflow-wrap:break-word;text-wrap:balance}
 p{margin:0 0 var(--space-3)}
 a{color:var(--color-accent-700);text-underline-offset:3px}
 a:hover{color:var(--color-accent-800)}
@@ -155,4 +159,132 @@ textarea.input{min-height:90px;resize:vertical;border-radius:var(--radius-md)}
 
 @media (prefers-reduced-motion: reduce){
   .reveal,.reveal-fade{transition:none;opacity:1;transform:none}
+}
+
+/* ===========================================================================
+   Responsive layout
+   ---------------------------------------------------------------------------
+   The app is built with inline styles, which cannot hold a media query — which
+   is why nothing responded before. Every multi-column grid now uses one of
+   these classes instead of an inline gridTemplateColumns, so the breakpoints
+   live in one place.
+
+   Breakpoints: 1080px side panels drop under the main column, 900px major
+   splits stack, 640px everything is one column and padding tightens.
+   =========================================================================== */
+
+.grid   { display: grid; }
+
+/* Equal halves — stat pairs, side-by-side cards. */
+.grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+/* Three across — pricing, feature rows. */
+.grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+/* Four across — step rows, metric strips. */
+.grid-4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+/* Main column with a fixed-width companion panel. The width comes from a
+   custom property so each screen keeps the panel size it was designed with. */
+.split-side { display: grid; grid-template-columns: minmax(0, 1fr) var(--side, 342px); }
+/* Two fluid columns of deliberately unequal weight. */
+.split-2 { display: grid; grid-template-columns: minmax(0, var(--l, 1fr)) minmax(0, var(--r, 1fr)); }
+
+@media (max-width: 1080px) {
+  .split-side { grid-template-columns: minmax(0, 1fr); }
+  /* A sticky sidebar that has become a full-width block must stop sticking. */
+  .split-side > aside { position: static !important; }
+}
+
+@media (max-width: 900px) {
+  .grid-3, .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .split-2 { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 640px) {
+  .grid-2, .grid-3, .grid-4 { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Wide content that must never widen the page: it scrolls inside itself. */
+.scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+/* ---- the landing and auth splits ---- */
+/* Hero and the auth page both pair copy with a visual. Below 900px the visual
+   goes under the copy rather than being squeezed to nothing. */
+.split-hero { display: grid; grid-template-columns: minmax(0, 1.02fr) minmax(0, .88fr); }
+.split-auth { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); }
+
+@media (max-width: 900px) {
+  .split-hero { grid-template-columns: minmax(0, 1fr); }
+  .split-auth { grid-template-columns: minmax(0, 1fr); }
+  /* The auth page's decorative panel earns its space on a desktop and not on a
+     phone, where it would push the form below the fold. */
+  /* Inline display:flex on these elements outranks the stylesheet, so the
+     override has to be marked important. */
+  .split-auth > .auth-aside { display: none !important; }
+}
+
+/* ---- the dashboard shell ---- */
+.shell { display: grid; grid-template-columns: 236px 1fr; }
+
+@media (max-width: 900px) {
+  .shell { grid-template-columns: minmax(0, 1fr); }
+  /* Nav becomes a horizontally scrolling strip along the top rather than a
+     column eating half a phone screen. */
+  .shell > .shell-nav {
+    position: static !important;
+    height: auto !important;
+    border-right: 0 !important;
+    border-bottom: 1px solid var(--color-divider);
+  }
+  .shell-nav .nav-links {
+    flex-direction: row !important;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+  }
+  .shell-nav .nav-links::-webkit-scrollbar { display: none; }
+  .shell-nav .nav-links > button { flex: 0 0 auto; }
+  /* Sidebar furniture that only makes sense in a tall column. */
+  .shell-nav .nav-aside { display: none !important; }
+}
+
+/* ---- the opportunity graph ----
+   It is absolutely positioned inside a 940x600 canvas, so it cannot reflow.
+   On a narrow screen it scrolls sideways within its own frame instead. */
+@media (max-width: 940px) {
+  .graph-frame { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+  .graph-canvas { min-width: 940px; }
+}
+
+@media (max-width: 640px) {
+  .pad-responsive { padding-left: 16px !important; padding-right: 16px !important; }
+}
+
+/* Footer: a wide brand column then three link columns. Two columns on a
+   tablet, one on a phone — link lists are unusable at 80px wide. */
+.footer-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) repeat(3, minmax(0, 1fr)); }
+@media (max-width: 900px) { .footer-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .footer-grid { grid-template-columns: minmax(0, 1fr); } }
+
+@media (max-width: 900px) {
+  /* The desktop shell is a fixed-height app frame. On a phone the page has to
+     scroll normally, or content below the fold is unreachable. */
+  .shell { height: auto !important; min-height: 100vh; overflow: visible !important; }
+  .shell > main { overflow: visible !important; }
+}
+
+/* A week is seven days on any screen, so the calendar keeps its columns and
+   scrolls sideways rather than squeezing each day to an unreadable sliver. */
+.cal-7 { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+@media (max-width: 760px) {
+  .cal-7 { grid-template-columns: repeat(7, minmax(96px, 1fr)); overflow-x: auto; -webkit-overflow-scrolling: touch; }
+}
+
+/* Header on a phone: the section links are in-page anchors on a single
+   scrolling page, so they're a convenience. The sign-in button is not — it was
+   being pushed off a 360px screen entirely, unreachable. Links go, CTA stays. */
+@media (max-width: 860px) {
+  .nav { gap: 12px; min-width: 0; }
+  .nav > a:not(.btn) { display: none; }
+  .nav-brand span { font-size: 19px; }
 }

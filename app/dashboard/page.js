@@ -760,8 +760,8 @@ function DashboardInner() {
   const displayName = user.displayName || user.email || "you";
 
   return (
-    <div style={{ height: "100vh", display: "grid", gridTemplateColumns: "236px 1fr", fontSize: 15, color: "var(--color-text)", background: "var(--color-bg)", overflow: "hidden" }}>
-      <aside style={{ background: "var(--color-surface)", padding: "18px 14px 14px", display: "flex", flexDirection: "column", gap: 16, borderRight: "1px solid var(--color-divider)", overflow: "auto" }}>
+    <div className="shell" style={{ height: "100vh", fontSize: 15, color: "var(--color-text)", background: "var(--color-bg)", overflow: "hidden" }}>
+      <aside className="shell-nav" style={{ background: "var(--color-surface)", padding: "18px 14px 14px", display: "flex", flexDirection: "column", gap: 16, borderRight: "1px solid var(--color-divider)", overflow: "auto" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "0 6px" }}>
           <MadbotMark size={29} />
           <span style={{ fontFamily: "var(--font-body)", fontWeight: 400, fontSize: 21, letterSpacing: "-.005em", color: "#fff" }}>madbot</span>
@@ -803,7 +803,7 @@ function DashboardInner() {
           ) : null}
         </div>
 
-        <nav style={{ display: "flex", flexDirection: "column", gap: 2 }} aria-label="Sections">
+        <nav className="nav-links" style={{ display: "flex", flexDirection: "column", gap: 2 }} aria-label="Sections">
           <NavButton label="Growth" active={screen === "growth"} onClick={() => go("growth")} />
           <NavButton label="Opportunities" active={screen === "opps"} onClick={() => go("opps")} />
           <NavButton label="Content" active={screen === "content"} onClick={() => go("content")} />
@@ -816,7 +816,7 @@ function DashboardInner() {
           <NavButton label="Billing" active={screen === "billing"} onClick={() => go("billing")} />
         </nav>
 
-        <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
+        <div className="nav-aside" style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
           <button
             onClick={() => go("aut")}
             style={{ border: 0, cursor: "pointer", textAlign: "left", background: "var(--color-accent-2-100)", borderRadius: 26, padding: 14, fontFamily: "var(--font-body)" }}

@@ -90,7 +90,7 @@ export default function Billing({ usage, billing = [], siteCount }) {
         </section>
       ) : null}
 
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 16 }}>
+      <div className="split-2" style={{ gap: 16 }}>
         <section className="card elev-sm" style={{ padding: 20, gap: 12 }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 9, flexWrap: "wrap" }}>
             <h3 style={{ margin: 0, fontSize: 22 }}>{plan.name}</h3>

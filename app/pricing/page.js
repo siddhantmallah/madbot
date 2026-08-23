@@ -59,7 +59,7 @@ export default function PricingPage() {
 
       <main style={{ maxWidth: 1180, margin: "0 auto", padding: "62px 28px 90px" }}>
         <div style={{ textAlign: "center", marginBottom: 40 }}>
-          <h1 style={{ margin: "0 0 12px", fontSize: 50, lineHeight: 1.06 }}>Pay for the work, not the seats</h1>
+          <h1 style={{ margin: "0 0 12px", fontSize: "clamp(24px,9.3vw,50px)", lineHeight: 1.06 }}>Pay for the work, not the seats</h1>
           <p style={{ margin: "0 auto 24px", fontSize: 17, maxWidth: "34em", color: "rgba(255,255,255,.62)" }}>
             Every plan includes the whole engine. What changes is how much it&apos;s allowed to do each month, and how
             many sites it looks after.
@@ -96,7 +96,7 @@ export default function PricingPage() {
                 ) : null}
               </div>
               <p style={{ margin: 0 }}>
-                <span style={{ fontFamily: "var(--font-heading)", fontSize: 42 }}>${priceOf(p)}</span>
+                <span style={{ fontFamily: "var(--font-heading)", fontSize: "clamp(24px,7.8vw,42px)" }}>${priceOf(p)}</span>
                 <span style={{ fontSize: 14, color: "rgba(255,255,255,.5)" }}>{annual ? " /yr" : " /mo"}</span>
               </p>
               <p style={{ margin: 0, fontSize: 14, lineHeight: 1.55, color: "rgba(255,255,255,.62)" }}>{p.tagline}</p>

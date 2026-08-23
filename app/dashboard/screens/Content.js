@@ -184,7 +184,7 @@ export default function Content({
           </div>
         </div>
       )}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7,minmax(0,1fr))", gap: 10 }}>
+      <div className="cal-7" style={{ gap: 10 }}>
         {byDay.map((d) => (
           <div key={d.name} style={{ display: "flex", flexDirection: "column", gap: 8, minHeight: 270, background: d.items.length ? "var(--color-neutral-100)" : "transparent", border: "1px solid var(--color-divider)", borderRadius: 24, padding: "12px 10px" }}>
             <div style={{ display: "flex", alignItems: "baseline", gap: 6, padding: "0 4px" }}>
@@ -223,7 +223,7 @@ export default function Content({
       </div>
 
       {selected ? (
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.2fr) minmax(0,1fr)", gap: 16 }}>
+        <div className="split-2" style={{ "--l": "1.2fr", gap: 16 }}>
           <section className="card elev-sm" style={{ padding: 20, gap: 10 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap" }}>
               <span className="tag tag-accent">

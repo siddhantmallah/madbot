@@ -59,7 +59,7 @@ export default function Leads({ leads, onSend, onDecline, onSaveDraft }) {
           delivered</strong> — the buttons below only move a card&apos;s status in your own dashboard.
         </div>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.35fr) minmax(0,1fr)", gap: 16, alignItems: "start" }}>
+      <div className="split-2" style={{ "--l": "1.35fr", gap: 16, alignItems: "start" }}>
         <div className="card" style={{ padding: 8, background: "var(--color-neutral-100)" }}>
           <table className="table">
             <thead>

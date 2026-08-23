@@ -54,14 +54,14 @@ export default function Growth({
       </div>
 
       {/* Real counts, straight out of Firestore — nothing modelled or estimated. */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,minmax(0,1fr))", gap: 14 }}>
+      <div className="grid-4" style={{ gap: 14 }}>
         <StatCard kicker="Actions logged" value={activity.length} meta="every one reversible" />
         <StatCard kicker="Content" value={drafted + published} meta={`${drafted} draft${drafted === 1 ? "" : "s"} · ${published} published`} />
         <StatCard kicker="Prospects found" value={leads.length} meta={`${queuedLeads} queued · ${sentLeads} marked sent`} />
         <StatCard kicker="Waiting on you" value={pendingCount} meta={`of ${approvals.length} total in the queue`} />
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.4fr) minmax(0,1fr)", gap: 16, alignItems: "start" }}>
+      <div className="split-2" style={{ "--l": "1.4fr", gap: 16, alignItems: "start" }}>
         <section className="card" style={{ padding: 18, gap: 12, background: "var(--color-neutral-100)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <h4 style={{ margin: 0 }}>Live engine feed</h4>

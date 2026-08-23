@@ -43,7 +43,7 @@ export default function Autonomy({ aut, setAut, onCommitAut, thr, setThr, onComm
   }
 
   return (
-    <section data-screen-label="Autonomy" style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 348px", gap: 24, alignItems: "start" }}>
+    <section data-screen-label="Autonomy" className="split-side" style={{ "--side": "348px", gap: 24, alignItems: "start" }}>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
         <h2 style={{ margin: 0, textAlign: "center" }}>How much rope do I get?</h2>
         <p className="text-muted" style={{ fontSize: 13.5, margin: "0 0 4px", textAlign: "center", maxWidth: 440 }}>

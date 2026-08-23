@@ -51,7 +51,7 @@ export default function Opportunities({
   const criticals = plays.filter((p) => p.severity === "critical").length;
 
   return (
-    <section data-screen-label="Opportunities" style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 342px", gap: 20, alignItems: "start" }}>
+    <section data-screen-label="Opportunities" className="split-side" style={{ "--side": "342px", gap: 20, alignItems: "start" }}>
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <div style={{ display: "flex", alignItems: "flex-end", gap: 12, flexWrap: "wrap" }}>
           <div>
@@ -88,8 +88,11 @@ export default function Opportunities({
           </div>
         </div>
 
-        <div style={{ position: "relative", height: 600, borderRadius: 34, overflow: "hidden", background: "radial-gradient(85% 78% at 34% 24%, var(--color-accent-2-100) 0%, var(--color-bg) 62%)", border: "1px solid var(--color-divider)" }}>
-          <div style={{ position: "absolute", inset: 0, transform: `scale(${zoom})`, transition: "transform .35s cubic-bezier(.2,.8,.2,1)" }}>
+        {/* The bubbles are absolutely positioned around a fixed 470,300 centre, so
+            this cannot reflow. On a narrow screen it scrolls inside its own frame
+            instead of widening the page. */}
+        <div className="graph-frame" style={{ position: "relative", height: 600, borderRadius: 34, overflow: "hidden", background: "radial-gradient(85% 78% at 34% 24%, var(--color-accent-2-100) 0%, var(--color-bg) 62%)", border: "1px solid var(--color-divider)" }}>
+          <div className="graph-canvas" style={{ position: "absolute", inset: 0, transform: `scale(${zoom})`, transition: "transform .35s cubic-bezier(.2,.8,.2,1)" }}>
             {[540, 360, 180].map((s) => (
               <div key={s} style={{ position: "absolute", left: 470, top: 300, width: s, height: s, borderRadius: "50%", border: "1px dashed var(--color-neutral-300)", transform: "translate(-50%,-50%)" }} />
             ))}

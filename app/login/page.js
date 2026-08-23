@@ -92,16 +92,16 @@ function LoginInner() {
 
   return (
     <div
+      className="split-auth"
       style={{
         minHeight: "100vh",
-        display: "grid",
-        gridTemplateColumns: "minmax(0,1fr) minmax(0,1.05fr)",
         background: "var(--color-bg)",
         fontSize: 16,
         overflow: "hidden",
       }}
     >
       <section
+        className="auth-aside"
         style={{
           position: "relative",
           display: "flex",

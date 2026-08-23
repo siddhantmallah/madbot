@@ -135,7 +135,7 @@ export default function SearchConsolePanel({ state, onConnect, onPickProperty, o
         {siteUrl} · {data.range.from} to {data.range.to}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+      <div className="grid-2" style={{ gap: 12 }}>
         <div>
           <div className="card-kicker">Clicks</div>
           <div style={{ display: "flex", alignItems: "baseline", gap: 7 }}>

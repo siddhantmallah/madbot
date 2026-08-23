@@ -100,7 +100,7 @@ export default function Visibility({
         </section>
       ) : null}
 
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.25fr) minmax(0,1fr)", gap: 16, alignItems: "start" }}>
+      <div className="split-2" style={{ "--l": "1.25fr", gap: 16, alignItems: "start" }}>
         <section className="card elev-sm" style={{ padding: 20, gap: 13 }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
             <h4 style={{ margin: 0 }}>Mention rate by engine</h4>
@@ -135,7 +135,7 @@ export default function Visibility({
           {v ? (
             <section className="card elev-sm" style={{ padding: 18, gap: 9 }}>
               <h4 style={{ margin: 0 }}>What that means</h4>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, fontSize: 12.5 }}>
+              <div className="grid-2" style={{ gap: 10, fontSize: 12.5 }}>
                 <div>
                   <div className="card-kicker">Named in</div>
                   <div style={{ fontFamily: "var(--font-heading)", fontSize: 22 }}>{v.mentions} / {v.questionsAsked}</div>

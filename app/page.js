@@ -131,7 +131,7 @@ export default function LandingPage() {
           borderBottom: "1px solid var(--color-divider)",
         }}
       >
-        <div className="nav" style={{ maxWidth: 1180, margin: "0 auto", padding: "15px 28px" }}>
+        <div className="nav pad-responsive" style={{ maxWidth: 1180, margin: "0 auto", padding: "15px 28px" }}>
           <span className="nav-brand" style={{ display: "flex", alignItems: "center", gap: 11, color: "#fff", marginRight: "auto" }}>
             <Logo />
             <span style={{ fontFamily: "var(--font-body)", fontWeight: 400, fontSize: 22, letterSpacing: "-.005em", color: "#fff" }}>
@@ -180,13 +180,12 @@ export default function LandingPage() {
           <div
             data-reveal
             data-stagger="85"
+            className="split-hero pad-responsive"
             style={{
               position: "relative",
               maxWidth: 1180,
               margin: "0 auto",
               padding: "72px 28px 70px",
-              display: "grid",
-              gridTemplateColumns: "minmax(0,1.02fr) minmax(0,.88fr)",
               gap: 44,
               alignItems: "center",
             }}
@@ -203,7 +202,7 @@ export default function LandingPage() {
               >
                 Autonomous website marketing
               </span>
-              <h1 id="hero-h" style={{ margin: "0 0 18px", fontSize: 68, lineHeight: 1.02, letterSpacing: "-.02em" }}>
+              <h1 id="hero-h" style={{ margin: "0 0 18px", fontSize: "clamp(31px,12.6vw,68px)", lineHeight: 1.02, letterSpacing: "-.02em" }}>
                 Give it a website.
                 <br />
                 <span style={{ color: "var(--color-accent)" }}>It does the marketing.</span>
@@ -323,7 +322,7 @@ export default function LandingPage() {
 
         {/* HOW */}
         <section id="how" aria-labelledby="how-h" style={{ maxWidth: 1180, margin: "0 auto", padding: "84px 28px 24px" }}>
-          <h2 id="how-h" style={{ margin: "0 0 12px", fontSize: 44, maxWidth: "16em" }}>
+          <h2 id="how-h" style={{ margin: "0 0 12px", fontSize: "clamp(24px,8.1vw,44px)", maxWidth: "16em" }}>
             Four things happen, over and over, without you
           </h2>
           <p style={{ margin: "0 0 44px", fontSize: 17, maxWidth: "34em", color: "rgba(255,255,255,.6)" }}>
@@ -332,7 +331,7 @@ export default function LandingPage() {
           <ol
             data-reveal
             data-stagger="70"
-            style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gridTemplateColumns: "repeat(4,minmax(0,1fr))", gap: 22 }}
+            className="grid-4" style={{ listStyle: "none", margin: 0, padding: 0, gap: 22 }}
           >
             {[
               { n: "1", bg: "var(--color-accent)", fg: "#0A0810", ring: false, glow: "rgba(255,106,26,.35)", title: "Reads your site", body: "Products, buyers, rivals, technical debt, and the 83 openings you didn't know were there. One URL, no tags." },
@@ -367,10 +366,10 @@ export default function LandingPage() {
 
         {/* DOES */}
         <section id="does" aria-labelledby="does-h" style={{ maxWidth: 1180, margin: "0 auto", padding: "72px 28px" }}>
-          <h2 id="does-h" style={{ margin: "0 0 36px", fontSize: 44, maxWidth: "16em" }}>
+          <h2 id="does-h" style={{ margin: "0 0 36px", fontSize: "clamp(24px,8.1vw,44px)", maxWidth: "16em" }}>
             What it actually does all day
           </h2>
-          <div data-reveal data-stagger="70" style={{ display: "grid", gridTemplateColumns: "repeat(3,minmax(0,1fr))", gap: 18 }}>
+          <div data-reveal data-stagger="70" className="grid-3" style={{ gap: 18 }}>
             {[
               { title: "Technical SEO, on autopilot", body: "Crawls, fixes and re-checks: metadata, structure, speed, schema, sitemaps, orphan pages. The boring work that decides everything.", border: "var(--color-divider)", bg: "var(--color-surface)" },
               { title: "Content that sounds like you", body: "Learns your voice from your own pages, then writes pillars, comparisons and answers — and tells you how close to you it got.", border: "var(--color-accent-2-400)", bg: "linear-gradient(160deg, rgba(168,85,247,.14), var(--color-surface))" },
@@ -396,7 +395,7 @@ export default function LandingPage() {
           <div
             data-reveal
             data-stagger="90"
-            style={{ maxWidth: 1180, margin: "0 auto", padding: "78px 28px", display: "grid", gridTemplateColumns: "minmax(0,.86fr) minmax(0,1fr)", gap: 56, alignItems: "center" }}
+            className="split-2 pad-responsive" style={{ maxWidth: 1180, margin: "0 auto", padding: "78px 28px", "--l": ".86fr", gap: 56, alignItems: "center" }}
           >
             <div className="reveal" style={{ position: "relative", width: "100%", maxWidth: 400, aspectRatio: "1", justifySelf: "center" }}>
               <div style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "var(--color-surface)", border: "1px solid var(--color-divider)" }} />
@@ -414,7 +413,7 @@ export default function LandingPage() {
               <span style={{ position: "absolute", right: -4, top: "52%", width: 28, height: 28, borderRadius: "50%", background: "#0A0810", border: "5px solid var(--color-accent)", boxShadow: "0 0 24px rgba(255,106,26,.7)" }} />
             </div>
             <div className="reveal">
-              <h2 id="rope-h" style={{ margin: "0 0 16px", fontSize: 44, maxWidth: "14em" }}>You decide how much rope it gets</h2>
+              <h2 id="rope-h" style={{ margin: "0 0 16px", fontSize: "clamp(24px,8.1vw,44px)", maxWidth: "14em" }}>You decide how much rope it gets</h2>
               <p style={{ margin: "0 0 24px", fontSize: 17, lineHeight: 1.6, maxWidth: "32em", color: "rgba(255,255,255,.6)" }}>
                 Autonomy isn&apos;t a checkbox buried in settings. It&apos;s one dial on the front page of the product, and it
                 governs everything the engine is allowed to do.
@@ -450,11 +449,11 @@ export default function LandingPage() {
 
         {/* PROOF */}
         <section aria-labelledby="proof-h" style={{ maxWidth: 1180, margin: "0 auto", padding: "78px 28px" }}>
-          <h2 id="proof-h" style={{ margin: "0 0 36px", fontSize: 44, maxWidth: "15em" }}>
+          <h2 id="proof-h" style={{ margin: "0 0 36px", fontSize: "clamp(24px,8.1vw,44px)", maxWidth: "15em" }}>
             Six weeks on one small site
           </h2>
-          <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 48, alignItems: "center" }}>
-            <div data-reveal data-stagger="90" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+          <div className="split-2" style={{ gap: 48, alignItems: "center" }}>
+            <div data-reveal data-stagger="90" className="grid-2" style={{ gap: 16 }}>
               {[
                 { k: "Organic visitors", v: "1,240 → 1,712", c: "var(--color-accent)" },
                 { k: "Top-10 keywords", v: "6 → 29", c: "var(--color-accent-2-700)" },
@@ -481,15 +480,15 @@ export default function LandingPage() {
 
         {/* PRICING */}
         <section id="pricing" aria-labelledby="price-h" style={{ maxWidth: 1180, margin: "0 auto", padding: "20px 28px 78px" }}>
-          <h2 id="price-h" style={{ margin: "0 0 12px", fontSize: 44 }}>Pay for the work, not the seats</h2>
+          <h2 id="price-h" style={{ margin: "0 0 12px", fontSize: "clamp(24px,8.1vw,44px)" }}>Pay for the work, not the seats</h2>
           <p style={{ margin: "0 0 36px", fontSize: 17, maxWidth: "32em", color: "rgba(255,255,255,.6)" }}>
             Every plan includes the whole engine. What changes is how much it&apos;s allowed to do each month.
           </p>
-          <div data-reveal data-stagger="70" style={{ display: "grid", gridTemplateColumns: "repeat(3,minmax(0,1fr))", gap: 18, alignItems: "start" }}>
+          <div data-reveal data-stagger="70" className="grid-3" style={{ gap: 18, alignItems: "start" }}>
             <article className="card reveal" style={{ padding: 28, gap: 11, background: "var(--color-surface)", border: "1px solid var(--color-divider)" }}>
               <h3 style={{ margin: 0, fontSize: 22 }}>Scout</h3>
               <p style={{ margin: 0 }}>
-                <span style={{ fontFamily: "var(--font-heading)", fontSize: 40 }}>$29</span>
+                <span style={{ fontFamily: "var(--font-heading)", fontSize: "clamp(24px,7.4vw,40px)" }}>$29</span>
                 <span style={{ fontSize: 14, color: "rgba(255,255,255,.45)" }}> /mo</span>
               </p>
               <p className="card-body" style={{ fontSize: 14, opacity: 1, color: "rgba(255,255,255,.58)" }}>
@@ -513,7 +512,7 @@ export default function LandingPage() {
                 <span className="tag" style={{ marginLeft: "auto", background: "var(--color-accent)", color: "#0A0810" }}>most people</span>
               </div>
               <p style={{ margin: 0 }}>
-                <span style={{ fontFamily: "var(--font-heading)", fontSize: 40 }}>$79</span>
+                <span style={{ fontFamily: "var(--font-heading)", fontSize: "clamp(24px,7.4vw,40px)" }}>$79</span>
                 <span style={{ fontSize: 14, color: "rgba(255,255,255,.5)" }}> /mo</span>
               </p>
               <p className="card-body" style={{ fontSize: 14, opacity: 1, color: "rgba(255,255,255,.7)" }}>
@@ -532,7 +531,7 @@ export default function LandingPage() {
             <article className="card reveal" style={{ padding: 28, gap: 11, background: "var(--color-surface)", border: "1px solid var(--color-accent-2-400)" }}>
               <h3 style={{ margin: 0, fontSize: 22 }}>Swarm</h3>
               <p style={{ margin: 0 }}>
-                <span style={{ fontFamily: "var(--font-heading)", fontSize: 40 }}>$249</span>
+                <span style={{ fontFamily: "var(--font-heading)", fontSize: "clamp(24px,7.4vw,40px)" }}>$249</span>
                 <span style={{ fontSize: 14, color: "rgba(255,255,255,.45)" }}> /mo</span>
               </p>
               <p className="card-body" style={{ fontSize: 14, opacity: 1, color: "rgba(255,255,255,.58)" }}>
@@ -553,7 +552,7 @@ export default function LandingPage() {
         {/* FAQ */}
         <section id="faq" aria-labelledby="faq-h" style={{ borderBlock: "1px solid var(--color-divider)", background: "rgba(255,255,255,.02)" }}>
           <div style={{ maxWidth: 940, margin: "0 auto", padding: "78px 28px" }}>
-            <h2 id="faq-h" style={{ margin: "0 0 32px", fontSize: 44 }}>Fair questions</h2>
+            <h2 id="faq-h" style={{ margin: "0 0 32px", fontSize: "clamp(24px,8.1vw,44px)" }}>Fair questions</h2>
             <div data-reveal data-stagger="70" style={{ display: "flex", flexDirection: "column", gap: 24 }}>
               {FAQS.map((f) => (
                 <div key={f.q} className="reveal">
@@ -577,7 +576,7 @@ export default function LandingPage() {
             }}
           >
             <div data-reveal data-stagger="90" style={{ position: "relative", zIndex: 1, maxWidth: "34em" }}>
-              <h2 id="cta-h" className="reveal" style={{ margin: "0 0 14px", fontSize: 46, lineHeight: 1.05 }}>
+              <h2 id="cta-h" className="reveal" style={{ margin: "0 0 14px", fontSize: "clamp(24px,8.5vw,46px)", lineHeight: 1.05 }}>
                 Ninety seconds from now, you&apos;ll know what you&apos;ve been missing.
               </h2>
               <p className="reveal" style={{ margin: "0 0 28px", fontSize: 17, lineHeight: 1.6, color: "rgba(255,255,255,.75)" }}>
@@ -597,7 +596,7 @@ export default function LandingPage() {
       </main>
 
       <footer style={{ borderTop: "1px solid var(--color-divider)" }}>
-        <div style={{ maxWidth: 1180, margin: "0 auto", padding: "46px 28px", display: "grid", gridTemplateColumns: "minmax(0,1.4fr) repeat(3,minmax(0,1fr))", gap: 28 }}>
+        <div className="footer-grid pad-responsive" style={{ maxWidth: 1180, margin: "0 auto", padding: "46px 28px", gap: 28 }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 11 }}>
               <Logo size={26} ring={1.6} />
