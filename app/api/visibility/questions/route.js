@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { generateQuestions } from "../../../../lib/aiVisibility";
+import { authorize } from "../../../../lib/licenseServer";
+import { FEATURES } from "../../../../lib/plans";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -7,20 +9,6 @@ export const maxDuration = 60;
 
 export async function GET() {
   return NextResponse.json({ ok: true, configured: !!process.env.ANTHROPIC_API_KEY });
-}
-
-async function verifiedUid(idToken) {
-  const res = await fetch(
-    `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${process.env.NEXT_PUBLIC_FIREBASE_API_KEY}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ idToken }),
-    }
-  );
-  if (!res.ok) return null;
-  const data = await res.json();
-  return data?.users?.[0]?.localId || null;
 }
 
 /**
@@ -38,8 +26,13 @@ export async function POST(request) {
 
   const { idToken, intel } = body || {};
   if (!idToken) return NextResponse.json({ ok: false, error: "Not signed in." }, { status: 401 });
-  if (!(await verifiedUid(idToken))) {
-    return NextResponse.json({ ok: false, error: "Could not verify your account." }, { status: 401 });
+
+  const auth = await authorize(idToken, FEATURES.AI_VISIBILITY);
+  if (!auth.ok) {
+    return NextResponse.json(
+      { ok: false, error: auth.error, upgradeTo: auth.upgradeTo || null, upgradeName: auth.upgradeName || null },
+      { status: auth.status }
+    );
   }
   if (!intel) {
     return NextResponse.json({ ok: false, error: "Crawl the site first." }, { status: 400 });

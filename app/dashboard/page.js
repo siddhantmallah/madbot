@@ -11,6 +11,8 @@ import {
   subscribeLeads,
   subscribeContent,
   updateSiteSettings,
+  subscribeSubscription,
+  subscribeBilling,
   addActivity,
   setActivityUndone,
   setApprovalStatus,
@@ -28,6 +30,10 @@ import { diffSnapshots } from "../../lib/auditClient";
 import { buildOpportunities } from "../../lib/opportunities";
 import { enqueueAndRun } from "../../lib/jobClient";
 import { JOB_TYPES } from "../../lib/jobTypes";
+import { usageSummary, siteAccess, featureAccess, clampAutonomy } from "../../lib/entitlements";
+import { FEATURES, autonomyLabel } from "../../lib/plans";
+import Billing from "./screens/Billing";
+import LockedFeature from "./screens/LockedFeature";
 import { buildSiteInsights, CONTENT_BODY, rewriteContentBody, hostnameOf } from "../../lib/seed";
 import { buildDigest, digestData } from "../../lib/digest";
 import { MadbotMark, SiteIcon } from "../components/Brand";
@@ -214,6 +220,46 @@ function DashboardInner() {
   // action the user takes. Faking "wins" on an interval is how a dashboard
   // starts lying to the person paying for it.
 
+  // The licence. Read-only here — Firestore rules refuse client writes to it,
+  // and the server checks it again before doing any paid work. These gates are
+  // for clarity, not security.
+  const [subscription, setSubscription] = useState(null);
+  const [billing, setBilling] = useState([]);
+
+  useEffect(() => {
+    if (!user) return;
+    const offSub = subscribeSubscription(user.uid, setSubscription);
+    const offBilling = subscribeBilling(user.uid, setBilling);
+    return () => {
+      offSub();
+      offBilling();
+    };
+  }, [user]);
+
+  const siteCount = (sites || []).length;
+  const usage = useMemo(() => usageSummary(subscription, { siteCount }), [subscription, siteCount]);
+  const canAddSite = useMemo(() => siteAccess(subscription, siteCount), [subscription, siteCount]);
+  const autonomyCap = usage.plan.maxAutonomy;
+  const access = useMemo(
+    () => ({
+      content: featureAccess(subscription, FEATURES.CONTENT),
+      leads: featureAccess(subscription, FEATURES.LEADS),
+      visibility: featureAccess(subscription, FEATURES.AI_VISIBILITY),
+      competitors: featureAccess(subscription, FEATURES.COMPETITORS),
+    }),
+    [subscription]
+  );
+
+  /** Opens onboarding, or explains why it can't be opened. */
+  function requestAddSite() {
+    if (!canAddSite.allowed) {
+      setToast(canAddSite.reason);
+      setScreen("billing");
+      return;
+    }
+    setOnboardOpen(true);
+  }
+
   const insights = useMemo(() => (site ? buildSiteInsights(site) : null), [site]);
   const opportunities = useMemo(() => (site ? buildOpportunities(site) : null), [site]);
   const [rerunning, setRerunning] = useState(false);
@@ -261,7 +307,16 @@ function DashboardInner() {
   }
 
   function commitAut() {
-    if (user && activeSiteId) updateSiteSettings(user.uid, activeSiteId, { autonomy: aut });
+    if (!user || !activeSiteId) return;
+    // The dial can be dragged past the plan's ceiling, but what gets saved is
+    // clamped and the user is told why — silently snapping the handle back
+    // reads as a broken control.
+    const allowed = clampAutonomy(subscription, aut);
+    if (allowed !== aut) {
+      setAut(allowed);
+      setToast(`${usage.plan.name} stops at "${autonomyLabel(autonomyCap)}". Saved at that level.`);
+    }
+    updateSiteSettings(user.uid, activeSiteId, { autonomy: allowed });
   }
   function commitThr() {
     if (user && activeSiteId) updateSiteSettings(user.uid, activeSiteId, { throttle: thr });
@@ -729,7 +784,7 @@ function DashboardInner() {
                 </button>
               ))}
               <div className="hr" style={{ margin: "6px 0" }} />
-              <button className="btn btn-ghost" onClick={() => { setOnboardOpen(true); setSiteOpen(false); }} style={{ justifyContent: "flex-start", fontSize: 13, fontWeight: 600 }}>
+              <button className="btn btn-ghost" onClick={() => { requestAddSite(); setSiteOpen(false); }} style={{ justifyContent: "flex-start", fontSize: 13, fontWeight: 600 }}>
                 + Connect a new site
               </button>
             </div>
@@ -746,6 +801,7 @@ function DashboardInner() {
           <NavButton label="Autonomy" active={screen === "aut"} onClick={() => go("aut")} />
           <NavButton label="Agent runs" badge={jobs.filter((j) => ["running","verifying","queued"].includes(j.status)).length || undefined} active={screen === "runs"} onClick={() => go("runs")} />
           <NavButton label="Activity log" active={screen === "log"} onClick={() => go("log")} />
+          <NavButton label="Billing" active={screen === "billing"} onClick={() => go("billing")} />
         </nav>
 
         <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
@@ -758,7 +814,7 @@ function DashboardInner() {
               {voice ? "Preference saved. Pick again any time." : "Tell me which sample sounds like you."}
             </div>
           </button>
-          <button className="btn btn-secondary" onClick={() => setOnboardOpen(true)} style={{ fontWeight: 600, fontSize: 12.5 }}>
+          <button className="btn btn-secondary" onClick={requestAddSite} style={{ fontWeight: 600, fontSize: 12.5 }}>
             Connect another site
           </button>
           <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "8px 6px 0" }}>
@@ -898,7 +954,15 @@ function DashboardInner() {
                   rerunning={rerunning}
                 />
               )}
-              {screen === "content" && (
+              {screen === "content" && !access.content.allowed && (
+                <LockedFeature
+                  title="Content & calendar"
+                  what="Researched, written and published articles."
+                  access={access.content}
+                  onSeeBilling={() => go("billing")}
+                />
+              )}
+              {screen === "content" && access.content.allowed && (
                 <Content
                   items={content}
                   onPublish={publishContent}
@@ -911,13 +975,29 @@ function DashboardInner() {
                   writeError={writeError}
                 />
               )}
-              {screen === "leads" && (
+              {screen === "leads" && !access.leads.allowed && (
+                <LockedFeature
+                  title="Lead discovery"
+                  what="Companies matching your ideal customer, with outreach drafted."
+                  access={access.leads}
+                  onSeeBilling={() => go("billing")}
+                />
+              )}
+              {screen === "leads" && access.leads.allowed && (
                 <Leads leads={leads} onSend={sendLead} onDecline={declineLead} onSaveDraft={saveLeadDraft} />
               )}
               {screen === "appr" && (
                 <Approvals approvals={approvals} onApprove={approve} onDecline={decline} onEdit={editApproval} goAutonomy={() => go("aut")} />
               )}
-              {screen === "vis" && (
+              {screen === "vis" && !access.visibility.allowed && (
+                <LockedFeature
+                  title="AI search visibility"
+                  what="Whether an assistant names you when buyers ask about what you sell."
+                  access={access.visibility}
+                  onSeeBilling={() => go("billing")}
+                />
+              )}
+              {screen === "vis" && access.visibility.allowed && (
                 <Visibility
                   domain={insights.domain}
                   visibility={site?.aiVisibility || null}
@@ -960,6 +1040,7 @@ function DashboardInner() {
                 />
               )}
               {screen === "log" && <ActivityLog feedAll={activity} onToggleUndo={toggleUndo} />}
+              {screen === "billing" && <Billing usage={usage} billing={billing} siteCount={siteCount} />}
             </>
           ) : (
             <div className="text-muted" style={{ fontSize: 14 }}>Connect a site to get started.</div>

@@ -39,4 +39,5 @@ export const SCREEN_TITLES = {
   aut: "Autonomy & permissions",
   runs: "Agent runs",
   log: "Activity log",
+  billing: "Billing & licence",
 };

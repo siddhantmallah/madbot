@@ -7,7 +7,28 @@ service cloud.firestore {
     }
 
     match /users/{uid} {
-      allow read, write: if isOwner(uid);
+      allow read: if isOwner(uid);
+
+      // The client writes its own profile, never its own entitlements. Without
+      // this split any signed-in user could grant themselves the top plan from
+      // a browser console. The server writes subscriptions through the admin
+      // SDK, which bypasses these rules.
+      allow create: if isOwner(uid) && !request.resource.data.keys().hasAny(['subscription']);
+      allow update: if isOwner(uid)
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['subscription']);
+      allow delete: if false;
+
+      // Billing history is readable by the customer and written only by the
+      // server, so a receipt can't be forged or edited after the fact.
+      match /billing/{entryId} {
+        allow read: if isOwner(uid);
+        allow write: if false;
+      }
+
+      // The internal event log behind those receipts. Server-only, both ways.
+      match /billingEvents/{eventId} {
+        allow read, write: if false;
+      }
 
       match /sites/{siteId} {
         allow read, create, update, delete: if isOwner(uid);
