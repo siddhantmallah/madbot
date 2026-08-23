@@ -1,8 +1,11 @@
-import { planFor } from "../../../lib/opportunities";
+import { planFor, SOURCE_LABELS } from "../../../lib/opportunities";
 
 const SEV = {
   critical: { label: "Costing you now", bg: "var(--color-accent-100)", fg: "var(--color-accent-800)" },
   warning: { label: "Worth fixing", bg: "var(--color-accent-2-100)", fg: "var(--color-accent-2-800)" },
+  // Context rather than a task — a competitor repositioning is worth knowing
+  // about without pretending it's work you have to do.
+  info: { label: "Worth knowing", bg: "var(--color-neutral-100)", fg: "var(--color-neutral-800)" },
 };
 
 export default function Opportunities({
@@ -20,9 +23,12 @@ export default function Opportunities({
   onRerunAudit,
   rerunning,
 }) {
-  const { plays, nodes, hasAudit, score } = opportunities;
+  const { plays, nodes, hasAudit, score, sources = {}, hidden = 0 } = opportunities;
 
-  if (!hasAudit || plays.length === 0) {
+  // Gate on there being nothing to show, not on the audit specifically —
+  // competitor diffs, AI visibility and Search Console all feed this now, and
+  // any one of them can populate the map on its own.
+  if (plays.length === 0) {
     return (
       <section data-screen-label="Opportunities" style={{ maxWidth: 680, display: "flex", flexDirection: "column", gap: 14 }}>
         <div>
@@ -49,13 +55,31 @@ export default function Opportunities({
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <div style={{ display: "flex", alignItems: "flex-end", gap: 12, flexWrap: "wrap" }}>
           <div>
+            {/* Not "found on your site" any more — some of these come from a
+                competitor's page or from Search Console. */}
             <h2 style={{ margin: "0 0 3px" }}>
-              {plays.length} thing{plays.length === 1 ? "" : "s"} I found on {domain}
+              {plays.length} thing{plays.length === 1 ? "" : "s"} worth doing for {domain}
             </h2>
             <p className="text-muted" style={{ margin: 0, fontSize: 13.5 }}>
-              Every circle is something measured on your site. Bigger and nearer the middle means it&apos;s costing
-              you more. Click one.
+              Every circle traces back to a real measurement. Bigger and nearer the middle means it scores higher on
+              impact against effort. Click one.
+              {hidden > 0 ? ` ${hidden} lower-scoring item${hidden === 1 ? "" : "s"} not drawn.` : ""}
             </p>
+            {/* Which signals are actually feeding this, so an empty-looking map
+                is explained by what hasn't run rather than left a mystery. */}
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 7 }}>
+              {Object.entries(SOURCE_LABELS).map(([key, label]) => (
+                <span
+                  key={key}
+                  className={sources[key] ? "tag tag-accent-2" : "tag tag-neutral"}
+                  style={{ fontSize: 10, opacity: sources[key] ? 1 : 0.45 }}
+                  title={sources[key] ? `${label} is feeding this map` : `${label} hasn't run yet`}
+                >
+                  {label}
+                  {sources[key] ? "" : " · none"}
+                </span>
+              ))}
+            </div>
           </div>
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
             <button className="btn btn-secondary btn-icon" onClick={() => setZoom((z) => Math.max(0.7, z - 0.15))} aria-label="Zoom out">–</button>
@@ -153,8 +177,22 @@ export default function Opportunities({
           <p className="card-body" style={{ margin: 0, fontSize: 13, lineHeight: 1.6 }}>{opp.detail}</p>
           <div style={{ display: "flex", gap: 7, flexWrap: "wrap", paddingTop: 2 }}>
             <span className="tag tag-neutral" style={{ fontSize: 10 }}>{opp.area}</span>
-            <span className="tag tag-outline" style={{ fontSize: 10 }}>Found on your site</span>
+            <span className="tag tag-outline" style={{ fontSize: 10 }}>
+              {SOURCE_LABELS[opp.source] || "Measured"}
+            </span>
+            {opp.score !== undefined ? (
+              <span className="tag tag-neutral" style={{ fontSize: 10 }} title="Impact against effort, weighted by how certain the measurement is">
+                score {opp.score}
+              </span>
+            ) : null}
           </div>
+          {/* The receipt. Every item says where it came from, so a suggestion
+              can be checked rather than taken on faith. */}
+          {opp.evidence ? (
+            <p style={{ margin: 0, fontSize: 11.5, lineHeight: 1.5 }} className="text-muted">
+              {opp.evidence}
+            </p>
+          ) : null}
           <button className="btn btn-primary btn-block" disabled={!!taken[opp.id]} onClick={() => onTake(opp.id)}>
             {taken[opp.id] ? "Queued — I am on it" : "Go get it"}
           </button>

@@ -261,7 +261,19 @@ function DashboardInner() {
   }
 
   const insights = useMemo(() => (site ? buildSiteInsights(site) : null), [site]);
-  const opportunities = useMemo(() => (site ? buildOpportunities(site) : null), [site]);
+  // Competitor diffs and Search Console now feed the opportunity map too. GSC
+  // lives in session state rather than on the site document, so it's passed in
+  // rather than read from the site.
+  const opportunities = useMemo(
+    () =>
+      site
+        ? buildOpportunities(site, {
+            competitors,
+            search: gsc.status === "ready" ? gsc.data : null,
+          })
+        : null,
+    [site, competitors, gsc.status, gsc.data]
+  );
   const [rerunning, setRerunning] = useState(false);
   const [asking, setAsking] = useState(false);
 
