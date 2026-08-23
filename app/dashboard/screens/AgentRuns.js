@@ -90,10 +90,10 @@ export default function AgentRuns({ jobs, onRunCrawl, onRunAudit, onRunCompetito
                     const done = (j.steps || []).find((st) => st.name === name);
                     return (
                       <div key={name} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
-                        <span style={{ color: done ? "#7ED957" : "rgba(255,255,255,.25)", flex: "none", width: 12 }}>
+                        <span style={{ color: done ? "var(--ok)" : "var(--fg-22)", flex: "none", width: 12 }}>
                           {done ? "✓" : "·"}
                         </span>
-                        <span style={{ color: done ? "rgba(255,255,255,.75)" : "rgba(255,255,255,.35)" }}>{name}</span>
+                        <span style={{ color: done ? "var(--fg-80)" : "var(--fg-32)" }}>{name}</span>
                         {done?.detail ? <span className="text-muted" style={{ fontSize: 11 }}>— {done.detail}</span> : null}
                       </div>
                     );

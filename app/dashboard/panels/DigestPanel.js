@@ -15,7 +15,7 @@ export default function DigestPanel({ digest, onSend, sending, lastSentTo }) {
               <span className="text-muted" style={{ flex: 1 }}>{l.label}</span>
               <strong style={{ flex: "none" }}>{l.value}</strong>
               {l.delta ? (
-                <span style={{ flex: "none", fontSize: 11, fontWeight: 700, color: l.delta.startsWith("-") ? "#FF8A6B" : "#7ED957" }}>
+                <span style={{ flex: "none", fontSize: 11, fontWeight: 700, color: l.delta.startsWith("-") ? "#FF8A6B" : "var(--ok)" }}>
                   {l.delta}
                 </span>
               ) : null}
@@ -28,7 +28,7 @@ export default function DigestPanel({ digest, onSend, sending, lastSentTo }) {
             <div className="card-kicker" style={{ marginBottom: 4 }}>Competitors moved</div>
             {digest.competitorChanges.slice(0, 3).map((c, i) => (
               <div key={i} style={{ fontSize: 12, lineHeight: 1.5 }} className="text-muted">
-                <strong style={{ color: "#fff" }}>{c.competitor}</strong> — {c.text}
+                <strong style={{ color: "var(--fg)" }}>{c.competitor}</strong> — {c.text}
               </div>
             ))}
           </div>

@@ -76,7 +76,7 @@ export default function Leads({ leads, onSend, onDecline, onSaveDraft }) {
                   <tr
                     key={l.id}
                     onClick={() => { setSelectedId(l.id); setEditing(false); }}
-                    style={{ cursor: "pointer", background: isSelected ? "rgba(255,255,255,.04)" : undefined, opacity: l.status === "declined" ? 0.5 : 1 }}
+                    style={{ cursor: "pointer", background: isSelected ? "var(--wash-1)" : undefined, opacity: l.status === "declined" ? 0.5 : 1 }}
                   >
                     <td style={{ fontWeight: 700 }}>
                       {l.co}
@@ -106,7 +106,7 @@ export default function Leads({ leads, onSend, onDecline, onSaveDraft }) {
                     className="input"
                     value={draftText}
                     onChange={(e) => setDraftText(e.target.value)}
-                    style={{ width: "100%", minHeight: 90, background: "var(--color-surface)", color: "#fff", fontSize: 13, lineHeight: 1.55 }}
+                    style={{ width: "100%", minHeight: 90, background: "var(--color-surface)", color: "var(--fg)", fontSize: 13, lineHeight: 1.55 }}
                   />
                 ) : (
                   <p style={{ margin: "0 0 8px" }} className="text-muted">{selected.draft}</p>

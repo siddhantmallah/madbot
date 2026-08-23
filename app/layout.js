@@ -1,5 +1,6 @@
 import "./globals.css";
 import { AuthProvider } from "./providers/AuthProvider";
+import { themeBootScript } from "./components/ThemeToggle";
 
 export const metadata = {
   metadataBase: new URL("https://getmadbot.com"),
@@ -25,7 +26,13 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" data-scroll-behavior="smooth">
+    <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
+      <head>
+        {/* Stamps the saved theme onto <html> before the first paint. Anything
+            that runs after hydration is too late — the visitor would see a
+            flash of the wrong theme first. */}
+        <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
+      </head>
       <body>
         <AuthProvider>{children}</AuthProvider>
       </body>

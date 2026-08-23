@@ -24,7 +24,7 @@ export default function Visibility({
 }) {
   const v = visibility;
   const pct = v ? Math.round(v.mentionRate * 100) : null;
-  const color = pct === null ? "var(--color-neutral-400)" : pct >= 50 ? "#7ED957" : pct > 0 ? "var(--color-accent)" : "var(--color-accent-400)";
+  const color = pct === null ? "var(--color-neutral-400)" : pct >= 50 ? "var(--ok)" : pct > 0 ? "var(--color-accent)" : "var(--color-accent-400)";
   const usable = writingEnabled && hasCrawl;
   const questions = plan?.questions || [];
 

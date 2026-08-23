@@ -3,7 +3,7 @@ function Delta({ now, before }) {
   const d = ((now - before) / before) * 100;
   const up = d >= 0;
   return (
-    <span style={{ fontSize: 11.5, fontWeight: 700, color: up ? "#7ED957" : "#FF8A6B" }}>
+    <span style={{ fontSize: 11.5, fontWeight: 700, color: up ? "var(--ok)" : "#FF8A6B" }}>
       {up ? "▲" : "▼"} {Math.abs(d).toFixed(0)}%
     </span>
   );
@@ -86,7 +86,7 @@ export default function SearchConsolePanel({ state, onConnect, onPickProperty, o
                   key={p.siteUrl}
                   onClick={() => onPickProperty(p.siteUrl)}
                   className="btn btn-secondary"
-                  style={{ justifyContent: "flex-start", fontSize: 12.5, fontWeight: 600, color: "#fff", borderColor: "var(--color-divider)" }}
+                  style={{ justifyContent: "flex-start", fontSize: 12.5, fontWeight: 600, color: "var(--fg)", borderColor: "var(--color-divider)" }}
                 >
                   {p.siteUrl}
                 </button>

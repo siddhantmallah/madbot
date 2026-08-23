@@ -69,7 +69,7 @@ function AskDialog({ onSubmit, onClose, busy }) {
                 key={k}
                 onClick={() => setKind(k)}
                 className={kind === k ? "tag" : "tag tag-neutral"}
-                style={{ fontSize: 12, cursor: "pointer", background: kind === k ? "var(--color-accent)" : undefined, color: kind === k ? "#0A0810" : undefined }}
+                style={{ fontSize: 12, cursor: "pointer", background: kind === k ? "var(--color-accent)" : undefined, color: kind === k ? "var(--on-accent)" : undefined }}
               >
                 {k}
               </button>
@@ -86,7 +86,7 @@ function AskDialog({ onSubmit, onClose, busy }) {
                 key={d}
                 onClick={() => setDay(i)}
                 className={day === i ? "tag" : "tag tag-neutral"}
-                style={{ fontSize: 12, cursor: "pointer", background: day === i ? "var(--color-accent)" : undefined, color: day === i ? "#0A0810" : undefined }}
+                style={{ fontSize: 12, cursor: "pointer", background: day === i ? "var(--color-accent)" : undefined, color: day === i ? "var(--on-accent)" : undefined }}
               >
                 {d}
               </button>
@@ -245,7 +245,7 @@ export default function Content({
                   fontSize: 13.5,
                   lineHeight: 1.7,
                   whiteSpace: "pre-wrap",
-                  color: "rgba(255,255,255,.82)",
+                  color: "var(--fg-80)",
                 }}
               >
                 {selected.article}

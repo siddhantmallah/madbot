@@ -37,6 +37,7 @@ import LockedFeature from "./screens/LockedFeature";
 import { buildSiteInsights, CONTENT_BODY, rewriteContentBody, hostnameOf } from "../../lib/seed";
 import { buildDigest, digestData } from "../../lib/digest";
 import { MadbotMark, SiteIcon } from "../components/Brand";
+import ThemeToggle from "../components/ThemeToggle";
 import SearchConsolePanel from "./panels/SearchConsolePanel";
 import CompetitorPanel from "./panels/CompetitorPanel";
 import DigestPanel from "./panels/DigestPanel";
@@ -73,7 +74,7 @@ function NavButton({ label, badge, active, onClick }) {
     >
       {label}
       {badge !== undefined ? (
-        <span className={active ? "tag" : "tag tag-neutral"} style={{ fontSize: 10, padding: "1px 8px", background: active ? "rgba(10,8,16,.18)" : undefined, color: active ? "var(--color-bg)" : undefined }}>
+        <span className={active ? "tag" : "tag tag-neutral"} style={{ fontSize: 10, padding: "1px 8px", background: active ? "var(--scrim-none)" : undefined, color: active ? "var(--color-bg)" : undefined }}>
           {badge}
         </span>
       ) : null}
@@ -83,7 +84,7 @@ function NavButton({ label, badge, active, onClick }) {
 
 function FullScreenLoading() {
   return (
-    <div style={{ height: "100vh", display: "grid", placeItems: "center", background: "var(--color-bg)", color: "#fff" }}>
+    <div style={{ height: "100vh", display: "grid", placeItems: "center", background: "var(--color-bg)", color: "var(--fg)" }}>
       <span style={{ width: 28, height: 28, borderRadius: "50%", border: "3px solid var(--color-accent-300)", borderTopColor: "var(--color-accent)", animation: "sweep 1s linear infinite", display: "block" }} />
     </div>
   );
@@ -764,7 +765,7 @@ function DashboardInner() {
       <aside className="shell-nav" style={{ background: "var(--color-surface)", padding: "18px 14px 14px", display: "flex", flexDirection: "column", gap: 16, borderRight: "1px solid var(--color-divider)", overflow: "auto" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "0 6px" }}>
           <MadbotMark size={29} />
-          <span style={{ fontFamily: "var(--font-body)", fontWeight: 400, fontSize: 21, letterSpacing: "-.005em", color: "#fff" }}>madbot</span>
+          <span style={{ fontFamily: "var(--font-body)", fontWeight: 400, fontSize: 21, letterSpacing: "-.005em", color: "var(--fg)" }}>madbot</span>
         </div>
 
         <div style={{ position: "relative" }}>
@@ -853,7 +854,7 @@ function DashboardInner() {
             alignItems: "center",
             gap: 12,
             padding: "14px 26px",
-            background: "rgba(10,8,16,.88)",
+            background: "var(--scrim)",
             backdropFilter: "blur(8px)",
             borderBottom: "1px solid var(--color-divider)",
           }}
@@ -893,6 +894,7 @@ function DashboardInner() {
           </button>
 
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
+            <ThemeToggle compact />
             {site ? (
               <>
                 <span

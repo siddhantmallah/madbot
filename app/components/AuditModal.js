@@ -13,7 +13,7 @@ const SEVERITY = {
 };
 
 function scoreColor(score) {
-  if (score >= 80) return "#7ED957";
+  if (score >= 80) return "var(--ok)";
   if (score >= 55) return "#FF9557";
   return "#FF6A1A";
 }
@@ -35,7 +35,7 @@ function ScoreRing({ score }) {
       <div style={{ width: 92, height: 92, borderRadius: "50%", background: "var(--color-bg)", display: "grid", placeItems: "center", textAlign: "center" }}>
         <div>
           <div style={{ fontFamily: "var(--font-heading)", fontSize: 34, lineHeight: 1 }}>{score}</div>
-          <div style={{ fontSize: 10, letterSpacing: ".1em", textTransform: "uppercase", color: "rgba(255,255,255,.45)" }}>of 100</div>
+          <div style={{ fontSize: 10, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--fg-45)" }}>of 100</div>
         </div>
       </div>
     </div>
@@ -67,7 +67,7 @@ function Scanning({ domain }) {
             key={s}
             style={{
               fontSize: 13,
-              color: idx < i ? "rgba(255,255,255,.4)" : idx === i ? "#fff" : "rgba(255,255,255,.2)",
+              color: idx < i ? "var(--fg-45)" : idx === i ? "var(--fg)" : "var(--fg-22)",
               transition: "color .3s",
             }}
           >
@@ -89,7 +89,7 @@ function FindingRow({ f }) {
         gap: 13,
         padding: "14px 16px",
         borderRadius: 20,
-        background: f.severity === "good" ? "rgba(255,255,255,.02)" : "var(--color-surface)",
+        background: f.severity === "good" ? "var(--wash-1)" : "var(--color-surface)",
         borderLeft: `3px solid ${s.color}`,
       }}
     >
@@ -99,12 +99,12 @@ function FindingRow({ f }) {
           <span className="tag" style={{ fontSize: 9.5, background: s.bg, color: s.fg, flex: "none" }}>{f.area}</span>
         </div>
         {f.detail ? (
-          <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: "rgba(255,255,255,.62)" }}>{f.detail}</p>
+          <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: "var(--fg-60)" }}>{f.detail}</p>
         ) : null}
         {f.fix ? (
           <div style={{ marginTop: 9, paddingTop: 9, borderTop: "1px solid var(--color-divider)", fontSize: 12.5, lineHeight: 1.55, display: "flex", gap: 8 }}>
             <span style={{ color: "var(--color-accent)", fontWeight: 700, flex: "none" }}>MADBOT would</span>
-            <span style={{ color: "rgba(255,255,255,.72)" }}>{f.fix}</span>
+            <span style={{ color: "var(--fg-80)" }}>{f.fix}</span>
           </div>
         ) : null}
       </div>
@@ -123,24 +123,24 @@ function Gate({ url }) {
         display: "grid",
         placeItems: "center",
         padding: 28,
-        background: "linear-gradient(to bottom, rgba(10,8,16,.72) 0%, rgba(10,8,16,.95) 42%)",
+        background: "linear-gradient(to bottom, var(--scrim) 0%, var(--scrim-strong) 42%)",
         backdropFilter: "blur(7px)",
         animation: "revealFade .5s ease",
       }}
     >
       <div className="card elev-lg" style={{ maxWidth: 470, padding: 30, gap: 14, textAlign: "center", border: "1px solid var(--color-accent-400)" }}>
         <h3 style={{ margin: 0, fontSize: 27, lineHeight: 1.15 }}>That&apos;s the diagnosis. Want it fixed?</h3>
-        <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.6, color: "rgba(255,255,255,.68)" }}>
+        <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.6, color: "var(--fg-80)" }}>
           Every SEO tool on the market will hand you a list like the one behind this panel. MADBOT is the one that
           then goes and does the work — writes the pages, marks up the schema, builds the internal links, and shows
           you the receipts for each one.
         </p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, textAlign: "left", fontSize: 13.5, color: "rgba(255,255,255,.75)", padding: "4px 0" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, textAlign: "left", fontSize: 13.5, color: "var(--fg-80)", padding: "4px 0" }}>
           <div>→ A full plan, ordered by what it&apos;s worth</div>
           <div>→ The work carried out at the autonomy level you set</div>
           <div>→ One-click rollback on everything it touches</div>
         </div>
-        <Link className="btn btn-primary" href={`/login${qs}`} style={{ minHeight: 50, fontSize: 15.5, color: "#0A0810" }}>
+        <Link className="btn btn-primary" href={`/login${qs}`} style={{ minHeight: 50, fontSize: 15.5, color: "var(--on-accent)" }}>
           Create your account
         </Link>
         <Link href="/pricing" style={{ fontSize: 13, color: "var(--color-accent-700)", textDecoration: "none" }}>
@@ -230,7 +230,7 @@ export default function AuditModal({ url, onClose }) {
           <button
             onClick={onClose}
             aria-label="Close report"
-            style={{ position: "absolute", right: 16, top: 14, zIndex: 6, width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,.07)", color: "#fff", fontSize: 17, lineHeight: 1, display: "grid", placeItems: "center" }}
+            style={{ position: "absolute", right: 16, top: 14, zIndex: 6, width: 32, height: 32, borderRadius: "50%", background: "var(--wash-2)", color: "var(--fg)", fontSize: 17, lineHeight: 1, display: "grid", placeItems: "center" }}
           >
             ×
           </button>
@@ -244,7 +244,7 @@ export default function AuditModal({ url, onClose }) {
           {state.phase === "error" ? (
             <div style={{ padding: "56px 40px", textAlign: "center" }}>
               <h3 style={{ margin: "0 0 8px", fontSize: 23 }}>I couldn&apos;t read {domain}</h3>
-              <p style={{ margin: "0 0 20px", fontSize: 14, color: "rgba(255,255,255,.6)" }}>{state.error}</p>
+              <p style={{ margin: "0 0 20px", fontSize: 14, color: "var(--fg-60)" }}>{state.error}</p>
               <button className="btn btn-secondary" onClick={onClose} style={{ fontWeight: 600 }}>Try another address</button>
             </div>
           ) : null}
@@ -258,7 +258,7 @@ export default function AuditModal({ url, onClose }) {
                   <div style={{ flex: 1, minWidth: 240 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7 }}>
                       <SiteIcon site={{ faviconUrl: d.faviconUrl, title: d.title, url: d.url }} size={17} />
-                      <span style={{ fontSize: 12.5, color: "rgba(255,255,255,.5)" }}>{domain}</span>
+                      <span style={{ fontSize: 12.5, color: "var(--fg-45)" }}>{domain}</span>
                     </div>
                     <h2 style={{ margin: "0 0 8px", fontSize: 27, lineHeight: 1.15 }}>
                       {d.counts.critical > 0
@@ -267,7 +267,7 @@ export default function AuditModal({ url, onClose }) {
                         ? `${d.counts.warning} thing${d.counts.warning === 1 ? "" : "s"} worth fixing`
                         : "Solid foundations — now go win the terms"}
                     </h2>
-                    <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.55, color: "rgba(255,255,255,.6)" }}>
+                    <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.55, color: "var(--fg-60)" }}>
                       {d.title ? `“${d.title.slice(0, 90)}${d.title.length > 90 ? "…" : ""}”` : "This page has no title tag."}
                     </p>
                   </div>
@@ -291,7 +291,7 @@ export default function AuditModal({ url, onClose }) {
                   ["Page weight", `${d.stats.htmlKb} KB`],
                 ].map(([label, val]) => (
                   <div key={label} style={{ background: "var(--color-bg)", padding: "14px 16px" }}>
-                    <div style={{ fontSize: 10, letterSpacing: ".09em", textTransform: "uppercase", color: "rgba(255,255,255,.42)", marginBottom: 3 }}>{label}</div>
+                    <div style={{ fontSize: 10, letterSpacing: ".09em", textTransform: "uppercase", color: "var(--fg-45)", marginBottom: 3 }}>{label}</div>
                     <div style={{ fontFamily: "var(--font-heading)", fontSize: 20 }}>{val}</div>
                   </div>
                 ))}
@@ -318,9 +318,9 @@ export default function AuditModal({ url, onClose }) {
                     <h4 style={{ margin: 0, fontSize: 16 }}>Already right</h4>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(250px,1fr))", gap: 8 }}>
                       {goods.map((f) => (
-                        <div key={f.title} style={{ display: "flex", gap: 8, fontSize: 13, padding: "9px 12px", borderRadius: 14, background: "rgba(255,255,255,.02)" }}>
-                          <span style={{ color: "#7ED957", flex: "none" }}>✓</span>
-                          <span style={{ color: "rgba(255,255,255,.7)" }}>{f.title}</span>
+                        <div key={f.title} style={{ display: "flex", gap: 8, fontSize: 13, padding: "9px 12px", borderRadius: 14, background: "var(--wash-1)" }}>
+                          <span style={{ color: "var(--ok)", flex: "none" }}>✓</span>
+                          <span style={{ color: "var(--fg-80)" }}>{f.title}</span>
                         </div>
                       ))}
                     </div>
@@ -329,17 +329,17 @@ export default function AuditModal({ url, onClose }) {
 
                 <div className="card" style={{ padding: 22, gap: 10, background: "linear-gradient(150deg, rgba(255,106,26,.12), var(--color-surface) 60%)", border: "1px solid var(--color-accent-400)" }}>
                   <h4 style={{ margin: 0, fontSize: 18 }}>Anyone can tell you this. Almost nobody fixes it.</h4>
-                  <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.6, color: "rgba(255,255,255,.72)" }}>
+                  <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.6, color: "var(--fg-80)" }}>
                     This report took seconds and cost nothing. The reason a report like it usually changes nothing is
                     that the next step — writing the pages, marking up the schema, earning the links — is weeks of work nobody
                     has time for. That&apos;s the part MADBOT does, at whatever level of autonomy you&apos;re
                     comfortable giving it, with a full audit trail and one-click undo.
                   </p>
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap", paddingTop: 4 }}>
-                    <Link className="btn btn-primary" href={`/login?mode=signup&next=pricing&url=${encodeURIComponent(url)}`} style={{ color: "#0A0810" }}>
+                    <Link className="btn btn-primary" href={`/login?mode=signup&next=pricing&url=${encodeURIComponent(url)}`} style={{ color: "var(--on-accent)" }}>
                       Get this fixed
                     </Link>
-                    <Link className="btn btn-secondary" href="/pricing" style={{ fontWeight: 600, color: "#fff", borderColor: "rgba(255,255,255,.3)" }}>
+                    <Link className="btn btn-secondary" href="/pricing" style={{ fontWeight: 600, color: "var(--fg)", borderColor: "var(--fg-32)" }}>
                       See pricing
                     </Link>
                   </div>

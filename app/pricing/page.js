@@ -47,11 +47,11 @@ export default function PricingPage() {
     <div style={{ minHeight: "100vh", background: "var(--color-bg)", fontSize: 16 }}>
       <header style={{ borderBottom: "1px solid var(--color-divider)" }}>
         <div style={{ maxWidth: 1180, margin: "0 auto", padding: "15px 28px", display: "flex", alignItems: "center", gap: 11 }}>
-          <Link href="/" style={{ display: "flex", alignItems: "center", gap: 11, textDecoration: "none", color: "#fff" }}>
+          <Link href="/" style={{ display: "flex", alignItems: "center", gap: 11, textDecoration: "none", color: "var(--fg)" }}>
             <MadbotMark size={28} />
             <span style={{ fontFamily: "var(--font-body)", fontWeight: 400, fontSize: 21, letterSpacing: "-.005em" }}>madbot</span>
           </Link>
-          <Link href="/login" className="btn btn-secondary" style={{ marginLeft: "auto", fontWeight: 600, fontSize: 13.5, color: "#fff", borderColor: "var(--color-divider)" }}>
+          <Link href="/login" className="btn btn-secondary" style={{ marginLeft: "auto", fontWeight: 600, fontSize: 13.5, color: "var(--fg)", borderColor: "var(--color-divider)" }}>
             Sign in
           </Link>
         </div>
@@ -60,7 +60,7 @@ export default function PricingPage() {
       <main style={{ maxWidth: 1180, margin: "0 auto", padding: "62px 28px 90px" }}>
         <div style={{ textAlign: "center", marginBottom: 40 }}>
           <h1 style={{ margin: "0 0 12px", fontSize: "clamp(24px,9.3vw,50px)", lineHeight: 1.06 }}>Pay for the work, not the seats</h1>
-          <p style={{ margin: "0 auto 24px", fontSize: 17, maxWidth: "34em", color: "rgba(255,255,255,.62)" }}>
+          <p style={{ margin: "0 auto 24px", fontSize: 17, maxWidth: "34em", color: "var(--fg-60)" }}>
             Every plan includes the whole engine. What changes is how much it&apos;s allowed to do each month, and how
             many sites it looks after.
           </p>
@@ -92,17 +92,17 @@ export default function PricingPage() {
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <h3 style={{ margin: 0, fontSize: 23 }}>{p.name}</h3>
                 {p.badge ? (
-                  <span className="tag" style={{ marginLeft: "auto", background: "var(--color-accent)", color: "#0A0810" }}>{p.badge}</span>
+                  <span className="tag" style={{ marginLeft: "auto", background: "var(--color-accent)", color: "var(--on-accent)" }}>{p.badge}</span>
                 ) : null}
               </div>
               <p style={{ margin: 0 }}>
                 <span style={{ fontFamily: "var(--font-heading)", fontSize: "clamp(24px,7.8vw,42px)" }}>${priceOf(p)}</span>
-                <span style={{ fontSize: 14, color: "rgba(255,255,255,.5)" }}>{annual ? " /yr" : " /mo"}</span>
+                <span style={{ fontSize: 14, color: "var(--fg-45)" }}>{annual ? " /yr" : " /mo"}</span>
               </p>
-              <p style={{ margin: 0, fontSize: 14, lineHeight: 1.55, color: "rgba(255,255,255,.62)" }}>{p.tagline}</p>
+              <p style={{ margin: 0, fontSize: 14, lineHeight: 1.55, color: "var(--fg-60)" }}>{p.tagline}</p>
               <ul style={{ listStyle: "none", margin: "4px 0 0", padding: 0, display: "flex", flexDirection: "column", gap: 9, fontSize: 14 }}>
                 {p.features.map((f) => (
-                  <li key={f} style={{ display: "flex", gap: 9, color: "rgba(255,255,255,.8)" }}>
+                  <li key={f} style={{ display: "flex", gap: 9, color: "var(--fg-80)" }}>
                     <span style={{ color: "var(--color-accent)", flex: "none" }}>✓</span>
                     {f}
                   </li>
@@ -111,7 +111,7 @@ export default function PricingPage() {
               <Link
                 className={p.featured ? "btn btn-primary btn-block" : "btn btn-secondary btn-block"}
                 href={`/login?mode=signup&plan=${p.id}`}
-                style={p.featured ? { color: "#0A0810" } : { fontWeight: 600, color: "#fff", borderColor: "var(--color-divider)" }}
+                style={p.featured ? { color: "var(--on-accent)" } : { fontWeight: 600, color: "var(--fg)", borderColor: "var(--color-divider)" }}
               >
                 {p.cta}
               </Link>
@@ -121,7 +121,7 @@ export default function PricingPage() {
 
         <div className="card" style={{ marginTop: 34, padding: 24, gap: 8, background: "var(--color-neutral-100)", border: "1px dashed var(--color-accent-400)" }}>
           <h4 style={{ margin: 0, fontSize: 17 }}>Checkout isn&apos;t connected yet</h4>
-          <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.6, color: "rgba(255,255,255,.68)" }}>
+          <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.6, color: "var(--fg-80)" }}>
             These buttons create an account so you can look around — they don&apos;t take payment, because no payment
             processor is wired up on this build. Nobody is charged anything today, and the prices above aren&apos;t
             final.
@@ -129,7 +129,7 @@ export default function PricingPage() {
         </div>
 
         <div style={{ marginTop: 46, textAlign: "center" }}>
-          <p style={{ margin: 0, fontSize: 14.5, color: "rgba(255,255,255,.6)" }}>
+          <p style={{ margin: 0, fontSize: 14.5, color: "var(--fg-60)" }}>
             Not sure yet? <Link href="/">Run the free report on your site</Link> — no account needed.
           </p>
         </div>
