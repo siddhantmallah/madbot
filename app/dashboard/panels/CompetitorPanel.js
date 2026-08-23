@@ -2,6 +2,13 @@ import { useState } from "react";
 import { ago, minutesAgo } from "../data";
 import { hostnameOf } from "../../../lib/seed";
 
+// ago() already returns "just now" for fresh timestamps, so only the older
+// buckets want an "ago" suffix.
+function relative(ts) {
+  const label = ago(minutesAgo(ts));
+  return label === "just now" ? label : `${label} ago`;
+}
+
 export default function CompetitorPanel({ competitors, onAdd, onCheck, onRemove, busyId, adding }) {
   const [draft, setDraft] = useState("");
   const [error, setError] = useState("");
@@ -43,7 +50,7 @@ export default function CompetitorPanel({ competitors, onAdd, onCheck, onRemove,
                   {hostnameOf(c.url)}
                 </span>
                 <span className="text-muted" style={{ fontSize: 11, flex: "none" }}>
-                  {c.lastCheckedAt ? `checked ${ago(minutesAgo(c.lastCheckedAt))} ago` : "not checked"}
+                  {c.lastCheckedAt ? `checked ${relative(c.lastCheckedAt)}` : "not checked"}
                 </span>
                 <button
                   className="btn btn-ghost"
