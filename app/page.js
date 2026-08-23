@@ -34,7 +34,7 @@ const FAQS = [
   },
   {
     q: "Can it get me cited by AI answer engines?",
-    a: "That's an explicit target, not a side effect. It tracks your citation share across nine answer engines every week and writes the quotable, schema-marked pages those engines prefer to cite.",
+    a: "It's an explicit target, not a side effect. Today it measures one engine properly — it puts the unbranded questions your buyers actually ask to Claude with live web search, and reports whether you were named, whether you were linked, and who got named instead. The other assistants need their own API access, so the dashboard lists them as unmeasured rather than pretending. It then writes the quotable, schema-marked pages answer engines prefer to cite.",
   },
   {
     q: "What happens if I turn it off?",
@@ -303,17 +303,27 @@ export default function LandingPage() {
         </section>
 
         {/* CUSTOMERS */}
-        <section aria-label="Customers" style={{ borderBlock: "1px solid var(--color-divider)", background: "rgba(255,255,255,.02)" }}>
+        {/* This was a logo strip reading "Running quietly for" over four named
+            businesses, which presented them as paying customers getting ongoing
+            results. They aren't, and naming a client publicly needs their
+            permission regardless. Replaced with something true. */}
+        <section aria-label="What the free report does" style={{ borderBlock: "1px solid var(--color-divider)", background: "rgba(255,255,255,.02)" }}>
           <div
             data-reveal
             data-stagger="45"
-            style={{ maxWidth: 1180, margin: "0 auto", padding: "20px 28px", display: "flex", alignItems: "center", gap: 28, flexWrap: "wrap" }}
+            className="pad-responsive"
+            style={{ maxWidth: 1180, margin: "0 auto", padding: "20px 28px", display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap" }}
           >
             <span className="reveal-fade" style={{ fontSize: 12.5, color: "rgba(255,255,255,.4)" }}>
-              Running quietly for
+              The free report
             </span>
-            {["CertNotify", "Sofaalay", "Regulane", "AuctionBazi"].map((n) => (
-              <span key={n} className="reveal-fade" style={{ fontFamily: "var(--font-heading)", fontSize: 17, opacity: 0.55 }}>
+            {[
+              "Crawls what's actually there",
+              "20+ technical checks",
+              "Nothing written to your site",
+              "No account needed",
+            ].map((n) => (
+              <span key={n} className="reveal-fade" style={{ fontSize: 13.5, opacity: 0.62 }}>
                 {n}
               </span>
             ))}
@@ -375,7 +385,7 @@ export default function LandingPage() {
               { title: "Content that sounds like you", body: "Learns your voice from your own pages, then writes pillars, comparisons and answers — and tells you how close to you it got.", border: "var(--color-accent-2-400)", bg: "linear-gradient(160deg, rgba(168,85,247,.14), var(--color-surface))" },
               { title: "Distribution, not just publishing", body: "Directories, communities, dead-link reclamation, guest pitches. A page nobody sees was never worth writing.", border: "var(--color-divider)", bg: "var(--color-surface)" },
               { title: "Buyers, found in public signals", body: "Companies with a deadline you can solve — never bought lists. Scored, drafted for, and capped so you stay a good citizen.", border: "var(--color-divider)", bg: "var(--color-surface)" },
-              { title: "Visibility inside AI answers", body: "Tracks your citation share across nine answer engines weekly, and writes the quotable pages they prefer to cite.", border: "var(--color-accent-400)", bg: "linear-gradient(160deg, rgba(255,106,26,.14), var(--color-surface))" },
+              { title: "Visibility inside AI answers", body: "Asks Claude the questions your buyers ask, with live web search, and reports whether you were named at all — and which rivals were named instead.", border: "var(--color-accent-400)", bg: "linear-gradient(160deg, rgba(255,106,26,.14), var(--color-surface))" },
               { title: "A watch on your rivals", body: "When a competitor ships a page or slips a rank, you hear about it the same week — with a draft already waiting.", border: "var(--color-divider)", bg: "var(--color-surface)" },
             ].map((c) => (
               <article key={c.title} className="card reveal" style={{ padding: 26, gap: 9, border: `1px solid ${c.border}`, background: c.bg }}>
@@ -447,34 +457,45 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* PROOF */}
+        {/* WHAT IT MEASURES — this section used to show growth figures and a
+            named customer quote. MADBOT is weeks old and had produced neither,
+            so both were invented. Selling on what it genuinely measures, and on
+            a report the visitor can run on their own site in ten seconds,
+            converts better than a testimonial nobody can check. */}
         <section aria-labelledby="proof-h" style={{ maxWidth: 1180, margin: "0 auto", padding: "78px 28px" }}>
-          <h2 id="proof-h" style={{ margin: "0 0 36px", fontSize: "clamp(24px,8.1vw,44px)", maxWidth: "15em" }}>
-            Six weeks on one small site
+          <h2 id="proof-h" style={{ margin: "0 0 14px", fontSize: "clamp(24px,8.1vw,44px)", maxWidth: "17em" }}>
+            No customer results to show you yet
           </h2>
+          <p style={{ margin: "0 0 36px", maxWidth: "44em", fontSize: 16.5, lineHeight: 1.65, color: "rgba(255,255,255,.62)" }}>
+            MADBOT is new. Plenty of tools will show you a stranger&apos;s traffic chart at this point — we&apos;d
+            rather show you what it measures, and let you point it at your own site. Everything below is a real check
+            it runs, not a projection.
+          </p>
           <div className="split-2" style={{ gap: 48, alignItems: "center" }}>
             <div data-reveal data-stagger="90" className="grid-2" style={{ gap: 16 }}>
               {[
-                { k: "Organic visitors", v: "1,240 → 1,712", c: "var(--color-accent)" },
-                { k: "Top-10 keywords", v: "6 → 29", c: "var(--color-accent-2-700)" },
-                { k: "Qualified leads / mo", v: "3 → 46", c: "var(--color-accent-2-700)" },
-                { k: "Engines citing them", v: "1 → 4", c: "var(--color-accent)" },
+                { k: "Technical checks per crawl", v: "20+", n: "Every one traceable to a line on your page", c: "var(--color-accent)" },
+                { k: "Buying questions put to AI", v: "Live", n: "Real model calls with web search, not a lookup table", c: "var(--color-accent-2-700)" },
+                { k: "Free report", v: "~10s", n: "No account, no card, nothing written to your site", c: "var(--color-accent-2-700)" },
+                { k: "Reversible actions", v: "All", n: "Every change it makes, rolled back in one click", c: "var(--color-accent)" },
               ].map((s) => (
                 <div key={s.k} className="card reveal" style={{ padding: 22, gap: 5, background: "var(--color-surface)", border: "1px solid var(--color-divider)" }}>
                   <span className="card-kicker" style={{ color: s.c }}>{s.k}</span>
-                  <span style={{ fontFamily: "var(--font-heading)", fontSize: 34, lineHeight: 1 }}>{s.v}</span>
+                  <span style={{ fontFamily: "var(--font-heading)", fontSize: "clamp(26px,5vw,34px)", lineHeight: 1 }}>{s.v}</span>
+                  <span style={{ fontSize: 12.5, lineHeight: 1.5, color: "rgba(255,255,255,.5)" }}>{s.n}</span>
                 </div>
               ))}
             </div>
-            <figure style={{ margin: 0 }}>
-              <blockquote style={{ margin: 0, fontFamily: "var(--font-heading)", fontSize: 27, lineHeight: 1.3 }}>
-                &ldquo;I checked it obsessively for a week, then I stopped. That&apos;s the review: I forgot it was
-                running and the traffic kept going up.&rdquo;
+            <div>
+              <blockquote style={{ margin: 0, fontFamily: "var(--font-heading)", fontSize: "clamp(21px,4.4vw,27px)", lineHeight: 1.3 }}>
+                &ldquo;Who makes custom sofas to order in Mumbai?&rdquo; — asked with live web search, a real furniture
+                maker&apos;s site was named zero times out of four. Four competitors were named instead.
               </blockquote>
-              <figcaption style={{ marginTop: 18, fontSize: 14, fontFamily: "var(--font-body)", color: "rgba(255,255,255,.55)" }}>
-                Priya Raman — founder, CertNotify · a two-person team
-              </figcaption>
-            </figure>
+              <p style={{ marginTop: 18, marginBottom: 0, fontSize: 14, lineHeight: 1.6, fontFamily: "var(--font-body)", color: "rgba(255,255,255,.55)" }}>
+                One real check, run while building this. That&apos;s the kind of gap MADBOT finds — and the sort of
+                thing no rankings report would have told them.
+              </p>
+            </div>
           </div>
         </section>
 
@@ -629,7 +650,7 @@ export default function LandingPage() {
           </nav>
         </div>
         <div style={{ maxWidth: 1180, margin: "0 auto", padding: "0 28px 36px", fontSize: 12.5, color: "rgba(255,255,255,.35)" }}>
-          © 2026 MADBOT. Figures shown are from a consenting customer&apos;s dashboard.
+          © 2026 MADBOT. No customer results are shown on this page — MADBOT is new and hasn&apos;t earned any yet.
         </div>
       </footer>
 
