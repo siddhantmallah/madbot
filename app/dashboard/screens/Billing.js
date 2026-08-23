@@ -1,4 +1,5 @@
 import { PLANS, PLAN_ORDER, autonomyLabel, featuresLostOnDowngrade, FEATURE_LABELS } from "../../../lib/plans";
+import { CONTACT_EMAIL } from "../../../lib/contact";
 
 function money(minor, currency) {
   if (minor === null || minor === undefined) return "—";
@@ -12,7 +13,7 @@ function when(ts) {
   return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
 }
 
-export default function Billing({ usage, billing = [], siteCount, contactEmail }) {
+export default function Billing({ usage, billing = [], siteCount }) {
   const {
     plan,
     status,
@@ -162,7 +163,7 @@ export default function Billing({ usage, billing = [], siteCount, contactEmail }
             <div style={{ fontSize: 12.5, fontWeight: 700 }}>To start or change a plan</div>
             <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.6 }} className="text-muted">
               Card checkout isn&apos;t live yet. Email{" "}
-              <a href={`mailto:${contactEmail || "support@getmadbot.com"}`}>{contactEmail || "support@getmadbot.com"}</a>{" "}
+              <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>{" "}
               with the plan you want and we&apos;ll set it up and send payment details. Your licence activates as soon
               as payment clears.
             </p>
