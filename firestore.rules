@@ -72,6 +72,17 @@ service cloud.firestore {
       }
     }
 
+    // Delivery state and the suppression list. Server-only in both directions:
+    // a client that could delete a suppression could resume mailing an address
+    // that complained, and one that could read the list could enumerate every
+    // customer's email.
+    match /mail/{messageId} {
+      allow read, write: if false;
+    }
+    match /suppressions/{emailKey} {
+      allow read, write: if false;
+    }
+
     // Deny everything else by default.
     match /{document=**} {
       allow read, write: if false;
