@@ -7,10 +7,10 @@ import { useAuth } from "../providers/AuthProvider";
 import { GoogleMark, GithubMark, MadbotMark } from "../components/Brand";
 
 const PREVIEW_LINES = [
-  'Publishes "SSL expiry alerts: the 2026 guide" — 1,840 words, 4 internal links',
-  "Fixes missing meta descriptions and orphan pages",
-  "Scores companies who match your ideal customer profile",
-  "Tracks whether AI answer engines cite you",
+  "Finds the pages you should have and don't",
+  "Fixes the technical debt holding your rankings down",
+  "Marks up schema so answer engines can cite you",
+  "Scores companies who match your ideal customer",
 ];
 
 function friendlyAuthError(err) {
@@ -40,10 +40,19 @@ function LoginInner() {
   const [tick, setTick] = useState(0);
 
   const incomingUrl = params.get("url");
+  const next = params.get("next");
+  const plan = params.get("plan");
+
+  // Coming from the free report or a pricing button, the next stop is pricing.
+  // Otherwise straight into the dashboard, carrying any site they typed.
   const dashboardDest = incomingUrl ? `/dashboard?url=${encodeURIComponent(incomingUrl)}` : "/dashboard";
+  const afterAuth =
+    next === "pricing"
+      ? `/pricing${incomingUrl ? `?url=${encodeURIComponent(incomingUrl)}` : ""}`
+      : dashboardDest;
 
   useEffect(() => {
-    if (!loading && user) router.replace(dashboardDest);
+    if (!loading && user) router.replace(afterAuth);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, user, router]);
 
@@ -62,7 +71,7 @@ function LoginInner() {
       } else {
         await logIn(email, pass);
       }
-      router.push(dashboardDest);
+      router.push(afterAuth);
     } catch (err) {
       setError(friendlyAuthError(err));
       setBusy(false);
@@ -74,7 +83,7 @@ function LoginInner() {
     setBusy(true);
     try {
       await (provider === "google" ? logInWithGoogle() : logInWithGithub());
-      router.push(dashboardDest);
+      router.push(afterAuth);
     } catch (err) {
       setError(friendlyAuthError(err));
       setBusy(false);
@@ -143,7 +152,11 @@ function LoginInner() {
             {mode === "signup" ? "Create your account" : "Welcome back"}
           </h1>
           <p style={{ margin: "0 0 26px", fontSize: 15, color: "rgba(255,255,255,.55)" }}>
-            {mode === "signup" ? "Takes about a minute. No card required." : "Sign in and see what it did this week."}
+            {mode === "signup"
+              ? plan
+                ? `Setting you up on the ${plan} plan. No card required — checkout isn't live yet.`
+                : "Takes about a minute. No card required."
+              : "Sign in and pick up where you left off."}
           </p>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 22 }}>

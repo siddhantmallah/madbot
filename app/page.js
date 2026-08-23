@@ -3,13 +3,16 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePageReveal } from "./components/useReveal";
+import AuditModal from "./components/AuditModal";
 
+// Illustrative examples of the kind of work the engine does — deliberately
+// phrased as capability, not as a live feed of things happening right now.
 const TICKER_LINES = [
-  'Published "SSL expiry alerts: the 2026 guide" — 1,840 words, 4 internal links',
-  "Fixed 11 missing meta descriptions and 3 orphan pages",
-  "Scored 43 orgs with certs expiring inside 30 days",
-  '"ssl expiry alert tool" entered the top 10 — #7 from nowhere',
-  "Pitched 5 blogs that link to a rival but not to you",
+  "Finds the pages you should have and don't",
+  "Marks up your schema so answer engines can cite you",
+  "Writes and ships the pages, then tracks what moved",
+  "Spots the companies who have your problem this week",
+  "Rolls any of it back in one click",
 ];
 
 const FAQS = [
@@ -105,12 +108,15 @@ function FaqItem({ q, a }) {
 export default function LandingPage() {
   const rootRef = usePageReveal();
   const [heroUrl, setHeroUrl] = useState("");
+  const [auditUrl, setAuditUrl] = useState(null);
 
+  // The free report runs before any account exists — that's the whole point of
+  // it. Signing up is what happens after they've seen it's worth something.
   function handleStartSubmit(e) {
     e.preventDefault();
     const url = heroUrl.trim();
-    const qs = url ? `?mode=signup&url=${encodeURIComponent(url)}` : "?mode=signup";
-    window.location.href = `/login${qs}`;
+    if (!url) return;
+    setAuditUrl(url);
   }
 
   return (
@@ -227,7 +233,7 @@ export default function LandingPage() {
                 </button>
               </form>
               <p style={{ margin: "0 0 22px", fontSize: 13.5, color: "rgba(255,255,255,.45)" }}>
-                A 90-second audit, no card, nothing published until you say so.
+                A real report in about ten seconds. No account, no card, nothing touched.
               </p>
               <div
                 style={{
@@ -244,27 +250,27 @@ export default function LandingPage() {
                 <span style={{ position: "relative", width: 9, height: 9, flex: "none" }}>
                   <span style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "var(--color-accent)", animation: "softPulse 2.4s ease-in-out infinite" }} />
                 </span>
-                <span style={{ fontSize: 12.5, color: "rgba(255,255,255,.4)", flex: "none" }}>Live now</span>
+                <span style={{ fontSize: 12.5, color: "rgba(255,255,255,.4)", flex: "none" }}>It does</span>
                 <Ticker />
               </div>
               <dl style={{ display: "flex", gap: 38, margin: "34px 0 0", flexWrap: "wrap" }}>
                 <div>
                   <dt style={{ fontSize: 11.5, letterSpacing: ".09em", textTransform: "uppercase", color: "var(--color-accent)" }}>
-                    Median in 90 days
+                    The free report
                   </dt>
-                  <dd style={{ margin: "5px 0 0", fontFamily: "var(--font-heading)", fontSize: 30 }}>+38% organic</dd>
+                  <dd style={{ margin: "5px 0 0", fontFamily: "var(--font-heading)", fontSize: 30 }}>No account</dd>
                 </div>
                 <div>
                   <dt style={{ fontSize: 11.5, letterSpacing: ".09em", textTransform: "uppercase", color: "var(--color-accent-2-700)" }}>
-                    Sites running
+                    Checks run live
                   </dt>
-                  <dd style={{ margin: "5px 0 0", fontFamily: "var(--font-heading)", fontSize: 30 }}>2,140</dd>
+                  <dd style={{ margin: "5px 0 0", fontFamily: "var(--font-heading)", fontSize: 30 }}>20+</dd>
                 </div>
                 <div>
                   <dt style={{ fontSize: 11.5, letterSpacing: ".09em", textTransform: "uppercase", color: "rgba(255,255,255,.5)" }}>
-                    Hours saved / mo
+                    Every action
                   </dt>
-                  <dd style={{ margin: "5px 0 0", fontFamily: "var(--font-heading)", fontSize: 30 }}>31</dd>
+                  <dd style={{ margin: "5px 0 0", fontFamily: "var(--font-heading)", fontSize: 30 }}>Reversible</dd>
                 </div>
               </dl>
             </div>
@@ -291,7 +297,7 @@ export default function LandingPage() {
                 style={{ position: "relative", width: "124%", maxWidth: "none", height: "auto", margin: "-12%" }}
               />
               <figcaption style={{ position: "relative", marginTop: "-6%", paddingLeft: "6%", fontSize: 11.5, color: "rgba(255,255,255,.42)" }}>
-                83 opportunities, scored and ranked. The bright paths are already running.
+                Every opening around one site, scored and ranked — the brightest paths first.
               </figcaption>
             </figure>
           </div>
@@ -627,6 +633,8 @@ export default function LandingPage() {
           © 2026 MADBOT. Figures shown are from a consenting customer&apos;s dashboard.
         </div>
       </footer>
+
+      {auditUrl ? <AuditModal url={auditUrl} onClose={() => setAuditUrl(null)} /> : null}
     </div>
   );
 }
