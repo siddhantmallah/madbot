@@ -4,8 +4,9 @@ import { PLANS } from "../../../lib/plans";
  * Shown in place of a screen the current plan doesn't cover. Always names the
  * plan that would unlock it — a locked door with no key is worse than no door.
  */
-export default function LockedFeature({ title, what, access, onSeeBilling }) {
+export default function LockedFeature({ title, what, access, usage, onSeeBilling }) {
   const upgrade = access?.upgradeTo ? PLANS[access.upgradeTo] : null;
+  const trialEnded = usage?.trialExpired;
 
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -18,8 +19,10 @@ export default function LockedFeature({ title, what, access, onSeeBilling }) {
         className="card elev-sm"
         style={{ padding: 22, gap: 12, maxWidth: 620, borderLeft: "3px solid var(--color-accent)" }}
       >
-        <h4 style={{ margin: 0 }}>Not on your plan</h4>
-        <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.6 }}>{access?.reason}</p>
+        <h4 style={{ margin: 0 }}>{trialEnded ? "Your trial has ended" : "Not on your plan"}</h4>
+        <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.6 }}>
+          {trialEnded ? "This was part of your trial. A plan brings it back — nothing you set up was lost." : access?.reason}
+        </p>
 
         {upgrade ? (
           <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>

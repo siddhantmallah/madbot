@@ -853,6 +853,33 @@ function DashboardInner() {
               {hostnameOf(site.url)}
             </span>
           ) : null}
+          {/* The plan is always on screen. Nobody should have to go looking for
+              what they're paying for or how long a trial has left. */}
+          <button
+            onClick={() => go("billing")}
+            className="tag"
+            style={{
+              fontSize: 11,
+              cursor: "pointer",
+              border: 0,
+              gap: 6,
+              background: usage.trialing
+                ? "var(--color-accent-200)"
+                : usage.plan.id === "trial"
+                ? "var(--color-neutral-200)"
+                : "var(--color-accent-2-200)",
+              color: usage.trialing
+                ? "var(--color-accent-900)"
+                : usage.plan.id === "trial"
+                ? "var(--color-neutral-800)"
+                : "var(--color-accent-2-800)",
+            }}
+          >
+            {usage.trialing
+              ? `Trial · ${usage.trialDaysLeft} day${usage.trialDaysLeft === 1 ? "" : "s"} left`
+              : usage.plan.name}
+          </button>
+
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
             {site ? (
               <>
@@ -959,6 +986,7 @@ function DashboardInner() {
                   title="Content & calendar"
                   what="Researched, written and published articles."
                   access={access.content}
+                  usage={usage}
                   onSeeBilling={() => go("billing")}
                 />
               )}
@@ -980,6 +1008,7 @@ function DashboardInner() {
                   title="Lead discovery"
                   what="Companies matching your ideal customer, with outreach drafted."
                   access={access.leads}
+                  usage={usage}
                   onSeeBilling={() => go("billing")}
                 />
               )}
@@ -994,6 +1023,7 @@ function DashboardInner() {
                   title="AI search visibility"
                   what="Whether an assistant names you when buyers ask about what you sell."
                   access={access.visibility}
+                  usage={usage}
                   onSeeBilling={() => go("billing")}
                 />
               )}

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { verifiedUid } from "../../../../lib/licenseServer";
 import { applyBillingEvent, isAdmin } from "../../../../lib/billingAdmin";
-import { adminAvailable, adminDb } from "../../../../lib/firebaseAdmin";
+import { adminAuth, adminAvailable, adminDb } from "../../../../lib/firebaseAdmin";
 import { PLANS } from "../../../../lib/plans";
 
 export const runtime = "nodejs";
@@ -51,8 +51,7 @@ export async function POST(request) {
   let targetUid = targetUidRaw || null;
   if (!targetUid && email) {
     try {
-      const { getAuth } = await import("firebase-admin/auth");
-      const user = await getAuth().getUserByEmail(email);
+      const user = await adminAuth().getUserByEmail(email);
       targetUid = user.uid;
     } catch {
       return NextResponse.json({ ok: false, error: `No account found for ${email}.` }, { status: 404 });

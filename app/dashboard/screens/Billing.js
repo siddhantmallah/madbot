@@ -1,4 +1,4 @@
-import { PLANS, PLAN_ORDER, autonomyLabel } from "../../../lib/plans";
+import { PLANS, PLAN_ORDER, autonomyLabel, featuresLostOnDowngrade, FEATURE_LABELS } from "../../../lib/plans";
 
 function money(minor, currency) {
   if (minor === null || minor === undefined) return "—";
@@ -12,9 +12,25 @@ function when(ts) {
   return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
 }
 
-export default function Billing({ usage, billing = [], siteCount }) {
-  const { plan, status, maxSites, overSiteLimit, renewsAt, cancelAtPeriodEnd, grantedManually } = usage;
+export default function Billing({ usage, billing = [], siteCount, contactEmail }) {
+  const {
+    plan,
+    status,
+    maxSites,
+    overSiteLimit,
+    renewsAt,
+    cancelAtPeriodEnd,
+    grantedManually,
+    trialing,
+    trialDaysLeft,
+    trialExpired,
+    intendedPlan,
+  } = usage;
   const unlicensed = plan.id === "trial";
+
+  // What they'd lose by settling on the plan they originally picked. Shown
+  // during the trial so the end of it isn't a nasty surprise.
+  const losing = trialing && intendedPlan ? featuresLostOnDowngrade(plan.id, intendedPlan.id) : [];
 
   return (
     <section data-screen-label="Billing" style={{ display: "flex", flexDirection: "column", gap: 18 }}>
@@ -24,6 +40,53 @@ export default function Billing({ usage, billing = [], siteCount }) {
           What you&apos;re entitled to, what you&apos;re using, and every payment on record.
         </p>
       </div>
+
+      {trialing ? (
+        <section
+          className="card elev-sm"
+          style={{ padding: 18, gap: 10, borderLeft: "3px solid var(--color-accent)", background: "var(--color-accent-100)" }}
+        >
+          <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+            <h4 style={{ margin: 0 }}>
+              Free trial — {trialDaysLeft} day{trialDaysLeft === 1 ? "" : "s"} left
+            </h4>
+            <span className="text-muted" style={{ fontSize: 12, marginLeft: "auto" }}>
+              ends {when(renewsAt)}
+            </span>
+          </div>
+          <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6 }}>
+            You have everything in <strong>{plan.name}</strong> for the trial, whichever plan you picked — so you can
+            see the whole thing working before paying for it. No card was taken and nothing renews automatically.
+          </p>
+          {intendedPlan ? (
+            <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.6 }} className="text-muted">
+              You chose <strong>{intendedPlan.name}</strong> (${intendedPlan.price}/mo).
+              {losing.length ? (
+                <>
+                  {" "}
+                  On that plan you&apos;d no longer have:{" "}
+                  {losing.map((f) => FEATURE_LABELS[f] || f).join(", ")}.
+                </>
+              ) : (
+                " That covers everything you're using now."
+              )}
+            </p>
+          ) : null}
+        </section>
+      ) : null}
+
+      {trialExpired ? (
+        <section
+          className="card elev-sm"
+          style={{ padding: 18, gap: 8, borderLeft: "3px solid var(--color-accent)" }}
+        >
+          <h4 style={{ margin: 0 }}>Your trial has ended</h4>
+          <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6 }}>
+            Your sites and everything MADBOT found are still here. Audits and the opportunity map keep working;
+            writing, lead discovery and AI visibility need a plan.
+          </p>
+        </section>
+      ) : null}
 
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 16 }}>
         <section className="card elev-sm" style={{ padding: 20, gap: 12 }}>
@@ -89,6 +152,19 @@ export default function Billing({ usage, billing = [], siteCount }) {
                 </div>
               );
             })}
+          </div>
+
+          {/* No checkout button, because there is no checkout. A button that
+              looked like it took payment and didn't would be worse than
+              saying so. */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 7, paddingTop: 4 }}>
+            <div style={{ fontSize: 12.5, fontWeight: 700 }}>To start or change a plan</div>
+            <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.6 }} className="text-muted">
+              Card checkout isn&apos;t live yet. Email{" "}
+              <a href={`mailto:${contactEmail || "support@getmadbot.com"}`}>{contactEmail || "support@getmadbot.com"}</a>{" "}
+              with the plan you want and we&apos;ll set it up and send payment details. Your licence activates as soon
+              as payment clears.
+            </p>
           </div>
         </section>
       </div>

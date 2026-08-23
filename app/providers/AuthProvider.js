@@ -30,6 +30,27 @@ async function ensureUserDoc(user) {
   );
 }
 
+/**
+ * Starts the free trial if this account hasn't had one.
+ *
+ * Runs after every sign-in, not just signup: the server refuses a second trial,
+ * so calling it repeatedly is harmless and it also repairs accounts created
+ * before trials existed. A failure here must never block sign-in — the worst
+ * case is landing on the trial-less tier, which the dashboard states plainly.
+ */
+async function ensureTrial(user, intendedPlan) {
+  try {
+    const idToken = await user.getIdToken();
+    await fetch("/api/billing/start-trial", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ idToken, intendedPlan: intendedPlan || null }),
+    });
+  } catch {
+    // Deliberately swallowed. See above.
+  }
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(undefined);
 
@@ -38,28 +59,32 @@ export function AuthProvider({ children }) {
     return unsub;
   }, []);
 
-  async function signUp(email, password, name) {
+  async function signUp(email, password, name, intendedPlan) {
     const cred = await createUserWithEmailAndPassword(auth, email, password);
     if (name) await updateProfile(cred.user, { displayName: name });
     await ensureUserDoc({ ...cred.user, displayName: name || cred.user.displayName });
+    await ensureTrial(cred.user, intendedPlan);
     return cred.user;
   }
 
   async function logIn(email, password) {
     const cred = await signInWithEmailAndPassword(auth, email, password);
     await ensureUserDoc(cred.user);
+    await ensureTrial(cred.user, null);
     return cred.user;
   }
 
-  async function logInWithGoogle() {
+  async function logInWithGoogle(intendedPlan) {
     const cred = await signInWithPopup(auth, googleProvider);
     await ensureUserDoc(cred.user);
+    await ensureTrial(cred.user, intendedPlan);
     return cred.user;
   }
 
-  async function logInWithGithub() {
+  async function logInWithGithub(intendedPlan) {
     const cred = await signInWithPopup(auth, githubProvider);
     await ensureUserDoc(cred.user);
+    await ensureTrial(cred.user, intendedPlan);
     return cred.user;
   }
 

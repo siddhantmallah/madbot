@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { sendEmail, usingSandboxSender } from "../../../lib/email";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -43,25 +44,25 @@ export async function POST(request) {
     return NextResponse.json({ ok: false, error: "Could not verify your account." }, { status: 401 });
   }
 
-  const resendRes = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from: "MADBOT <onboarding@resend.dev>",
-      to: [email],
-      subject: subject || "Your MADBOT digest",
-      html,
-      text,
-    }),
+  const result = await sendEmail({
+    to: email,
+    subject: subject || "Your MADBOT digest",
+    html,
+    text,
   });
 
-  const resendData = await resendRes.json().catch(() => ({}));
-  if (!resendRes.ok) {
-    return NextResponse.json({ ok: false, error: resendData?.message || "Failed to send." }, { status: 502 });
+  if (!result.ok) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: result.error,
+        // The sandbox sender only delivers to the Resend account's own address,
+        // which looks exactly like a broken app if it isn't called out.
+        sandboxSender: usingSandboxSender(),
+      },
+      { status: 502 }
+    );
   }
 
-  return NextResponse.json({ ok: true, id: resendData.id, to: email });
+  return NextResponse.json({ ok: true, id: result.id, to: email });
 }

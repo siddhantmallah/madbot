@@ -67,7 +67,7 @@ function LoginInner() {
     setBusy(true);
     try {
       if (mode === "signup") {
-        await signUp(email, pass, name);
+        await signUp(email, pass, name, plan);
       } else {
         await logIn(email, pass);
       }
@@ -82,7 +82,7 @@ function LoginInner() {
     setError("");
     setBusy(true);
     try {
-      await (provider === "google" ? logInWithGoogle() : logInWithGithub());
+      await (provider === "google" ? logInWithGoogle(plan) : logInWithGithub(plan));
       router.push(afterAuth);
     } catch (err) {
       setError(friendlyAuthError(err));
