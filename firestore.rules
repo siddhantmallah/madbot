@@ -61,6 +61,23 @@ service cloud.firestore {
           allow read, create, update, delete: if isOwner(uid);
         }
 
+        // Drafted and published social posts. The customer owns these and edits
+        // them freely — but note what this does NOT grant: the ability to
+        // publish one. Publishing goes through /api/social/publish, which
+        // re-reads the post server-side and refuses anything not carrying an
+        // approval. A client flipping status to "approved" here therefore
+        // changes what its own dashboard shows and nothing else.
+        match /social/{postId} {
+          allow read, create, update, delete: if isOwner(uid);
+        }
+
+        // Directory listing copy and submission state. Nothing here is a
+        // credential and nothing here is published by MADBOT — a person pastes
+        // the copy into someone else's form — so the customer has it outright.
+        match /listings/{listingId} {
+          allow read, create, update, delete: if isOwner(uid);
+        }
+
         // Metered usage. The customer can see what they've spent; only the
         // server writes it. A client that could edit its own usage counters
         // could grant itself unlimited paid work, which is the entire point
