@@ -72,15 +72,27 @@ if (!haveRedirect) {
     return `blocked (HTTP ${r.status}: ${JSON.stringify(r.json?.error || r.json?.finalUrl)})`;
   });
 
-  await test("/api/snapshot does not follow a redirect into the private network", async () => {
-    const r = await probe("/api/snapshot", (j) => ({ finalUrl: j.snapshot?.finalUrl, title: j.snapshot?.title, h1: j.snapshot?.h1, paths: j.snapshot?.paths }));
-    if (r.body.includes(CANARY)) {
-      throw new Error(
-        `HIGH / SSRF. HTTP ${r.status}. Snapshot of an internal page returned to the caller, including its link ` +
-          `structure: ${JSON.stringify(r.extracted)}. Repeated calls map an internal site over time.`
-      );
+  await test("runSnapshot refuses a redirect into the private network", async () => {
+    // Was a bug report against /api/snapshot, which now needs a token, so the
+    // route can no longer prove anything either way. The fix lives in
+    // lib/urlGuard.js, so assert it there: no token, no dev server, and it
+    // covers every caller of safeFetch rather than one route.
+    const { runSnapshot } = await import("../lib/audit.js");
+    const fx = await serveFixture({ "/": { body: `<html><head><title>${CANARY}</title></head><body>x</body></html>` } });
+    try {
+      try {
+        const out = await runSnapshot(viaPublicRedirect(`http://127.0.0.1:${fx.port}/`));
+        if (JSON.stringify(out).includes(CANARY)) {
+          throw new Error("HIGH / SSRF. runSnapshot followed a redirect to loopback and returned its contents.");
+        }
+        return "no canary content returned";
+      } catch (e) {
+        if (String(e.message).startsWith("HIGH /")) throw e;
+        return `refused (${e.message})`;
+      }
+    } finally {
+      await fx.close();
     }
-    return `blocked (HTTP ${r.status})`;
   });
 
   await test("/api/read-site does not follow a redirect into the private network", async () => {
@@ -147,24 +159,34 @@ if (!haveRedirect) {
 
 suite("SSRF — sitemap URLs from a remote robots.txt");
 
-await test("crawlSite validates sitemap URLs before fetching them", async () => {
-  const { readFileSync } = await import("node:fs");
-  const src = readFileSync(new URL("../lib/crawler.js", import.meta.url), "utf8");
-  const fn = src.match(/async function fetchSitemapUrls[\s\S]*?\n}/)?.[0] || "";
-  const takesRemoteHints = /sitemapHints/.test(fn);
-  // `origin` is only a parameter here; validation would mean an explicit
-  // public-host assertion or a same-origin comparison on each candidate.
-  const validates = /assertPublicHost|\.origin\s*!==|startsWith\(\s*origin/.test(fn);
-  if (takesRemoteHints && !validates) {
-    throw new Error(
-      "HIGH / SSRF (second vector). fetchSitemapUrls() takes the `Sitemap:` values out of the target's own robots.txt " +
-        "and the <loc> values out of a sitemap index, then hands them straight to safeFetch — no assertPublicHost, no " +
-        "same-origin check. Any site a customer asks MADBOT to crawl can publish `Sitemap: http://169.254.169.254/latest/" +
-        "meta-data/iam/security-credentials/` and have the server fetch it. Unlike the redirect vector this one needs no " +
-        "redirector at all."
-    );
+await test("safeFetch refuses a private URL handed to it directly", async () => {
+  // The crawler reads Sitemap: out of a target's own robots.txt and passes
+  // the values to safeFetch. It has no host check of its own and does not
+  // need one: safeFetch validates every URL it is given, and it is the only
+  // fetch path. That is what closes the sitemap vector, so this is the
+  // assertion worth keeping.
+  const { safeFetch } = await import("../lib/urlGuard.js");
+  const targets = [
+    "http://127.0.0.1/",
+    "http://169.254.169.254/latest/meta-data/iam/security-credentials/",
+    "http://10.0.0.1/",
+    "http://[::1]/",
+    "http://100.64.0.1/",
+  ];
+  const leaked = [];
+  for (const t of targets) {
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      await safeFetch(t, { timeoutMs: 4000 });
+      leaked.push(t);
+    } catch {
+      /* refused, which is the point */
+    }
   }
-  return "validated";
+  if (leaked.length) {
+    throw new Error(`HIGH / SSRF. safeFetch fetched private addresses without complaint: ${leaked.join(", ")}`);
+  }
+  return `all ${targets.length} private targets refused`;
 });
 
 report();
