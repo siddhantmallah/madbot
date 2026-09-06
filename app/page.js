@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePageReveal } from "./components/useReveal";
 import AuditModal from "./components/AuditModal";
+import SiteFooter from "./components/SiteFooter";
 import ThemeToggle from "./components/ThemeToggle";
 import { MadbotMark } from "./components/Brand";
 import AutonomyDial from "./components/AutonomyDial";
@@ -608,43 +609,7 @@ export default function LandingPage() {
         </section>
       </main>
 
-      <footer style={{ borderTop: "1px solid var(--color-divider)" }}>
-        <div className="footer-grid pad-responsive" style={{ maxWidth: 1180, margin: "0 auto", padding: "46px 28px", gap: 28 }}>
-          <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 11 }}>
-              <MadbotMark size={26} />
-              <span style={{ fontFamily: "var(--font-body)", fontWeight: 400, fontSize: 19, letterSpacing: "-.005em", color: "var(--fg)" }}>madbot</span>
-            </div>
-            <p style={{ margin: 0, fontSize: 13.5, maxWidth: "26em", color: "var(--fg-45)" }}>
-              Autonomous website marketing. One dial, a full audit trail, and no seats to buy.
-            </p>
-          </div>
-          <nav aria-label="Product" style={{ display: "flex", flexDirection: "column", gap: 9, fontSize: 14 }}>
-            <h4 style={{ margin: "0 0 2px", fontSize: 12.5, letterSpacing: ".09em", textTransform: "uppercase", color: "var(--fg-45)" }}>Product</h4>
-            <a href="#how">How it works</a>
-            <a href="#does">What it does</a>
-            <a href="#rope">Autonomy</a>
-            <a href="#pricing">Pricing</a>
-          </nav>
-          <nav aria-label="Learn" style={{ display: "flex", flexDirection: "column", gap: 9, fontSize: 14 }}>
-            <h4 style={{ margin: "0 0 2px", fontSize: 12.5, letterSpacing: ".09em", textTransform: "uppercase", color: "var(--fg-45)" }}>Learn</h4>
-            <a href="#faq">FAQ</a>
-            <a href="#does">AI search visibility</a>
-            <a href="#proof-h">Results</a>
-            <a href="#rope">Guardrails</a>
-          </nav>
-          <nav aria-label="Company" style={{ display: "flex", flexDirection: "column", gap: 9, fontSize: 14 }}>
-            <h4 style={{ margin: "0 0 2px", fontSize: 12.5, letterSpacing: ".09em", textTransform: "uppercase", color: "var(--fg-45)" }}>Company</h4>
-            <Link href="/login">Get started</Link>
-            <a href="#faq">Trust &amp; safety</a>
-            <a href="#faq">Privacy</a>
-            <a href="#faq">Contact</a>
-          </nav>
-        </div>
-        <div style={{ maxWidth: 1180, margin: "0 auto", padding: "0 28px 36px", fontSize: 12.5, color: "var(--fg-32)" }}>
-          © 2026 MADBOT. No customer results are shown on this page — MADBOT is new and hasn&apos;t earned any yet.
-        </div>
-      </footer>
+      <SiteFooter />
 
       {auditUrl ? <AuditModal url={auditUrl} onClose={() => setAuditUrl(null)} /> : null}
     </div>

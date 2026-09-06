@@ -1,0 +1,276 @@
+"use client";
+
+import Link from "next/link";
+import LegalPage, { LegalSection, Callout } from "../../components/LegalPage";
+import { COMPANY, emailFor } from "../../../lib/company";
+import { CONTACT_EMAIL } from "../../../lib/contact";
+
+/**
+ * The Security page.
+ *
+ * Most security pages are a list of logos. This one is a list of controls that
+ * exist in the repository, and then an equally long list of controls that do
+ * not. A small company claiming an audit it has not had is worse than a small
+ * company saying it has not had one, because the first is a lie a buyer can
+ * check.
+ */
+
+function Email({ purpose }) {
+  const address = emailFor(purpose, CONTACT_EMAIL);
+  if (!address) {
+    return (
+      <>
+        the contact address published on our <Link href="/legal">policies page</Link>
+      </>
+    );
+  }
+  return <a href={`mailto:${address}`}>{address}</a>;
+}
+
+const H3 = { fontSize: 16, margin: "24px 0 8px", lineHeight: 1.3 };
+
+const TOC = [
+  { id: "how-to-read", title: "How to read this page" },
+  { id: "in-place", title: "What is in place" },
+  { id: "not-in-place", title: "What is not in place yet" },
+  { id: "your-side", title: "What is on your side" },
+  { id: "report", title: "Reporting a vulnerability" },
+  { id: "breach", title: "If something goes wrong" },
+];
+
+export default function SecurityPage() {
+  return (
+    <LegalPage
+      title="Security"
+      kicker="Legal"
+      updated="6 September 2026"
+      effective="6 September 2026"
+      toc={TOC}
+      intro={
+        <>
+          <p>
+            {COMPANY.legalName} is a small company. {COMPANY.product} holds your account details, the content of the
+            sites you connect, credentials for the services you link, and lead records that can contain personal data.
+            That is worth protecting properly, and worth being accurate about.
+          </p>
+          <p>
+            So this page has two halves. The first describes controls that are actually implemented. The second
+            describes the ones that are not, and it is the more useful half if you are deciding whether to trust us.
+          </p>
+        </>
+      }
+    >
+      <LegalSection id="how-to-read" index={1} title="How to read this page">
+        <p>
+          Nothing here is a certification, an attestation or the output of an audit. No third party stands behind
+          these statements. They describe the system as it is built today.
+        </p>
+        <p>
+          If a control you need is in the second half rather than the first, we do not have it yet. Ask before you
+          buy rather than after.
+        </p>
+      </LegalSection>
+
+      <LegalSection id="in-place" index={2} title="What is in place">
+        <h3 style={H3}>Transport</h3>
+        <p>
+          Everything is served over HTTPS. TLS is terminated by our hosting provider, certificates renew
+          automatically, and plain HTTP is redirected. Outbound requests to your site and to third-party APIs use
+          HTTPS wherever the other end supports it.
+        </p>
+
+        <h3 style={H3}>Identity</h3>
+        <p>
+          Sign-in is handled by Firebase Authentication rather than by us, so we never see or store a password. You
+          can sign in with Google, with GitHub, or with an email address and password.
+        </p>
+        <p>
+          Where you use a password, our rules are stricter than the platform minimum. Firebase enforces a floor of six
+          characters. We require at least ten, with a letter and either a number or a symbol, and we reject passwords
+          that appear in a list of common choices, that contain long runs or keyboard sequences, or that contain your
+          own name or the local part of your email address. The rule lives in one file, so the checklist you see while
+          typing is the rule the code enforces.
+        </p>
+
+        <h3 style={H3}>Access control in the database</h3>
+        <p>
+          Every document is scoped to the account that owns it. A signed-in user can read and write their own records
+          and nothing else. The default at the bottom of the rules denies everything not explicitly allowed, so a
+          collection added later is closed until someone opens it deliberately. Several kinds of record are readable
+          by the owner but writable only by the server:
+        </p>
+        <ul>
+          <li>
+            <b>Subscriptions.</b> A user can write their own profile but not the subscription field on it. Without
+            that split, anyone signed in could grant themselves the top plan from a browser console.
+          </li>
+          <li>
+            <b>Usage counters.</b> Readable, so you can see what you have spent. Not writable, because an account that
+            could edit its own meter would have unlimited paid work.
+          </li>
+          <li>
+            <b>Billing records.</b> Readable by the customer, written only by the server, so a receipt cannot be forged
+            or edited afterwards. The internal billing event log behind them is closed to the client entirely.
+          </li>
+          <li>
+            <b>Integration credentials.</b> Closed to the client in both directions. A connection token is a real
+            credential with no safe partial view, so the interface gets connection status from an API route instead.
+          </li>
+          <li>
+            <b>Mail delivery state and the suppression list.</b> Closed in both directions. A client that could delete
+            a suppression could resume mailing an address that complained, and one that could read the list could
+            enumerate other customers&apos; addresses.
+          </li>
+        </ul>
+
+        <h3 style={H3}>Server-side enforcement</h3>
+        <p>
+          Every paid action re-checks the licence on the server. Identity comes from a verified token and the plan
+          from the database through the admin SDK. Neither is taken from the request body, because the caller is
+          exactly the party with an interest in lying about both. The greyed-out buttons in the dashboard are a
+          courtesy; the server-side check is what holds.
+        </p>
+        <p>
+          Publishing works the same way. Approving a social post in the browser changes what your own dashboard shows.
+          The publish route re-reads the post on the server and refuses anything without a genuine approval.
+        </p>
+
+        <h3 style={H3}>Secrets</h3>
+        <p>
+          The Firebase service account and every API key are held as environment variables in the hosting platform,
+          not committed to the repository. Client-side code only receives values that are safe to be public.
+        </p>
+
+        <h3 style={H3}>Scheduled jobs and webhooks</h3>
+        <p>
+          The scheduled job endpoints require a shared secret and refuse anonymous callers. If the secret is not
+          configured they fail closed, rather than running for anyone who finds the URL.
+        </p>
+        <p>
+          The email delivery webhook is signature-verified, so a forged bounce or complaint cannot suppress a real
+          customer&apos;s mail. Events are applied idempotently, so provider retries do not double-count.
+        </p>
+
+        <h3 style={H3}>Outbound requests</h3>
+        <p>
+          The product fetches URLs you give it, which is the classic route to a server-side request forgery. Every
+          outbound fetch goes through a guard that normalises the URL, resolves it, and refuses private and reserved
+          ranges, loopback, link-local addresses including the cloud metadata range, and their IPv6 equivalents. A
+          connected URL cannot be aimed at internal infrastructure.
+        </p>
+
+        <h3 style={H3}>Retention</h3>
+        <p>
+          A daily job deletes lead data past its retention window. Under the default policy that is 90 days for an
+          active lead and 30 days for a rejected one. Suppression records are kept indefinitely on purpose, because a
+          record that someone objected has to outlive the data it refers to. Records collected before retention dates
+          existed are backfilled with one rather than left to sit forever.
+        </p>
+      </LegalSection>
+
+      <LegalSection id="not-in-place" index={3} title="What is not in place yet">
+        <p>Each of these is a real gap, not a roadmap item.</p>
+        <ul>
+          <li>
+            <b>No external security audit or penetration test.</b> No third party has tested this system. The controls
+            above have not been independently verified.
+          </li>
+          <li>
+            <b>No ISO 27001 and no SOC 2.</b> We hold no security certification of any kind, and there is no report to
+            request under NDA.
+          </li>
+          <li>
+            <b>No bug bounty.</b> We welcome reports, but there is no paid programme and no published reward.
+          </li>
+          <li>
+            <b>No formal 24/7 monitoring.</b> There is no security operations centre and no on-call rota. Alerts are
+            reviewed during working hours, so an incident overnight may not be seen until the next day.
+          </li>
+          <li>
+            <b>No email address verification.</b> Accounts created with an email address and password are not required
+            to confirm that address before use. Sign-in with Google or GitHub carries whatever verification those
+            providers perform.
+          </li>
+          <li>
+            <b>No customer-managed encryption keys.</b> Data is encrypted at rest by our hosting and database
+            providers using keys they manage. You cannot supply or rotate your own.
+          </li>
+          <li>
+            <b>No single sign-on and no SCIM.</b> There is no SAML or OIDC integration with your identity provider,
+            and no automated user provisioning or deprovisioning.
+          </li>
+          <li>
+            <b>Single-region data residency, not of your choosing.</b> The database lives in one region, fixed when it
+            was created. There is no EU-only or India-only deployment. Where the data sits, and which providers see
+            it, is on the <Link href="/legal/subprocessors">Sub-processors page</Link>.
+          </li>
+        </ul>
+        <p>
+          We will update this page as these change. If one of them is a blocker for you, say so before you subscribe.
+        </p>
+      </LegalSection>
+
+      <LegalSection id="your-side" index={4} title="What is on your side">
+        <p>
+          The likeliest ways an account gets compromised are not things we can fix from here. Use a unique password,
+          or sign in with a provider where you have two-factor authentication enabled. Do not share one account
+          between people. Disconnect integrations you no longer use, because a connected repository or social account
+          is a live credential.
+        </p>
+      </LegalSection>
+
+      <LegalSection id="report" index={5} title="Reporting a vulnerability">
+        <p>
+          If you find a security problem, please tell us. Write to <Email purpose="security" /> with enough detail to
+          reproduce it: the endpoint or page, the steps, and what you were able to do that you should not have been.
+          The <Link href="/legal/acceptable-use">Acceptable Use Policy</Link> covers testing you may not do.
+        </p>
+        <Callout>
+          <p style={{ margin: "0 0 8px" }}>
+            <b>We will not take legal action against you</b> for a report made in good faith, where you keep to the
+            following:
+          </p>
+          <ul style={{ margin: 0, paddingLeft: 20 }}>
+            <li>use only your own account and your own test data;</li>
+            <li>do not access, modify or exfiltrate anyone else&apos;s data, and stop as soon as you realise you can;</li>
+            <li>do not degrade the service or run automated load against it;</li>
+            <li>give us a reasonable chance to fix it before telling anyone else.</li>
+          </ul>
+        </Callout>
+        <p>
+          We aim to acknowledge a report within five working days, and will tell you what we did once it is resolved.
+          We are happy to credit you publicly if you would like. There is no reward programme, and we would rather say
+          so than let anyone spend time expecting one.
+        </p>
+      </LegalSection>
+
+      <LegalSection id="breach" index={6} title="If something goes wrong">
+        <p>If personal data we hold is breached, the commitments below apply. They are deadlines, not targets.</p>
+        <ul>
+          <li>
+            <b>Supervisory authority, 72 hours.</b> Where a breach is notifiable under the GDPR or the UK GDPR, we
+            notify the competent supervisory authority without undue delay and within 72 hours of becoming aware of
+            it, unless it is unlikely to result in a risk to people&apos;s rights and freedoms.
+          </li>
+          <li>
+            <b>CERT-In, 6 hours.</b> For the classes of incident covered by the CERT-In directions of April 2022, we
+            report to CERT-In within six hours of noticing the incident or being told about it.
+          </li>
+          <li>
+            <b>Affected customers, without undue delay.</b> Where the breach affects data we process for you, we tell
+            you without undue delay and give you what you need for your own notifications: what happened, the
+            categories and approximate volume of data involved, the likely consequences, and what we did about it.
+          </li>
+          <li>
+            <b>Affected individuals.</b> Where the law requires people to be told directly and we are the controller,
+            we tell them. Where you are the controller, that call is yours and we support it.
+          </li>
+        </ul>
+        <p>
+          The <Link href="/legal/dpa">Data Processing Addendum</Link> sets out these obligations in contract form.
+          Questions about anything on this page go to <Email purpose="security" />.
+        </p>
+      </LegalSection>
+    </LegalPage>
+  );
+}
