@@ -20,33 +20,52 @@ export function GithubMark({ size = 18 }) {
   );
 }
 
-// The MADBOT mark: a yellow-green ring with a rotated square inside.
-export function MadbotMark({ size = 30, stroke = 1.8, color = "#E4EC1B" }) {
+// The MADBOT mark — three nodes branching into one.
+//
+// Painted as a CSS mask rather than an <img>, which is the whole trick here.
+// The supplied artwork is a near-black silhouette on transparency; dropped in
+// as an image it would be invisible against the dark theme's near-black
+// background. Masking uses only the artwork's alpha channel and fills it with
+// `color`, so the same file renders black on light, off-white on dark, or the
+// accent colour wherever that reads better — one asset, every context.
+//
+// The alternative, shipping a second inverted PNG and swapping on theme, means
+// two files to keep in step and a visible flash on theme change.
+const MASK = (url) => ({
+  WebkitMaskImage: `url(${url})`,
+  maskImage: `url(${url})`,
+  WebkitMaskSize: "contain",
+  maskSize: "contain",
+  WebkitMaskRepeat: "no-repeat",
+  maskRepeat: "no-repeat",
+  WebkitMaskPosition: "center",
+  maskPosition: "center",
+});
+
+export function MadbotMark({ size = 30, color = "var(--fg)", label }) {
   return (
     <span
+      role={label ? "img" : undefined}
+      aria-label={label || undefined}
+      aria-hidden={label ? undefined : true}
       style={{
-        position: "relative",
         width: size,
         height: size,
-        borderRadius: "50%",
-        border: `${stroke}px solid ${color}`,
-        display: "grid",
-        placeItems: "center",
         flex: "none",
+        display: "block",
+        backgroundColor: color,
+        ...MASK("/madbot-mark.png"),
       }}
-    >
-      <span
-        style={{
-          width: size * 0.43,
-          height: size * 0.43,
-          border: `${stroke}px solid ${color}`,
-          transform: "rotate(45deg)",
-          display: "block",
-        }}
-      />
-    </span>
+    />
   );
 }
+
+// There is deliberately no lockup component. The stacked mark-over-wordmark
+// artwork exists and ships — it is what /og.png is built from — but every place
+// the brand appears in the app is a horizontal nav lockup where the mark sits
+// beside the word "madbot", and the stacked version's tagline would repeat copy
+// already on the page. A component with no caller is a thing that rots.
+// The source is in brand/, and og.png is regenerated from it.
 
 // A connected site's favicon, falling back to a monogram tile when the site
 // has none or it fails to load.
