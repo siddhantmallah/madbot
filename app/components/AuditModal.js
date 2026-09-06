@@ -1,45 +1,244 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { SiteIcon } from "./Brand";
+import { THRESHOLDS as T } from "../../lib/auditClient";
 
 const GATE_AFTER_MS = 60_000;
 
-const SEVERITY = {
-  critical: { label: "Costing you now", color: "#FF6A1A", bg: "var(--color-accent-100)", fg: "var(--color-accent-800)" },
-  warning: { label: "Worth fixing", color: "#B972FF", bg: "var(--color-accent-2-100)", fg: "var(--color-accent-2-800)" },
-  good: { label: "Already right", color: "#5C5670", bg: "var(--color-neutral-100)", fg: "var(--color-neutral-800)" },
+// The report is always a dark document (it sits on the .dark-stage tokens), so
+// the severity tints are fixed dark-friendly values rather than theme tokens
+// that would flip pale on a light-theme page.
+const TONE = {
+  critical: { label: "Costing you now", color: "#FF6A1A", bg: "rgba(255,106,26,.16)", fg: "#FFB088" },
+  warning: { label: "Worth fixing", color: "#B972FF", bg: "rgba(168,85,247,.18)", fg: "#DCBEFF" },
+  good: { label: "Already right", color: "#4DD68D", bg: "rgba(77,214,141,.14)", fg: "#9FEBC2" },
+  none: { label: "Not measured", color: "rgba(255,255,255,.32)", bg: "rgba(255,255,255,.06)", fg: "rgba(255,255,255,.6)" },
 };
 
-function scoreColor(score) {
-  if (score >= 80) return "var(--ok)";
-  if (score >= 55) return "#FF9557";
-  return "#FF6A1A";
+// Same order the engine walks them in, so the report reads like the audit ran.
+const AREAS = ["Foundations", "Crawlability", "AI & structured data", "Sharing", "Content", "Performance"];
+
+function band(score) {
+  if (score >= 80) return { label: "Healthy", tone: "good" };
+  if (score >= 55) return { label: "Needs work", tone: "warning" };
+  return { label: "Losing traffic", tone: "critical" };
 }
 
-function ScoreRing({ score }) {
-  const color = scoreColor(score);
+// One frame later, so CSS transitions have a "from" to animate out of.
+function useRevealed() {
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setOn(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+  return on;
+}
+
+function ScoreRing({ score, size = 176, stroke = 12 }) {
+  const on = useRevealed();
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const b = band(score);
   return (
-    <div
-      style={{
-        width: 116,
-        height: 116,
-        borderRadius: "50%",
-        background: `conic-gradient(${color} 0 ${score}%, var(--color-neutral-300) ${score}% 100%)`,
-        display: "grid",
-        placeItems: "center",
-        flex: "none",
-      }}
-    >
-      <div style={{ width: 92, height: 92, borderRadius: "50%", background: "var(--color-bg)", display: "grid", placeItems: "center", textAlign: "center" }}>
+    <div style={{ position: "relative", width: size, height: size, flex: "none" }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ transform: "rotate(-90deg)", display: "block" }} aria-hidden="true">
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,.08)" strokeWidth={stroke} />
+        <circle
+          className="rep-ring"
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          stroke={TONE[b.tone].color}
+          strokeWidth={stroke}
+          strokeDasharray={c}
+          strokeDashoffset={on ? c * (1 - score / 100) : c}
+        />
+      </svg>
+      <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", textAlign: "center" }}>
         <div>
-          <div style={{ fontFamily: "var(--font-heading)", fontSize: 34, lineHeight: 1 }}>{score}</div>
-          <div style={{ fontSize: 10, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--fg-45)" }}>of 100</div>
+          <div style={{ fontFamily: "var(--font-heading)", fontSize: Math.round(size * 0.31), lineHeight: 1, color: "var(--fg)" }}>{score}</div>
+          <div className="mono" style={{ marginTop: 5 }}>of 100</div>
         </div>
       </div>
     </div>
   );
+}
+
+// A row of segments that grow in. Widths are percentages minus their share of
+// the gaps, so n segments fill exactly the row.
+function SegmentBar({ segments, height = 10, gap = 2 }) {
+  const on = useRevealed();
+  const n = segments.length;
+  return (
+    <div style={{ display: "flex", gap, height, background: "rgba(255,255,255,.05)", overflow: "hidden" }}>
+      {segments.map((s, i) => (
+        <div
+          key={i}
+          className="rep-bar"
+          style={{ width: on ? `calc(${s.pct}% - ${(gap * (n - 1)) / n}px)` : 0, background: s.color, flex: "none" }}
+        />
+      ))}
+    </div>
+  );
+}
+
+// A measured value drawn against the exact line the audit judged it by. The
+// marks are the thresholds from lib/auditClient.js, the same ones the
+// finding used, so the bar and the verdict always agree.
+function Gauge({ label, display, value, max, marks, tone, note }) {
+  const on = useRevealed();
+  const t = TONE[tone];
+  const pct = value == null ? 0 : Math.max(0, Math.min(100, (value / max) * 100));
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 9, padding: "14px 16px 13px", background: "var(--color-surface)", border: "1px solid var(--color-divider)", borderRadius: 6, minWidth: 0 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
+        <span className="mono">{label}</span>
+        <span style={{ fontFamily: "var(--font-heading)", fontSize: 23, lineHeight: 1, color: t.color, whiteSpace: "nowrap" }}>{display}</span>
+      </div>
+      <div style={{ position: "relative", height: 10, background: "rgba(255,255,255,.05)" }}>
+        <div className="rep-bar" style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: on ? `${pct}%` : 0, background: t.color }} />
+        {marks.map((m) => (
+          <div key={m.at} title={m.label} style={{ position: "absolute", left: `${Math.min(100, (m.at / max) * 100)}%`, top: -4, bottom: -4, width: 1, background: "rgba(255,255,255,.55)" }} />
+        ))}
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 11.5, lineHeight: 1.4, color: "var(--fg-45)" }}>
+        <span className="mono" style={{ fontSize: 10, alignSelf: "flex-end" }}>{marks.map((m) => m.label).join(" · ")}</span>
+        <span>{note}</span>
+      </div>
+    </div>
+  );
+}
+
+// For lengths that have a healthy window rather than a floor: the window is
+// shaded, the value is a marker that lands inside or outside it.
+function RangeGauge({ label, value, min, max, scaleMax, tone, note, unit = "" }) {
+  const on = useRevealed();
+  const t = TONE[tone];
+  const clamp = value == null ? null : Math.min(value, scaleMax);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 9, padding: "14px 16px 13px", background: "var(--color-surface)", border: "1px solid var(--color-divider)", borderRadius: 6, minWidth: 0 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
+        <span className="mono">{label}</span>
+        <span style={{ fontFamily: "var(--font-heading)", fontSize: 23, lineHeight: 1, color: t.color, whiteSpace: "nowrap" }}>
+          {value == null ? "—" : `${value}${unit}`}
+        </span>
+      </div>
+      <div style={{ position: "relative", height: 10, background: "rgba(255,255,255,.05)" }}>
+        <div style={{ position: "absolute", top: 0, bottom: 0, left: `${(min / scaleMax) * 100}%`, width: `${((max - min) / scaleMax) * 100}%`, background: TONE.good.bg, borderLeft: `1px solid ${TONE.good.color}`, borderRight: `1px solid ${TONE.good.color}` }} />
+        {clamp != null ? (
+          <div className="rep-marker" style={{ position: "absolute", top: -4, bottom: -4, width: 4, background: t.color, left: on ? `calc(${(clamp / scaleMax) * 100}% - 2px)` : 0 }} />
+        ) : null}
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 11.5, lineHeight: 1.4, color: "var(--fg-45)" }}>
+        <span className="mono" style={{ fontSize: 10, alignSelf: "flex-end" }}>{min}–{max} healthy</span>
+        <span>{note}</span>
+      </div>
+    </div>
+  );
+}
+
+// Every verdict here mirrors buildFindings() in lib/audit.js, threshold for
+// threshold. If the audit changes what it penalises, change it there and here.
+function metricsFor(d) {
+  const s = d.stats;
+  const titleLen = d.title ? d.title.length : null;
+  const descLen = d.description ? d.description.length : null;
+  const schemaN = s.schemaTypes.length;
+  const altMissingPct = s.images ? Math.round((s.imagesMissingAlt / s.images) * 100) : 0;
+  const altOk = s.images ? s.images - s.imagesMissingAlt : null;
+
+  return [
+    {
+      kind: "gauge",
+      label: "Words of copy",
+      display: s.wordCount.toLocaleString(),
+      value: s.wordCount,
+      max: Math.max(600, s.wordCount),
+      tone: s.wordCount < T.wordsCritical ? "critical" : s.wordCount < T.wordsWarning ? "warning" : "good",
+      marks: [{ at: T.wordsCritical, label: `${T.wordsCritical} thin` }, { at: T.wordsWarning, label: `${T.wordsWarning} healthy` }],
+      note: s.wordCount < T.wordsCritical ? "Nothing for an answer engine to quote" : s.wordCount < T.wordsWarning ? "Thin for competitive terms" : "Enough substance to rank on",
+    },
+    {
+      kind: "gauge",
+      label: "First response",
+      display: `${(s.responseMs / 1000).toFixed(2)}s`,
+      value: s.responseMs,
+      max: Math.max(3000, s.responseMs),
+      tone: s.responseMs > T.responseCriticalMs ? "critical" : s.responseMs > T.responseWarningMs ? "warning" : "good",
+      marks: [{ at: T.responseWarningMs, label: `${T.responseWarningMs / 1000}s` }, { at: T.responseCriticalMs, label: `${T.responseCriticalMs / 1000}s` }],
+      note: s.responseMs > T.responseWarningMs ? "Slow first byte costs rankings and visitors" : "Quick first response, measured live",
+    },
+    {
+      kind: "gauge",
+      label: "Pages linked from home",
+      display: String(s.distinctPages),
+      value: s.distinctPages,
+      max: Math.max(8, s.distinctPages),
+      tone: s.distinctPages === 0 && s.anchorLinks > 2 ? "critical" : s.distinctPages < T.pagesLinked ? "warning" : "good",
+      marks: [{ at: T.pagesLinked, label: `${T.pagesLinked}+ healthy` }],
+      note:
+        s.distinctPages === 0 && s.anchorLinks > 2
+          ? `${s.anchorLinks} same-page jumps, nothing else to rank from`
+          : s.distinctPages < T.pagesLinked
+          ? "Thin structure caps how many terms you can rank for"
+          : "Crawlers have paths into the rest of the site",
+    },
+    {
+      kind: "gauge",
+      label: "Schema types",
+      display: String(schemaN),
+      value: schemaN,
+      max: Math.max(4, schemaN),
+      tone: schemaN === 0 ? "critical" : "good",
+      marks: [{ at: 1, label: "1+ parseable" }],
+      note: schemaN ? s.schemaTypes.slice(0, 3).join(", ") : "Invisible to answer engines and rich results",
+    },
+    {
+      kind: "range",
+      label: "Title length",
+      value: titleLen,
+      min: T.titleMin,
+      max: T.titleMax,
+      scaleMax: 90,
+      unit: " ch",
+      tone: titleLen == null ? "critical" : titleLen > T.titleMax || titleLen < T.titleMin ? "warning" : "good",
+      note: titleLen == null ? "No title tag at all" : titleLen > T.titleMax ? "Truncated in results" : titleLen < T.titleMin ? "Room left for buying-intent words" : "Renders in full",
+    },
+    {
+      kind: "range",
+      label: "Meta description",
+      value: descLen,
+      min: T.descriptionMin,
+      max: T.descriptionMax,
+      scaleMax: 220,
+      unit: " ch",
+      tone: descLen == null ? "critical" : descLen > T.descriptionMax || descLen < T.descriptionMin ? "warning" : "good",
+      note: descLen == null ? "Google is writing your snippet for you" : descLen > T.descriptionMax ? "Cut off mid-sentence" : descLen < T.descriptionMin ? "Wastes snippet width" : "A sensible length",
+    },
+    {
+      kind: "gauge",
+      label: "Images with alt text",
+      display: s.images ? `${altOk}/${s.images}` : "—",
+      value: s.images ? altOk : null,
+      max: Math.max(1, s.images),
+      tone: !s.images ? "none" : s.imagesMissingAlt === 0 ? "good" : altMissingPct > T.altMissingPct ? "critical" : "warning",
+      marks: s.images ? [{ at: s.images, label: "all" }] : [],
+      note: !s.images ? "No images on the homepage" : s.imagesMissingAlt === 0 ? "All described" : `${altMissingPct}% missing — free keyword context unused`,
+    },
+    {
+      kind: "gauge",
+      label: "Script tags",
+      display: String(s.scripts),
+      value: s.scripts,
+      max: Math.max(40, s.scripts),
+      tone: s.scripts > T.scripts ? "warning" : "good",
+      marks: [{ at: T.scripts, label: `${T.scripts} limit` }],
+      note: s.scripts > T.scripts ? "Each one is work before the page is usable" : "Within a sensible budget",
+    },
+  ];
 }
 
 function Scanning({ domain }) {
@@ -58,21 +257,15 @@ function Scanning({ domain }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return (
-    <div style={{ padding: "64px 40px", textAlign: "center" }}>
-      <div style={{ width: 46, height: 46, margin: "0 auto 22px", borderRadius: "50%", border: "3px solid var(--color-accent-300)", borderTopColor: "var(--color-accent)", animation: "sweep 1s linear infinite" }} />
-      <h3 style={{ margin: "0 0 8px", fontSize: 24 }}>Reading {domain}…</h3>
-      <div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: 340, margin: "0 auto" }}>
+    <div style={{ padding: "72px 40px 80px", textAlign: "center" }}>
+      <div style={{ width: 52, height: 52, margin: "0 auto 26px", borderRadius: "50%", border: "3px solid rgba(255,106,26,.25)", borderTopColor: "var(--color-accent)", animation: "sweep 1s linear infinite" }} />
+      <div className="mono" style={{ marginBottom: 10 }}>Live read</div>
+      <h3 style={{ margin: "0 0 22px", fontSize: "clamp(24px, 3vw, 32px)", lineHeight: 1.1 }}>Reading {domain}…</h3>
+      <div style={{ display: "flex", flexDirection: "column", gap: 7, maxWidth: 360, margin: "0 auto", textAlign: "left" }}>
         {steps.map((s, idx) => (
-          <div
-            key={s}
-            style={{
-              fontSize: 13,
-              color: idx < i ? "var(--fg-45)" : idx === i ? "var(--fg)" : "var(--fg-22)",
-              transition: "color .3s",
-            }}
-          >
-            {idx < i ? "✓ " : idx === i ? "→ " : "  "}
-            {s}
+          <div key={s} className="mono" style={{ display: "flex", gap: 10, color: idx < i ? "var(--fg-45)" : idx === i ? "var(--fg)" : "var(--fg-22)", transition: "color .3s", textTransform: "none", letterSpacing: ".02em", fontSize: 12 }}>
+            <span style={{ flex: "none", width: 14 }}>{idx < i ? "✓" : idx === i ? "→" : ""}</span>
+            <span>{s}</span>
           </div>
         ))}
       </div>
@@ -80,34 +273,37 @@ function Scanning({ domain }) {
   );
 }
 
-function FindingRow({ f }) {
-  const s = SEVERITY[f.severity] || SEVERITY.good;
+function Finding({ f, index }) {
+  const t = TONE[f.severity] || TONE.good;
   return (
-    <div
-      style={{
-        display: "flex",
-        gap: 13,
-        padding: "14px 16px",
-        borderRadius: 20,
-        background: f.severity === "good" ? "var(--wash-1)" : "var(--color-surface)",
-        borderLeft: `3px solid ${s.color}`,
-      }}
-    >
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: f.detail ? 5 : 0 }}>
-          <span style={{ fontSize: 14.5, fontWeight: 700, lineHeight: 1.35 }}>{f.title}</span>
-          <span className="tag" style={{ fontSize: 9.5, background: s.bg, color: s.fg, flex: "none" }}>{f.area}</span>
+    <div style={{ display: "grid", gridTemplateColumns: "auto minmax(0,1fr)", gap: "0 16px", padding: "16px 18px", borderRadius: 6, background: "var(--color-surface)", border: "1px solid var(--color-divider)" }}>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, paddingTop: 3 }}>
+        <span className="mono" style={{ color: "var(--fg-45)" }}>{String(index).padStart(2, "0")}</span>
+        <span aria-hidden="true" style={{ width: 8, height: 8, background: t.color }} />
+      </div>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: f.detail ? 6 : 0 }}>
+          <span style={{ fontSize: 15.5, fontWeight: 700, lineHeight: 1.35 }}>{f.title}</span>
+          <span className="tag" style={{ fontSize: 9.5, background: t.bg, color: t.fg, flex: "none", borderRadius: 4 }}>{f.area}</span>
         </div>
-        {f.detail ? (
-          <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: "var(--fg-60)" }}>{f.detail}</p>
-        ) : null}
+        {f.detail ? <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.6, color: "var(--fg-60)" }}>{f.detail}</p> : null}
         {f.fix ? (
-          <div style={{ marginTop: 9, paddingTop: 9, borderTop: "1px solid var(--color-divider)", fontSize: 12.5, lineHeight: 1.55, display: "flex", gap: 8 }}>
-            <span style={{ color: "var(--color-accent)", fontWeight: 700, flex: "none" }}>MADBOT would</span>
-            <span style={{ color: "var(--fg-80)" }}>{f.fix}</span>
+          <div style={{ marginTop: 11, paddingTop: 10, borderTop: "1px solid var(--color-divider)", fontSize: 13, lineHeight: 1.55, display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <span className="mono" style={{ color: "var(--color-accent)", flex: "none" }}>MADBOT would →</span>
+            <span style={{ color: "var(--fg-80)", flex: "1 1 240px", minWidth: 0 }}>{f.fix}</span>
           </div>
         ) : null}
       </div>
+    </div>
+  );
+}
+
+function SectionHead({ index, title, count }) {
+  return (
+    <div style={{ display: "flex", alignItems: "baseline", gap: "6px 14px", marginBottom: 12, flexWrap: "wrap" }}>
+      <span className="section-index" style={{ whiteSpace: "nowrap" }}>{index}</span>
+      <h3 style={{ margin: 0, fontSize: "clamp(19px, 2vw, 23px)", lineHeight: 1.1 }}>{title}</h3>
+      {count != null ? <span className="mono" style={{ color: "var(--fg-45)" }}>{count}</span> : null}
     </div>
   );
 }
@@ -128,22 +324,23 @@ function Gate({ url }) {
         animation: "revealFade .5s ease",
       }}
     >
-      <div className="card elev-lg" style={{ maxWidth: 470, padding: 30, gap: 14, textAlign: "center", border: "1px solid var(--color-accent-400)" }}>
-        <h3 style={{ margin: 0, fontSize: 27, lineHeight: 1.15 }}>That&apos;s the diagnosis. Want it fixed?</h3>
+      <div className="card elev-lg" style={{ maxWidth: 470, padding: 30, gap: 14, textAlign: "center", border: "1px solid var(--color-accent-400)", borderRadius: 6 }}>
+        <div className="mono">That&apos;s the diagnosis</div>
+        <h3 style={{ margin: 0, fontSize: 28, lineHeight: 1.1 }}>Want it fixed?</h3>
         <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.6, color: "var(--fg-80)" }}>
-          Every SEO tool on the market will hand you a list like the one behind this panel. MADBOT is the one that
-          then goes and does the work — writes the pages, marks up the schema, builds the internal links, and shows
-          you the receipts for each one.
+          Every SEO tool will hand you a list like the one behind this panel. MADBOT is the one that then goes and does
+          the work — writes the missing pages, marks up the schema, lists you where buyers look — and shows you the
+          receipt for each one.
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 8, textAlign: "left", fontSize: 13.5, color: "var(--fg-80)", padding: "4px 0" }}>
           <div>→ A full plan, ordered by what it&apos;s worth</div>
           <div>→ The work carried out at the autonomy level you set</div>
-          <div>→ One-click rollback on everything it touches</div>
+          <div>→ Everything logged; nothing published without your say</div>
         </div>
         <Link className="btn btn-primary" href={`/login${qs}`} style={{ minHeight: 50, fontSize: 15.5, color: "var(--on-accent)" }}>
           Create your account
         </Link>
-        <Link href="/pricing" style={{ fontSize: 13, color: "var(--color-accent-700)", textDecoration: "none" }}>
+        <Link href="/pricing" style={{ fontSize: 13, color: "var(--color-accent)", textDecoration: "none" }}>
           See pricing first
         </Link>
       </div>
@@ -151,10 +348,17 @@ function Gate({ url }) {
   );
 }
 
+/**
+ * The free report. This is the first thing most people see of MADBOT, so it
+ * reads as an analytics document rather than a list: a scored ring with a
+ * band, health by area, every measurement drawn against the threshold the
+ * audit judged it by, and then the findings with what MADBOT would do about
+ * each. Every number on screen is measured live from the site — nothing is
+ * modelled or estimated.
+ */
 export default function AuditModal({ url, onClose }) {
   const [state, setState] = useState({ phase: "loading" });
   const [gated, setGated] = useState(false);
-  const scrollRef = useRef(null);
 
   const domain = useMemo(() => String(url || "").replace(/^https?:\/\//, "").replace(/^www\./, "").split("/")[0], [url]);
 
@@ -169,7 +373,7 @@ export default function AuditModal({ url, onClose }) {
         const wait = Math.max(0, 3200 - (Date.now() - startedAt));
         setTimeout(() => {
           if (!alive) return;
-          setState(data.ok ? { phase: "done", data } : { phase: "error", error: data.error });
+          setState(data.ok ? { phase: "done", data, checkedAt: new Date() } : { phase: "error", error: data.error });
         }, wait);
       } catch {
         if (alive) setState({ phase: "error", error: "Something went wrong reaching that site." });
@@ -202,35 +406,49 @@ export default function AuditModal({ url, onClose }) {
   const criticals = d ? d.findings.filter((f) => f.severity === "critical") : [];
   const warnings = d ? d.findings.filter((f) => f.severity === "warning") : [];
   const goods = d ? d.findings.filter((f) => f.severity === "good") : [];
+  const total = d ? d.findings.length : 0;
+  const metrics = d ? metricsFor(d) : [];
+  const b = d ? band(d.score) : null;
+  const time = state.checkedAt ? state.checkedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
+
+  const areaRows = d
+    ? AREAS.map((a) => {
+        const fs = d.findings.filter((f) => f.area === a);
+        return { area: a, fs, right: fs.filter((f) => f.severity === "good").length };
+      }).filter((r) => r.fs.length)
+    : [];
+
+  const pad = "clamp(18px, 3vw, 34px)";
 
   return (
     <div
       role="dialog"
       aria-modal="true"
       aria-label={`Site report for ${domain}`}
-      style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(4,3,7,.82)", backdropFilter: "blur(6px)", display: "grid", placeItems: "center", padding: "24px 16px" }}
+      style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(4,3,7,.84)", backdropFilter: "blur(6px)", display: "grid", placeItems: "center", padding: "20px 12px" }}
       onClick={(e) => {
         if (e.target === e.currentTarget && !gated) onClose();
       }}
     >
       <div
-        className="card elev-lg"
+        className="marketing dark-stage"
         style={{
           position: "relative",
-          width: "min(960px, 100%)",
-          maxHeight: "92vh",
-          padding: 0,
+          width: "min(1080px, 100%)",
+          maxHeight: "94vh",
           overflow: "hidden",
-          background: "var(--color-bg)",
           border: "1px solid var(--color-divider)",
+          borderRadius: 8,
+          boxShadow: "0 40px 120px rgba(0,0,0,.6)",
           animation: "rise .4s cubic-bezier(.2,.8,.2,1)",
+          fontSize: 16,
         }}
       >
         {!gated ? (
           <button
             onClick={onClose}
             aria-label="Close report"
-            style={{ position: "absolute", right: 16, top: 14, zIndex: 6, width: 32, height: 32, borderRadius: "50%", background: "var(--wash-2)", color: "var(--fg)", fontSize: 17, lineHeight: 1, display: "grid", placeItems: "center" }}
+            style={{ position: "absolute", right: 14, top: 14, zIndex: 6, width: 36, height: 36, borderRadius: 6, background: "var(--color-surface)", border: "1px solid var(--fg-32)", color: "var(--fg)", fontSize: 18, lineHeight: 1, display: "grid", placeItems: "center", boxShadow: "0 6px 18px rgba(0,0,0,.45)" }}
           >
             ×
           </button>
@@ -238,88 +456,139 @@ export default function AuditModal({ url, onClose }) {
 
         {gated ? <Gate url={url} /> : null}
 
-        <div ref={scrollRef} style={{ maxHeight: "92vh", overflowY: "auto" }}>
+        <div style={{ maxHeight: "94vh", overflowY: "auto" }}>
           {state.phase === "loading" ? <Scanning domain={domain} /> : null}
 
           {state.phase === "error" ? (
-            <div style={{ padding: "56px 40px", textAlign: "center" }}>
-              <h3 style={{ margin: "0 0 8px", fontSize: 23 }}>I couldn&apos;t read {domain}</h3>
-              <p style={{ margin: "0 0 20px", fontSize: 14, color: "var(--fg-60)" }}>{state.error}</p>
-              <button className="btn btn-secondary" onClick={onClose} style={{ fontWeight: 600 }}>Try another address</button>
+            <div style={{ padding: "64px 40px", textAlign: "center" }}>
+              <div className="mono" style={{ marginBottom: 10 }}>Could not read</div>
+              <h3 style={{ margin: "0 0 8px", fontSize: 26 }}>{domain}</h3>
+              <p style={{ margin: "0 0 22px", fontSize: 14, color: "var(--fg-60)" }}>{state.error}</p>
+              <button className="btn btn-secondary" onClick={onClose} style={{ fontWeight: 600, color: "var(--fg)", borderColor: "var(--color-divider)" }}>Try another address</button>
             </div>
           ) : null}
 
           {state.phase === "done" && d ? (
             <>
-              {/* Header */}
-              <div style={{ padding: "30px 34px 24px", borderBottom: "1px solid var(--color-divider)", background: "radial-gradient(90% 120% at 80% 0%, rgba(255,106,26,.10), rgba(0,0,0,0))" }}>
-                <div style={{ display: "flex", gap: 26, alignItems: "center", flexWrap: "wrap" }}>
+              {/* 01 — Header and score */}
+              <header style={{ padding: `${pad} ${pad} 0` }}>
+                <div className="kicker-row mono" style={{ marginBottom: 18, paddingRight: 48 }}>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
+                    <SiteIcon site={{ faviconUrl: d.faviconUrl, title: d.title, url: d.url }} size={14} />
+                    Site report — {domain}
+                  </span>
+                  <span>Checked live · {time}</span>
+                  <span>{total} checks</span>
+                </div>
+                <h2 style={{ margin: "0 0 10px", fontSize: "clamp(28px, 4vw, 46px)", lineHeight: 1.02, letterSpacing: "-.01em", maxWidth: "18em" }}>
+                  {d.counts.critical > 0
+                    ? `${d.counts.critical} thing${d.counts.critical === 1 ? "" : "s"} costing you traffic right now`
+                    : d.counts.warning > 0
+                    ? `${d.counts.warning} thing${d.counts.warning === 1 ? "" : "s"} worth fixing`
+                    : "Solid foundations — now go win the terms"}
+                </h2>
+                <p style={{ margin: 0, fontSize: 14, lineHeight: 1.55, color: "var(--fg-60)" }}>
+                  {d.title ? `“${d.title.slice(0, 90)}${d.title.length > 90 ? "…" : ""}”` : "This page has no title tag."}
+                </p>
+              </header>
+
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "28px 40px", alignItems: "center", padding: `26px ${pad} 28px`, borderBottom: "1px solid var(--color-divider)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "18px 24px", flex: "0 1 auto", flexWrap: "wrap", minWidth: 0 }}>
                   <ScoreRing score={d.score} />
-                  <div style={{ flex: 1, minWidth: 240 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7 }}>
-                      <SiteIcon site={{ faviconUrl: d.faviconUrl, title: d.title, url: d.url }} size={17} />
-                      <span style={{ fontSize: 12.5, color: "var(--fg-45)" }}>{domain}</span>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10, flex: "1 1 150px", minWidth: 0 }}>
+                    <span className="mono" style={{ color: "var(--fg-45)" }}>Verdict</span>
+                    <span style={{ fontFamily: "var(--font-heading)", fontSize: 30, lineHeight: 1, color: TONE[b.tone].color }}>{b.label}</span>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 4 }}>
+                      {["critical", "warning", "good"].map((k) => (
+                        <span key={k} style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12.5, color: "var(--fg-80)", fontVariantNumeric: "tabular-nums" }}>
+                          <span aria-hidden="true" style={{ width: 8, height: 8, background: TONE[k].color, flex: "none" }} />
+                          <b style={{ fontWeight: 700, minWidth: "1.4em" }}>{d.counts[k]}</b> {TONE[k].label.toLowerCase()}
+                        </span>
+                      ))}
                     </div>
-                    <h2 style={{ margin: "0 0 8px", fontSize: 27, lineHeight: 1.15 }}>
-                      {d.counts.critical > 0
-                        ? `${d.counts.critical} thing${d.counts.critical === 1 ? "" : "s"} costing you traffic right now`
-                        : d.counts.warning > 0
-                        ? `${d.counts.warning} thing${d.counts.warning === 1 ? "" : "s"} worth fixing`
-                        : "Solid foundations — now go win the terms"}
-                    </h2>
-                    <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.55, color: "var(--fg-60)" }}>
-                      {d.title ? `“${d.title.slice(0, 90)}${d.title.length > 90 ? "…" : ""}”` : "This page has no title tag."}
-                    </p>
                   </div>
                 </div>
-                <div style={{ display: "flex", gap: 9, flexWrap: "wrap", marginTop: 18 }}>
-                  <span className="tag" style={{ background: "var(--color-accent-100)", color: "var(--color-accent-800)" }}>{d.counts.critical} critical</span>
-                  <span className="tag" style={{ background: "var(--color-accent-2-100)", color: "var(--color-accent-2-800)" }}>{d.counts.warning} warnings</span>
-                  <span className="tag tag-neutral">{d.counts.good} already right</span>
-                  <span className="tag tag-outline">Checked live, just now</span>
+
+                <div style={{ flex: "1 1 360px", minWidth: 0, display: "flex", flexDirection: "column", gap: 12 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
+                    <span className="mono" style={{ color: "var(--fg-45)" }}>Health by area</span>
+                    <span className="mono" style={{ color: "var(--fg-45)" }}>each block one check</span>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "auto minmax(0,1fr) auto", gap: "11px 14px", alignItems: "center" }}>
+                    {areaRows.map((r) => (
+                      <Fragment key={r.area}>
+                        <span className="mono" style={{ whiteSpace: "nowrap" }}>{r.area}</span>
+                        <SegmentBar segments={r.fs.map((f) => ({ pct: 100 / r.fs.length, color: TONE[f.severity].color }))} height={12} />
+                        <span style={{ fontSize: 12.5, color: "var(--fg-60)", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>
+                          {r.right}/{r.fs.length} right
+                        </span>
+                      </Fragment>
+                    ))}
+                  </div>
+                  <SegmentBar
+                    height={6}
+                    gap={0}
+                    segments={[
+                      { pct: (d.counts.critical / total) * 100, color: TONE.critical.color },
+                      { pct: (d.counts.warning / total) * 100, color: TONE.warning.color },
+                      { pct: (d.counts.good / total) * 100, color: TONE.good.color },
+                    ].filter((s) => s.pct > 0)}
+                  />
                 </div>
               </div>
 
-              {/* Real measured stats */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(122px,1fr))", gap: 1, background: "var(--color-divider)", borderBottom: "1px solid var(--color-divider)" }}>
-                {[
-                  ["Words of copy", d.stats.wordCount.toLocaleString()],
-                  ["Response time", `${(d.stats.responseMs / 1000).toFixed(2)}s`],
-                  ["Schema types", d.stats.schemaTypes.length],
-                  ["Pages linked", d.stats.distinctPages],
-                  ["Images", d.stats.images],
-                  ["Page weight", `${d.stats.htmlKb} KB`],
-                ].map(([label, val]) => (
-                  <div key={label} style={{ background: "var(--color-bg)", padding: "14px 16px" }}>
-                    <div style={{ fontSize: 10, letterSpacing: ".09em", textTransform: "uppercase", color: "var(--fg-45)", marginBottom: 3 }}>{label}</div>
-                    <div style={{ fontFamily: "var(--font-heading)", fontSize: 20 }}>{val}</div>
-                  </div>
-                ))}
-              </div>
+              {/* 02 — The numbers */}
+              <section style={{ padding: `26px ${pad}`, borderBottom: "1px solid var(--color-divider)" }}>
+                <SectionHead index="02 — Measured live" title="The numbers, against the line each one is judged by" />
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: 10 }}>
+                  {metrics.map((m) =>
+                    m.kind === "range" ? <RangeGauge key={m.label} {...m} /> : <Gauge key={m.label} {...m} />
+                  )}
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 1, marginTop: 14, background: "var(--color-divider)", border: "1px solid var(--color-divider)" }}>
+                  {[
+                    ["HTML weight", `${d.stats.htmlKb} KB`],
+                    ["Internal links", d.stats.internalLinks],
+                    ["External links", d.stats.externalLinks],
+                    ["Sitemap URLs", d.stats.sitemapUrls || "none"],
+                    ["H2 headings", d.stats.h2],
+                    ["Stylesheets", d.stats.stylesheets],
+                  ].map(([label, val]) => (
+                    <div key={label} style={{ background: "var(--color-bg)", padding: "11px 14px" }}>
+                      <div className="mono" style={{ fontSize: 9.5, marginBottom: 4 }}>{label}</div>
+                      <div style={{ fontFamily: "var(--font-heading)", fontSize: 18, lineHeight: 1 }}>{val}</div>
+                    </div>
+                  ))}
+                </div>
+              </section>
 
-              {/* Findings */}
-              <div style={{ padding: "26px 34px 34px", display: "flex", flexDirection: "column", gap: 22 }}>
+              {/* 03–05 — Findings */}
+              <div style={{ padding: `26px ${pad} ${pad}`, display: "flex", flexDirection: "column", gap: 30 }}>
                 {criticals.length ? (
-                  <section style={{ display: "flex", flexDirection: "column", gap: 9 }}>
-                    <h4 style={{ margin: 0, fontSize: 16 }}>Costing you now</h4>
-                    {criticals.map((f) => <FindingRow key={f.title} f={f} />)}
+                  <section>
+                    <SectionHead index="03" title="Costing you now" count={`${criticals.length}`} />
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {criticals.map((f, i) => <Finding key={f.title} f={f} index={i + 1} />)}
+                    </div>
                   </section>
                 ) : null}
 
                 {warnings.length ? (
-                  <section style={{ display: "flex", flexDirection: "column", gap: 9 }}>
-                    <h4 style={{ margin: 0, fontSize: 16 }}>Worth fixing</h4>
-                    {warnings.map((f) => <FindingRow key={f.title} f={f} />)}
+                  <section>
+                    <SectionHead index={criticals.length ? "04" : "03"} title="Worth fixing" count={`${warnings.length}`} />
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {warnings.map((f, i) => <Finding key={f.title} f={f} index={criticals.length + i + 1} />)}
+                    </div>
                   </section>
                 ) : null}
 
                 {goods.length ? (
-                  <section style={{ display: "flex", flexDirection: "column", gap: 9 }}>
-                    <h4 style={{ margin: 0, fontSize: 16 }}>Already right</h4>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(250px,1fr))", gap: 8 }}>
+                  <section>
+                    <SectionHead index={`0${2 + (criticals.length ? 1 : 0) + (warnings.length ? 1 : 0) + 1}`} title="Already right" count={`${goods.length}`} />
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 8 }}>
                       {goods.map((f) => (
-                        <div key={f.title} style={{ display: "flex", gap: 8, fontSize: 13, padding: "9px 12px", borderRadius: 14, background: "var(--wash-1)" }}>
-                          <span style={{ color: "var(--ok)", flex: "none" }}>✓</span>
+                        <div key={f.title} style={{ display: "flex", gap: 10, fontSize: 13.5, padding: "11px 14px", borderRadius: 6, background: "var(--wash-1)", border: "1px solid var(--color-divider)" }}>
+                          <span style={{ color: TONE.good.color, flex: "none" }}>✓</span>
                           <span style={{ color: "var(--fg-80)" }}>{f.title}</span>
                         </div>
                       ))}
@@ -327,19 +596,20 @@ export default function AuditModal({ url, onClose }) {
                   </section>
                 ) : null}
 
-                <div className="card" style={{ padding: 22, gap: 10, background: "linear-gradient(150deg, rgba(255,106,26,.12), var(--color-surface) 60%)", border: "1px solid var(--color-accent-400)" }}>
-                  <h4 style={{ margin: 0, fontSize: 18 }}>Anyone can tell you this. Almost nobody fixes it.</h4>
-                  <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.6, color: "var(--fg-80)" }}>
-                    This report took seconds and cost nothing. The reason a report like it usually changes nothing is
-                    that the next step — writing the pages, marking up the schema, earning the links — is weeks of work nobody
-                    has time for. That&apos;s the part MADBOT does, at whatever level of autonomy you&apos;re
-                    comfortable giving it, with a full audit trail and one-click undo.
+                <div style={{ padding: "clamp(22px, 3vw, 30px)", borderRadius: 6, background: "linear-gradient(150deg, rgba(255,106,26,.14), var(--color-surface) 62%)", border: "1px solid var(--color-accent-400)", display: "flex", flexDirection: "column", gap: 12 }}>
+                  <span className="mono">What happens next</span>
+                  <h3 style={{ margin: 0, fontSize: "clamp(22px, 2.6vw, 30px)", lineHeight: 1.08 }}>Anyone can tell you this. Almost nobody fixes it.</h3>
+                  <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.6, color: "var(--fg-80)", maxWidth: "62em" }}>
+                    This report took seconds and cost nothing. The reason a report like it usually changes nothing is that the
+                    next step — writing the pages that are missing, marking up the schema, listing you where buyers look — is
+                    weeks of work nobody has time for. That&apos;s the part MADBOT does, at whatever level of autonomy
+                    you&apos;re comfortable giving it, with every action logged and nothing published without your say.
                   </p>
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap", paddingTop: 4 }}>
-                    <Link className="btn btn-primary" href={`/login?mode=signup&next=pricing&url=${encodeURIComponent(url)}`} style={{ color: "var(--on-accent)" }}>
+                    <Link className="btn btn-primary" href={`/login?mode=signup&next=pricing&url=${encodeURIComponent(url)}`} style={{ color: "var(--on-accent)", minHeight: 48 }}>
                       Get this fixed
                     </Link>
-                    <Link className="btn btn-secondary" href="/pricing" style={{ fontWeight: 600, color: "var(--fg)", borderColor: "var(--fg-32)" }}>
+                    <Link className="btn btn-secondary" href="/pricing" style={{ fontWeight: 600, color: "var(--fg)", borderColor: "var(--fg-32)", minHeight: 48 }}>
                       See pricing
                     </Link>
                   </div>
