@@ -72,8 +72,18 @@ export async function POST(request) {
 
   // Where Firebase sends them once the link is used. Must be an authorised
   // domain in Firebase console, or generating the link fails.
+  //
+  // The order matters. VERCEL_URL is the per-deployment hostname, something
+  // like madbot-a1b2c3.vercel.app, not the custom domain — using it would send
+  // people to a host that almost certainly is not in Firebase's authorised
+  // domains, so the link would break. The forwarded host is the domain the
+  // request actually arrived on, which is the one to trust.
+  const h = request.headers;
+  const forwardedHost = h.get("x-forwarded-host") || h.get("host");
+  const proto = h.get("x-forwarded-proto") || (forwardedHost?.startsWith("localhost") ? "http" : "https");
   const origin =
-    request.headers.get("origin") ||
+    h.get("origin") ||
+    (forwardedHost ? `${proto}://${forwardedHost}` : null) ||
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
 
   let link;
