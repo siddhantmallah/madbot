@@ -19,6 +19,11 @@ function regionFor(country) {
   if (c === "GB") return "GB";
   if (EU.includes(c)) return "EU";
   if (c === "US") return "US";
+  if (c === "AE") return "AE";
+  if (c === "SG") return "SG";
+  // Everywhere else falls through to the international list rather than being
+  // guessed into a neighbour's currency. Adding a country here is one line, and
+  // should be a deliberate pricing decision rather than a geography lesson.
   return null;
 }
 

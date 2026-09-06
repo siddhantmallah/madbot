@@ -1,6 +1,7 @@
 import { PLANS, PLAN_ORDER, autonomyLabel, featuresLostOnDowngrade, FEATURE_LABELS, formatPrice, priceFor } from "../../../lib/plans";
 import { CONTACT_EMAIL } from "../../../lib/contact";
 import { describeUsage } from "../../../lib/credits";
+import AccountData from "../panels/AccountData";
 
 function money(minor, currency) {
   if (minor === null || minor === undefined) return "—";
@@ -310,6 +311,7 @@ export default function Billing({ usage, billing = [], siteCount, metered, regio
           </p>
         ) : null}
       </section>
+      <AccountData />
     </section>
   );
 }
