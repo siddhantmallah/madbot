@@ -179,7 +179,13 @@ The Search Console connection asks for `https://www.googleapis.com/auth/webmaste
    ```
    **Already deployed.** The live ruleset is `ec81f6bf-a267-43c6-9b47-ebcca5aedc22` and matches `firestore.rules` byte for byte, verified by reading it back. It was previously stuck on `029bd549-0d4b-4105-9581-dedb897b9fd5`, which had no rules for `social/` or `listings/`, so both screens were getting permission-denied in production. To roll back, release that older ruleset id again.
 
-   Redeploy after any change to `firestore.rules`. Forgetting is silent: the code ships, the screen reads nothing, and no error appears anywhere except the browser console.
+   Redeploy after any change to `firestore.rules`. Forgetting is silent: the code ships, the screen reads nothing, and no error appears anywhere except the browser console. That is why there is now a script for it, which reads the live ruleset back after publishing rather than trusting the write:
+
+```bash
+npm run test:rules && node scripts/deploy-firestore-rules.cjs --publish
+```
+
+   Run it with no flag first for a dry run that shows which collections gained or lost rules. It prints a rollback command using the previous ruleset id. `npm run test:rules` needs no credentials and no network, and it is the only thing that tells you whether the rules do what you think: 335 cases covering cross-user isolation and every privilege-escalation path.
 3. Indexes: **none required.** Every client query is a single-field `orderBy`; the cron's collection-group reads are unfiltered. If Firestore ever logs a "requires an index" error it will include a one-click link.
 
 ### Service account

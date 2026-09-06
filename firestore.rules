@@ -6,16 +6,35 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == uid;
     }
 
+    // The only fields on a user document the browser owns. Everything else on
+    // it is written by the server through the admin SDK, which bypasses these
+    // rules entirely.
+    function clientProfileFields() {
+      return ['email', 'displayName', 'createdAt', 'updatedAt'];
+    }
+
     match /users/{uid} {
       allow read: if isOwner(uid);
 
-      // The client writes its own profile, never its own entitlements. Without
-      // this split any signed-in user could grant themselves the top plan from
-      // a browser console. The server writes subscriptions through the admin
-      // SDK, which bypasses these rules.
-      allow create: if isOwner(uid) && !request.resource.data.keys().hasAny(['subscription']);
+      // An allowlist, not a denylist.
+      //
+      // This used to block exactly one key, 'subscription', which stopped a
+      // signed-in user granting themselves the top plan from a browser console
+      // and nothing else. Every other field was client-writable, and the server
+      // trusted several of them. The only rate limit on the verification-email
+      // endpoint was a timestamp stored here, so a caller could rewrite it to
+      // 1970 and loop the endpoint, sending unbounded mail on our quota. The
+      // welcome-mail retry flag had the same shape, and trialEverStarted was one
+      // future code change away from being a free-trial bypass.
+      //
+      // A denylist also only ever blocked the exact string: 'Subscription' and
+      // 'subscriptions' wrote fine. With an allowlist, a new server-managed
+      // field is protected the moment it is written rather than the next time
+      // somebody remembers to come back here.
+      allow create: if isOwner(uid)
+        && request.resource.data.keys().hasOnly(clientProfileFields());
       allow update: if isOwner(uid)
-        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['subscription']);
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(clientProfileFields());
       allow delete: if false;
 
       // Billing history is readable by the customer and written only by the

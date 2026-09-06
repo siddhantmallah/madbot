@@ -13,20 +13,36 @@ import {
   signOut,
   updateProfile,
 } from "firebase/auth";
-import { doc, serverTimestamp, setDoc } from "firebase/firestore";
+import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { auth, db, googleProvider, githubProvider } from "../../lib/firebase";
 import { MIN_LENGTH, isAcceptable } from "../../lib/password";
 
 const AuthContext = createContext(null);
 
 async function ensureUserDoc(user) {
+  const ref = doc(db, "users", user.uid);
+
+  // createdAt was being rewritten with a fresh server timestamp on every
+  // sign-in, so the field said "created" and meant "last seen". One read to
+  // find out whether the document is new is cheap, and it costs a sign-in
+  // nothing anyone would notice.
+  let isNew = true;
+  try {
+    isNew = !(await getDoc(ref)).exists();
+  } catch {
+    // If the read fails, fall back to writing it: a slightly wrong createdAt
+    // is better than a profile that never gets saved.
+  }
+
+  // These four are the only fields the browser is allowed to write. The rules
+  // enforce that as an allowlist, so adding one here means adding it there.
   await setDoc(
-    doc(db, "users", user.uid),
+    ref,
     {
       email: user.email || null,
       displayName: user.displayName || null,
       updatedAt: serverTimestamp(),
-      createdAt: serverTimestamp(),
+      ...(isNew ? { createdAt: serverTimestamp() } : {}),
     },
     { merge: true }
   );
