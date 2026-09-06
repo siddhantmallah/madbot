@@ -10,10 +10,14 @@ export const dynamic = "force-dynamic";
  * Snapshots one competitor page.
  *
  * Signed in and licensed. This had no authentication of any kind, which made
- * it a general-purpose fetcher anyone could point at any public URL on our
- * infrastructure and our time. The SSRF guards in lib/urlGuard.js stopped it
- * reaching anything internal, but nothing stopped it being used, and competitor
- * watching is a paid feature the dashboard already gates on the client.
+ * it a general-purpose fetcher anyone could point at any URL on our
+ * infrastructure and our time, and competitor watching is a paid feature the
+ * dashboard already gates on the client.
+ *
+ * An earlier version of this comment claimed the SSRF guards stopped it
+ * reaching anything internal. That was wrong at the time: safeFetch followed
+ * redirects without re-checking them, so a public host could bounce it to
+ * loopback. Fixed in lib/urlGuard.js, which now validates every hop.
  *
  * The token arrives as a header rather than a query parameter so it stays out
  * of logs and browser history.

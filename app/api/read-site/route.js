@@ -1,42 +1,9 @@
 import { NextResponse } from "next/server";
-import dns from "node:dns/promises";
+import { assertPublicHost, safeFetch } from "../../../lib/urlGuard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function ipv4ToInt(ip) {
-  const parts = ip.split(".").map(Number);
-  if (parts.length !== 4 || parts.some((p) => Number.isNaN(p) || p < 0 || p > 255)) return null;
-  return (parts[0] << 24) + (parts[1] << 16) + (parts[2] << 8) + parts[3];
-}
-
-function inRange(intIp, base, bits) {
-  const mask = bits === 0 ? 0 : (~0 << (32 - bits)) >>> 0;
-  return (intIp & mask) === (ipv4ToInt(base) & mask);
-}
-
-function isPrivateIPv4(ip) {
-  const n = ipv4ToInt(ip);
-  if (n === null) return true;
-  return (
-    inRange(n, "10.0.0.0", 8) ||
-    inRange(n, "172.16.0.0", 12) ||
-    inRange(n, "192.168.0.0", 16) ||
-    inRange(n, "127.0.0.0", 8) ||
-    inRange(n, "169.254.0.0", 16) ||
-    inRange(n, "0.0.0.0", 8)
-  );
-}
-
-function isPrivateIP(address, family) {
-  if (family === 4) return isPrivateIPv4(address);
-  const a = address.toLowerCase();
-  if (a === "::1" || a === "::") return true;
-  if (a.startsWith("fe80:") || a.startsWith("fc") || a.startsWith("fd")) return true; // link-local / ULA
-  const mapped = a.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
-  if (mapped) return isPrivateIPv4(mapped[1]);
-  return false;
-}
 
 function normalizeUrl(input) {
   let raw = String(input || "").trim();
@@ -94,45 +61,34 @@ export async function GET(request) {
   }
 
   try {
-    const addresses = await dns.lookup(hostname, { all: true });
-    if (addresses.length === 0 || addresses.some((a) => isPrivateIP(a.address, a.family))) {
-      return NextResponse.json({ ok: false, error: "That address isn't reachable." }, { status: 400 });
-    }
+    await assertPublicHost(hostname);
   } catch {
     return NextResponse.json({ ok: false, error: "Couldn't resolve that domain." }, { status: 400 });
   }
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 8000);
+  let html = "";
+  let finalUrl = target.toString();
   try {
-    const res = await fetch(target.toString(), {
-      redirect: "follow",
-      signal: controller.signal,
-      headers: { "User-Agent": "MADBOTBot/1.0 (+https://getmadbot.com)" },
-    });
-    clearTimeout(timeout);
-
-    if (!res.ok) {
-      return NextResponse.json({ ok: false, error: `That site responded with ${res.status}.` });
+    // Through the shared guard. This route used to run its own fetch with
+    // redirect:"follow" and its own copy of the private-address table, which
+    // meant a public host could redirect it to loopback and the title and
+    // description of an internal page came back out of a public endpoint.
+    const out = await safeFetch(target, { timeoutMs: 8000, capBytes: 300_000 });
+    if (!out.ok) {
+      return NextResponse.json({ ok: false, error: `That site responded with ${out.status}.` });
     }
+    html = out.body;
+    finalUrl = out.finalUrl;
+  } catch (err) {
+    const msg = String(err?.message || "");
+    if (msg === "protocol") return NextResponse.json({ ok: false, error: "Only http and https addresses can be read." }, { status: 400 });
+    if (msg === "port") return NextResponse.json({ ok: false, error: "Only standard web ports can be read." }, { status: 400 });
+    if (msg === "unreachable") return NextResponse.json({ ok: false, error: "That address isn't publicly reachable." }, { status: 400 });
+    if (msg === "too_many_redirects") return NextResponse.json({ ok: false, error: "That address redirects too many times." }, { status: 400 });
+    return NextResponse.json({ ok: false, error: "Couldn't read that site in time." });
+  }
 
-    const reader = res.body?.getReader();
-    let html = "";
-    if (reader) {
-      const decoder = new TextDecoder();
-      let received = 0;
-      const cap = 300_000;
-      while (received < cap) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        html += decoder.decode(value, { stream: true });
-        received += value.length;
-      }
-      reader.cancel().catch(() => {});
-    } else {
-      html = (await res.text()).slice(0, 300_000);
-    }
-
+  try {
     const title = extract(html, /<title[^>]*>([^<]*)<\/title>/i);
     const description =
       extract(html, /<meta[^>]+name=["']description["'][^>]*content=["']([^"']*)["']/i) ||
@@ -145,7 +101,7 @@ export async function GET(request) {
       extract(html, /<link[^>]+rel=["']apple-touch-icon["'][^>]*href=["']([^"']+)["']/i);
     let faviconUrl = null;
     try {
-      faviconUrl = new URL(iconHref || "/favicon.ico", res.url || target.toString()).toString();
+      faviconUrl = new URL(iconHref || "/favicon.ico", finalUrl).toString();
     } catch {
       faviconUrl = null;
     }
@@ -158,7 +114,6 @@ export async function GET(request) {
       faviconUrl,
     });
   } catch {
-    clearTimeout(timeout);
-    return NextResponse.json({ ok: false, error: "Couldn't read that site in time." });
+    return NextResponse.json({ ok: false, error: "Couldn't read that site." });
   }
 }
