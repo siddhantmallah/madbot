@@ -118,9 +118,10 @@ missing. Grep for `MISSING_FOR_LAUNCH`.
 
 | Field | Where to get it | Why it is required |
 |---|---|---|
-| `cin` | Certificate of incorporation | Companies Act 2013 s.12(3)(c) requires the CIN on letterheads, invoices and official publications |
-| `registeredOffice` | As filed with the Registrar of Companies | Consumer Protection (E-Commerce) Rules 2020 require the seller's legal name and registered address to be published; GDPR Art 13 requires the controller's identity |
-| `pan`, `gstin` | Income tax / GST portal | Needed on invoices. **Leave `gstin` null until actually GST-registered** — an invoice showing tax you are not registered to collect is a false document |
+| ~~`cin`~~ | Done: `U62011MH2026PTC475385` | Companies Act 2013 s.12(3)(c) requires the CIN on letterheads, invoices and official publications |
+| ~~`pan`, `tan`~~ | Done | Needed on invoices and for TDS. Deliberately not rendered on any public page: a tax id belongs on an invoice, not in a footer |
+| `registeredOffice.line1`, `.city`, `.postcode` | As filed with the Registrar of Companies | Consumer Protection (E-Commerce) Rules 2020 require the seller's legal name and registered address to be published; GDPR Art 13 requires the controller's identity. `state` is already set to Maharashtra, derived from the MH in the CIN |
+| `gstin` | GST portal | **Leave null until actually GST-registered** — an invoice showing tax you are not registered to collect is a false document |
 | `grievanceOfficer.name` and `.email` | Your appointment | Consumer Protection (E-Commerce) Rules 2020 and IT Rules 2021 both require a named grievance officer with a published contact. The pages already publish the 48-hour acknowledgement and 30-day resolution commitment |
 | `emails.support` / `.privacy` / `.legal` / `.security` | Mailboxes you create | Each falls back to `NEXT_PUBLIC_CONTACT_EMAIL`. With that unset too, the Contact page currently renders **zero working addresses** |
 | `euRepresentative`, `ukRepresentative` | Only if you appoint one | GDPR Art 27 requires an EU representative for a non-EU controller offering services to people in the EU, unless processing is occasional and low-risk. The Privacy Policy currently states plainly that none is appointed |
