@@ -12,3 +12,6 @@ out
 *service-account*.json
 *firebase-adminsdk*.json
 madbot-*-firebase-adminsdk-*.json
+
+# Claude Code local session config
+.claude/
