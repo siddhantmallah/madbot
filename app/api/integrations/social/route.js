@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { verifiedUid } from "../../../../lib/licenseServer";
+import { authorize, verifiedUid } from "../../../../lib/licenseServer";
+import { FEATURES } from "../../../../lib/plans";
 import { adminAvailable, adminDb } from "../../../../lib/firebaseAdmin";
 import { checkProvider, PROVIDER_FOR, connectionUsable } from "../../../../lib/publishSocial";
 import { NETWORK_ORDER, readiness } from "../../../../lib/social";
@@ -34,7 +35,19 @@ export async function POST(request) {
   }
 
   const { idToken, siteId, provider, token, authorUrn = null, pageId = null } = body || {};
-  const uid = await verifiedUid(idToken);
+
+  // Connecting writes a live posting credential, so it needs the plan that
+  // sells posting. Reading and disconnecting deliberately stay on identity
+  // alone: somebody who downgrades must still be able to see and remove a
+  // connection they made.
+  const auth = await authorize(idToken, FEATURES.SOCIAL);
+  if (!auth.ok) {
+    return NextResponse.json(
+      { ok: false, error: auth.error, upgradeTo: auth.upgradeTo || null, upgradeName: auth.upgradeName || null },
+      { status: auth.status }
+    );
+  }
+  const uid = auth.uid;
   if (!uid) return NextResponse.json({ ok: false, error: "Not signed in." }, { status: 401 });
   if (!siteId) return NextResponse.json({ ok: false, error: "No site given." }, { status: 400 });
   if (!PROVIDERS.includes(provider)) {

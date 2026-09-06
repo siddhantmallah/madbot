@@ -25,7 +25,16 @@ const TTL_MS = 5 * 60 * 1000;
 let cached = { at: 0, payload: null };
 
 export async function GET(request) {
-  const force = new URL(request.url).searchParams.get("fresh") === "1";
+  // `fresh=1` skips the cache, and skipping the cache means a real billed call
+  // to Anthropic. Left open, anyone could run up the bill one request at a
+  // time from anywhere. The cached answer stays public, because the dashboard
+  // needs it on every load and it costs nothing; only the bypass is gated, on
+  // the same secret the cron uses.
+  const wantsFresh = new URL(request.url).searchParams.get("fresh") === "1";
+  const secret = process.env.CRON_SECRET;
+  const authorised =
+    !!secret && (request.headers.get("authorization") || "") === `Bearer ${secret}`;
+  const force = wantsFresh && authorised;
 
   if (!process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json({

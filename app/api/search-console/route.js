@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { authorize } from "../../../lib/licenseServer";
+import { FEATURES } from "../../../lib/plans";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -59,7 +61,20 @@ export async function POST(request) {
     return NextResponse.json({ ok: false, error: "Invalid request." }, { status: 400 });
   }
 
-  const { token, action, siteUrl } = body || {};
+  const { idToken, token, action, siteUrl } = body || {};
+
+  // Search Console is sold from Starter upwards and was enforced nowhere: not
+  // on the client, not here. The Google token the caller supplies limits which
+  // data Google will return, so this was never a data leak, but it did mean a
+  // free account got a paid feature and used our server to proxy it.
+  const auth = await authorize(idToken, FEATURES.SEARCH_CONSOLE);
+  if (!auth.ok) {
+    return NextResponse.json(
+      { ok: false, error: auth.error, upgradeTo: auth.upgradeTo || null, upgradeName: auth.upgradeName || null },
+      { status: auth.status }
+    );
+  }
+
   if (!token) return NextResponse.json({ ok: false, error: "Not connected to Search Console." }, { status: 401 });
 
   try {

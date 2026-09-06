@@ -58,7 +58,7 @@ export default function Growth({
 
       {/* Real counts, straight out of Firestore — nothing modelled or estimated. */}
       <div className="grid-4" style={{ gap: 14 }}>
-        <StatCard kicker="Actions logged" value={activity.length} meta="every one reversible" />
+        <StatCard kicker="Actions logged" value={activity.length} meta="nothing happens off the record" />
         <StatCard kicker="Content" value={drafted + published} meta={`${drafted} draft${drafted === 1 ? "" : "s"} · ${published} published`} />
         <StatCard kicker="Prospects found" value={leads.length} meta={`${qualifiedLeads} qualified · ${shortlistedLeads} shortlisted`} />
         <StatCard kicker="Waiting on you" value={pendingCount} meta={`of ${approvals.length} total in the queue`} />
@@ -78,7 +78,7 @@ export default function Growth({
             ) : null}
             {feedTop.map((f, i) => {
               const isUndone = !!f.undone;
-              const tag = isUndone ? "Rolled back" : f.tag || "";
+              const tag = isUndone ? "Reverted by you" : f.tag || "";
               const showTag = isUndone || f.tag;
               const fresh = i === 0 && minutesAgo(f.createdAt) < 1;
               return (
@@ -115,7 +115,7 @@ export default function Growth({
                     ) : null}
                     {f.undo && !isUndone ? (
                       <button className="btn btn-ghost" onClick={() => onUndo(f.id, true)} style={{ fontSize: 12, fontWeight: 600 }}>
-                        Undo
+                        Mark reverted
                       </button>
                     ) : null}
                   </span>

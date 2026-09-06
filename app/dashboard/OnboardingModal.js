@@ -203,7 +203,7 @@ export default function OnboardingModal({ uid, canSkip, initialUrl, onClose, onF
             <div className="card" style={{ width: "100%", padding: "16px 20px", gap: 6, background: "var(--color-accent-2-100)" }}>
               <div style={{ fontSize: 13, color: "var(--color-accent-2-900)" }}>
                 <strong>Whatever you pick:</strong> I never make a claim you haven&apos;t approved, never email the
-                same person twice in 30 days, and everything I do can be rolled back in one click.
+                same person twice in 30 days, and nothing reaches your site or your audience without you approving it first.
               </div>
             </div>
             <button className="btn btn-primary" onClick={() => setStep(3)} style={{ minHeight: 50, paddingInline: 30 }}>I&apos;m ready</button>

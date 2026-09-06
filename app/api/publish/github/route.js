@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { verifiedUid } from "../../../../lib/licenseServer";
+import { authorize } from "../../../../lib/licenseServer";
+import { FEATURES } from "../../../../lib/plans";
 import { adminAvailable, adminDb } from "../../../../lib/firebaseAdmin";
 import { publishArticle } from "../../../../lib/publishGithub";
 
@@ -27,7 +28,18 @@ export async function POST(request) {
   }
 
   const { idToken, siteId, contentId } = body || {};
-  const uid = await verifiedUid(idToken);
+
+  // Identity alone was not enough here. Opening a pull request against a
+  // customer's repository is the publishing step, and publishing is what the
+  // Content feature sells, so any signed-in account on any plan could do it.
+  const auth = await authorize(idToken, FEATURES.CONTENT);
+  if (!auth.ok) {
+    return NextResponse.json(
+      { ok: false, error: auth.error, upgradeTo: auth.upgradeTo || null, upgradeName: auth.upgradeName || null },
+      { status: auth.status }
+    );
+  }
+  const uid = auth.uid;
   if (!uid) return NextResponse.json({ ok: false, error: "Not signed in." }, { status: 401 });
   if (!siteId || !contentId) return NextResponse.json({ ok: false, error: "Missing site or content id." }, { status: 400 });
 

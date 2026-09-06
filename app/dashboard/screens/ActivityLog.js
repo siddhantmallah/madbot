@@ -7,7 +7,7 @@ function csvEscape(val) {
 }
 
 function exportCsv(rows) {
-  const header = ["When", "What I did", "Why", "Result", "Rolled back"];
+  const header = ["When", "What I did", "Why", "Result", "Reverted"];
   const lines = [header.join(",")];
   rows.forEach((f) => {
     const when = f.createdAt?.toDate ? f.createdAt.toDate().toISOString() : "";
@@ -34,7 +34,7 @@ export default function ActivityLog({ feedAll, onToggleUndo }) {
         <div>
           <h2 style={{ margin: "0 0 3px" }}>Everything I&apos;ve ever done here</h2>
           <p className="text-muted" style={{ margin: 0, fontSize: 13.5 }}>
-            {feedAll.length} {feedAll.length === 1 ? "action" : "actions"}, each one reversible. Nothing happens off the record.
+            {feedAll.length} {feedAll.length === 1 ? "action" : "actions"}. Nothing happens off the record, and nothing reaches your site without you.
           </p>
         </div>
         <div className="seg" style={{ marginLeft: "auto", background: "var(--color-bg)" }}>
@@ -44,7 +44,7 @@ export default function ActivityLog({ feedAll, onToggleUndo }) {
           </label>
           <label className="seg-opt">
             <input type="radio" name="lg" checked={filt === "undo"} onChange={() => setFilt("undo")} />
-            Rolled back
+            Reverted
           </label>
         </div>
         <button className="btn btn-secondary" onClick={() => exportCsv(rows)} disabled={rows.length === 0} style={{ fontWeight: 600, fontSize: 13 }}>Export CSV</button>
@@ -65,11 +65,11 @@ export default function ActivityLog({ feedAll, onToggleUndo }) {
                   <td style={{ whiteSpace: "nowrap", fontSize: 12 }} className="text-muted">{ago(minutesAgo(f.createdAt))}</td>
                   <td style={{ fontSize: 13 }}><span style={{ textDecoration: u ? "line-through" : "none" }}>{f.text}</span></td>
                   <td style={{ fontSize: 12 }} className="text-muted">{f.why || "—"}</td>
-                  <td><span className="tag" style={{ background: u ? "var(--color-neutral-100)" : "var(--color-accent-2-100)", color: u ? "var(--color-neutral-800)" : "var(--color-accent-2-800)", fontSize: 10.5 }}>{u ? "Rolled back" : f.result || "Done"}</span></td>
+                  <td><span className="tag" style={{ background: u ? "var(--color-neutral-100)" : "var(--color-accent-2-100)", color: u ? "var(--color-neutral-800)" : "var(--color-accent-2-800)", fontSize: 10.5 }}>{u ? "Reverted by you" : f.result || "Done"}</span></td>
                   <td style={{ textAlign: "right" }}>
                     {f.undo ? (
                       <button className="btn btn-ghost" onClick={() => onToggleUndo(f.id, !u)} style={{ fontSize: 12, fontWeight: 600 }}>
-                        {u ? "Restore" : "Roll back"}
+                        {u ? "Unmark" : "Mark reverted"}
                       </button>
                     ) : null}
                   </td>

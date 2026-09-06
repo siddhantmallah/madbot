@@ -43,7 +43,7 @@ const MARQUEE = [
 const FAQS = [
   {
     q: "Will it publish things to my site without asking?",
-    a: "Only if you turn the dial that far. At Watch it changes nothing; at Let it rip it publishes but never spends; at Full send it spends inside your budget. Everything it does is reversible in one click.",
+    a: "Only if you turn the dial that far. At Watch it changes nothing; at Let it rip it publishes but never spends; at Full send it spends inside your budget. Nothing reaches your site or your audience without you: articles arrive as a pull request you merge, social posts wait for approval on screen, and outreach is never sent by MADBOT.",
   },
   {
     q: "How is this different from an SEO tool?",
@@ -213,7 +213,7 @@ export default function LandingPage() {
             <div className="reveal kicker-row mono" style={{ marginBottom: 30 }}>
               <span>Autonomous website marketing</span>
               <span>One dial, one veto</span>
-              <span>Every action reversible</span>
+              <span>Nothing publishes itself</span>
             </div>
             <h1 id="hero-h" className="reveal display-xl" style={{ maxWidth: "10.5em" }}>
               Give it a website.
@@ -474,7 +474,7 @@ export default function LandingPage() {
                 { k: "Technical checks per crawl", v: "20+", n: "Every one traceable to a line on your page", c: "var(--color-accent)" },
                 { k: "Buying questions put to AI", v: "Live", n: "Real model calls with web search, not a lookup table", c: "var(--color-accent-2-700)" },
                 { k: "Free report", v: "~10s", n: "No account, no card, nothing written to your site", c: "var(--color-accent-2-700)" },
-                { k: "Reversible actions", v: "All", n: "Every change it makes, rolled back in one click", c: "var(--color-accent)" },
+                { k: "Published without asking", v: "None", n: "Articles arrive as a pull request you merge, posts wait for your approval", c: "var(--color-accent)" },
               ].map((s) => (
                 <div key={s.k} className="card card-3d reveal" style={{ padding: 22, gap: 5, background: "var(--color-surface)", border: "1px solid var(--color-divider)" }}>
                   <span className="card-kicker" style={{ color: s.c }}>{s.k}</span>

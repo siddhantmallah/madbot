@@ -742,7 +742,7 @@ function DashboardInner() {
     const res = await fetch("/api/search-console", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token: gscTokenRef.current, action, ...extra }),
+      body: JSON.stringify({ idToken: await user.getIdToken(), token: gscTokenRef.current, action, ...extra }),
     });
     return res.json();
   }
@@ -792,7 +792,9 @@ function DashboardInner() {
     if (!user || !activeSiteId) return { error: "No site selected." };
     setAddingCompetitor(true);
     try {
-      const res = await fetch(`/api/snapshot?url=${encodeURIComponent(url)}`);
+      const res = await fetch(`/api/snapshot?url=${encodeURIComponent(url)}`, {
+        headers: { "x-id-token": await user.getIdToken() },
+      });
       const data = await res.json();
       if (!data.ok) return { error: data.error };
       await addCompetitor(user.uid, activeSiteId, { url: data.snapshot.url, snapshot: data.snapshot });
@@ -814,7 +816,9 @@ function DashboardInner() {
     if (!user || !activeSiteId) return;
     setCompetitorBusy(c.id);
     try {
-      const res = await fetch(`/api/snapshot?url=${encodeURIComponent(c.url)}`);
+      const res = await fetch(`/api/snapshot?url=${encodeURIComponent(c.url)}`, {
+        headers: { "x-id-token": await user.getIdToken() },
+      });
       const data = await res.json();
       if (!data.ok) return;
       const changes = diffSnapshots(c.snapshot, data.snapshot);
