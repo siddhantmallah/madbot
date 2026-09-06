@@ -14,7 +14,7 @@ export default function PricingPage() {
   const plans = PLAN_ORDER.map((id) => PLANS[id]);
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--color-bg)", fontSize: 16 }}>
+    <div className="marketing" style={{ minHeight: "100vh", background: "var(--color-bg)", fontSize: 16 }}>
       <header style={{ borderBottom: "1px solid var(--color-divider)" }}>
         <div className="nav pad-responsive" style={{ maxWidth: 1180, margin: "0 auto", padding: "15px 28px" }}>
           <Link href="/" style={{ display: "flex", alignItems: "center", gap: 11, textDecoration: "none", color: "var(--fg)", marginRight: "auto" }}>

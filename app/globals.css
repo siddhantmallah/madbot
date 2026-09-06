@@ -264,13 +264,112 @@ textarea.input{min-height:90px;resize:vertical;border-radius:var(--radius-md)}
 @keyframes revealUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
 @keyframes revealFade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 
-.reveal{opacity:0;transform:translateY(14px);transition:opacity .7s cubic-bezier(.22,.75,.30,1),transform .78s cubic-bezier(.22,.75,.30,1)}
+/* — motion —
+   Every reveal group gets a perspective, so the children below can move in
+   depth rather than only up the page. A section that settles into place from
+   slightly behind the screen reads as arriving; one that slides up reads as
+   loading. Same elements, same trigger, different feeling. */
+[data-reveal]{perspective:1200px}
+.reveal{opacity:0;transform:translateY(18px) translateZ(-60px) rotateX(5deg);transform-origin:50% 100%;transition:opacity .7s cubic-bezier(.22,.75,.30,1),transform .85s cubic-bezier(.22,.75,.30,1)}
 .reveal.in{opacity:1;transform:none}
 .reveal-fade{opacity:0;transform:translateY(6px);transition:opacity .6s ease,transform .6s cubic-bezier(.22,.75,.30,1)}
 .reveal-fade.in{opacity:1;transform:none}
 
+/* Cards lift and tip towards the pointer on hover. Needs a perspective on an
+   ancestor to read as depth — the reveal groups supply one. Hover-only media
+   query: on touch there is no hover, and a card that lifts on tap and stays
+   lifted looks stuck. */
+.card-3d{transition:transform .38s cubic-bezier(.22,.75,.30,1),box-shadow .38s cubic-bezier(.22,.75,.30,1);transform-style:preserve-3d;position:relative}
+@media (hover:hover) and (pointer:fine){
+  .card-3d:hover{transform:translateY(-6px) rotateX(2.5deg) rotateY(-1.5deg);box-shadow:var(--shadow-lg)}
+}
+
+.float-slow{animation:drift 5.5s ease-in-out infinite}
+.dial-pulse{animation:pulseRing 2.4s cubic-bezier(.2,.7,.3,1) infinite}
+.autonomy-dial:focus-visible{box-shadow:0 0 0 3px var(--color-accent)}
+
+/* — landing: the editorial surface —
+   Scale, contrast and rhythm rather than decoration. The hero is full-bleed
+   with the live opportunity graph behind the copy; sections carry a small
+   mono index and hairline grid; cards are hard-edged with a single white
+   geometric mark. */
+/* A dark stage, whatever the theme. The scene is drawn with additive blending —
+   light added to dark — which on a pale ground washes out to nothing. So any
+   surface that hosts it carries its own dark palette: every token a child reads
+   is redefined here, and theme-aware chrome around it stays theme-aware. Used
+   by the landing hero and the sign-in page. */
+.dark-stage{
+  --fg:#FFFFFF;--fg-80:rgba(255,255,255,.80);--fg-70:rgba(255,255,255,.70);--fg-60:rgba(255,255,255,.60);--fg-45:rgba(255,255,255,.45);--fg-32:rgba(255,255,255,.32);--fg-22:rgba(255,255,255,.22);
+  --wash-1:rgba(255,255,255,.03);--wash-2:rgba(255,255,255,.07);--wash-3:rgba(255,255,255,.14);
+  --color-bg:#0A0810;--color-surface:#15121F;--color-text:#FFFFFF;--color-divider:rgba(255,255,255,.14);
+  --color-neutral-100:#15131C;--color-neutral-200:#1D1A26;--color-neutral-300:#2A2636;--color-neutral-800:#D8D4E2;
+  --scrim-strong:rgba(10,8,16,.92);--scrim:rgba(10,8,16,.82);--scrim-soft:rgba(10,8,16,.35);--scrim-none:rgba(10,8,16,0);
+  background:#0A0810;color:#FFFFFF}
+.hero-full{position:relative;min-height:92vh;display:grid;grid-template-columns:minmax(0,1fr);align-items:center;overflow:hidden;isolation:isolate}
+/* Film grain over the stage. A flat digital black reads as a screen; a little
+   texture reads as a surface. Sits with the vignette, under the copy. */
+.grain::after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;opacity:.055;mix-blend-mode:overlay;background-size:160px 160px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.95' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .6 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+
+/* Marketing surfaces are hard-edged; the product stays soft. The reference
+   sites are all right angles, and a pill-shaped button on a page like that
+   reads as a template. Scoped to a class on the page root so the dashboard —
+   which was designed round — is untouched. */
+.marketing .btn{border-radius:6px}
+.marketing .card{border-radius:6px}
+.marketing .tag{border-radius:4px}
+.marketing .input{border-radius:6px}
+.marketing .seg{border-radius:6px}
+.marketing .seg-opt{border-radius:4px}
+
+/* The sign-in page: the same stage as the hero, with the form pinned right. */
+.auth-stage{position:relative;min-height:100vh;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,560px);overflow:hidden;isolation:isolate}
+.auth-vignette{position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(90deg,var(--scrim-soft) 0%,var(--scrim-none) 40%,var(--scrim) 70%,var(--scrim-strong) 100%)}
+.auth-aside,.auth-form{position:relative;z-index:2;min-width:0}
+@media (max-width:900px){
+  .auth-stage{grid-template-columns:minmax(0,1fr);min-height:auto}
+  .auth-vignette{background:linear-gradient(180deg,var(--scrim-soft) 0%,var(--scrim) 45%,var(--scrim-strong) 100%)}
+  .auth-aside{padding-bottom:0!important}
+  .auth-aside .display-xl{font-size:clamp(34px,10vw,52px)}
+  .auth-aside > p.mono:last-child{display:none}
+}
+.hero-scene{position:absolute;inset:0;z-index:0}
+/* Keeps the headline legible over the scene without killing it. Fades to
+   nothing on the right, where the graph is densest and the copy isn't. */
+.hero-vignette{position:absolute;inset:0;z-index:1;pointer-events:none;background:radial-gradient(75% 85% at 28% 50%,var(--scrim-strong) 0%,var(--scrim) 34%,var(--scrim-none) 68%)}
+.hero-grid{position:absolute;inset:0;z-index:0;pointer-events:none;opacity:.5;background-image:linear-gradient(var(--wash-2) 1px,transparent 1px),linear-gradient(90deg,var(--wash-2) 1px,transparent 1px);background-size:96px 96px;mask-image:radial-gradient(85% 85% at 50% 50%,#000 30%,transparent 100%);-webkit-mask-image:radial-gradient(85% 85% at 50% 50%,#000 30%,transparent 100%)}
+.hero-copy{position:relative;z-index:2;min-width:0}
+.display-xl{font-size:clamp(46px,8.6vw,118px);line-height:.94;letter-spacing:-.025em;margin:0}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg-45)}
+.kicker-row{display:flex;gap:26px;flex-wrap:wrap;align-items:center}
+.kicker-row>span::before{content:"—";color:var(--color-accent);margin-right:8px}
+.section-index{display:flex;align-items:center;gap:14px;margin-bottom:18px}
+.section-index::after{content:"";flex:1;height:1px;background:var(--color-divider)}
+/* Hard-edged cards. The rest of the app is soft; the marketing surface is not. */
+.hard{border-radius:6px!important;border:1px solid var(--color-divider);background:var(--color-surface)}
+.hard-index{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;letter-spacing:.12em;color:var(--color-accent)}
+.shape{width:54px;height:54px;background:var(--fg);display:block;flex:none}
+.shape-circle{border-radius:50%}
+.shape-quarter{border-radius:0 100% 0 0}
+.shape-half{border-radius:100px 100px 0 0}
+.shape-bars{background:repeating-linear-gradient(90deg,var(--fg) 0 11px,transparent 11px 21px)}
+.shape-ring{border-radius:50%;background:transparent;border:11px solid var(--fg)}
+.shape-diamond{transform:rotate(45deg) scale(.78)}
+/* The marquee. Two copies of the strip, translated by half, so the loop has
+   no seam. Pauses under the pointer so it can be read; still under reduced
+   motion. */
+@keyframes marquee{to{transform:translateX(-50%)}}
+.marquee{overflow:hidden;white-space:nowrap;border-block:1px solid var(--color-divider);padding:15px 0;background:var(--wash-1)}
+.marquee-track{display:inline-flex;animation:marquee 42s linear infinite;will-change:transform}
+.marquee:hover .marquee-track{animation-play-state:paused}
+.marquee-item{display:inline-flex;align-items:center;gap:18px;padding:0 24px;font-size:14px;color:var(--fg-80)}
+.marquee-item::after{content:"";width:6px;height:6px;border-radius:50%;background:var(--color-accent);flex:none}
+@media (prefers-reduced-motion: reduce){.marquee-track{animation:none}}
+@media (max-width:640px){.hero-full{min-height:auto;padding-block:40px 32px}.display-xl{font-size:clamp(38px,11vw,64px)}}
+
 @media (prefers-reduced-motion: reduce){
   .reveal,.reveal-fade{transition:none;opacity:1;transform:none}
+  .card-3d,.card-3d:hover{transition:none;transform:none}
+  .float-slow,.dial-pulse{animation:none}
 }
 
 /* ===========================================================================
@@ -423,12 +522,6 @@ textarea.input{min-height:90px;resize:vertical;border-radius:var(--radius-md)}
   .dash-header > div[style*="margin-left"] { margin-left: 0 !important; }
 }
 
-/* The autonomy dial is a fixed 404px square with pixel-computed knob positions,
-   so it can't reflow. Below 470px it scrolls inside its own column instead of
-   widening the page. The dial reads an angle from its bounding rect, so it
-   stays accurate at any offset, and touchAction:none on it means a drag isn't
-   stolen by the scroller. */
-@media (max-width: 470px) {
-  .dial-column { overflow-x: auto; -webkit-overflow-scrolling: touch; align-items: flex-start !important; }
-  .dial-column > h2, .dial-column > p { align-self: stretch; }
-}
+/* The autonomy dial used to be a fixed 404px square that scrolled sideways
+   inside its column on a phone. It now sizes to the column (see Autonomy.js),
+   so the scroll hack — which also force-left-aligned the column — is gone. */

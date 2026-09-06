@@ -5,8 +5,16 @@ import { useEffect, useState } from "react";
 import { usePageReveal } from "./components/useReveal";
 import AuditModal from "./components/AuditModal";
 import ThemeToggle from "./components/ThemeToggle";
+import { MadbotMark } from "./components/Brand";
+import AutonomyDial from "./components/AutonomyDial";
+import dynamic from "next/dynamic";
+import { bandInfo, bands } from "../lib/autonomyDial";
 import { PLANS, PLAN_ORDER, REGIONS, formatPrice, priceFor, highlightsFor } from "../lib/plans";
 import { useRegion } from "../lib/useRegion";
+
+// three.js talks to the GPU, not the server. Client-only, so the page still
+// prerenders and the scene arrives after.
+const HeroScene = dynamic(() => import("./components/HeroScene"), { ssr: false });
 
 // Illustrative examples of the kind of work the engine does — deliberately
 // phrased as capability, not as a live feed of things happening right now.
@@ -15,6 +23,19 @@ const TICKER_LINES = [
   "Marks up your schema so answer engines can cite you",
   "Writes and ships the pages, then tracks what moved",
   "Spots the companies who have your problem this week",
+  "Rolls any of it back in one click",
+];
+
+// The strip under the hero. Each line is something the code does today.
+const MARQUEE = [
+  "Crawls what's actually there",
+  "20+ technical checks, run live",
+  "Finds the pages you should have and don't",
+  "Marks up schema so answer engines can cite you",
+  "Writes the page, opens the pull request, you merge",
+  "Lists you in the directories buyers check",
+  "Spots the companies who have your problem this week",
+  "Nothing sent, nothing published, without you",
   "Rolls any of it back in one click",
 ];
 
@@ -45,6 +66,24 @@ const FAQS = [
   },
 ];
 
+// The landing page describes each band in the third person — it is talking
+// about the product, where the dashboard's own copy has the product talking to
+// you. One object feeds both the dial's centre and the list beside it, so they
+// can never say two different things about the same setting.
+const ROPE_COPY = {
+  "Watch only": "It looks, it reports, it changes nothing.",
+  Suggest: "A plan on your desk each morning. You press the buttons.",
+  "Let it rip": "It publishes, distributes and prospects on its own — and asks before spending a cent.",
+  "Full send": "It spends too, inside a budget you set, and hands you the receipts.",
+};
+
+const BAND_TAG_STYLE = [
+  { background: "var(--color-neutral-100)", color: "var(--color-neutral-800)" },
+  { background: "var(--color-neutral-100)", color: "var(--color-neutral-800)" },
+  { background: "var(--color-accent)", color: "var(--on-accent)" },
+  { background: "var(--color-accent-2-200)", color: "var(--color-accent-2-800)" },
+];
+
 function Ticker() {
   const [i, setI] = useState(0);
   useEffect(() => {
@@ -62,37 +101,15 @@ function Ticker() {
         whiteSpace: "nowrap",
         overflow: "hidden",
         textOverflow: "ellipsis",
+        // A flex item keeps min-width:auto and will not shrink below its
+        // nowrap text, however small the screen. That single span was forcing
+        // the whole hero column to 438px on a 375px phone.
+        minWidth: 0,
+        flex: "1 1 auto",
         animation: "revealFade .45s ease",
       }}
     >
       {TICKER_LINES[i]}
-    </span>
-  );
-}
-
-function Logo({ size = 30, ring = 1.8 }) {
-  return (
-    <span
-      style={{
-        position: "relative",
-        width: size,
-        height: size,
-        borderRadius: "50%",
-        border: `${ring}px solid #E4EC1B`,
-        display: "grid",
-        placeItems: "center",
-        flex: "none",
-      }}
-    >
-      <span
-        style={{
-          width: size * 0.43,
-          height: size * 0.43,
-          border: `${ring}px solid #E4EC1B`,
-          transform: "rotate(45deg)",
-          display: "block",
-        }}
-      />
     </span>
   );
 }
@@ -112,6 +129,10 @@ export default function LandingPage() {
   const rootRef = usePageReveal();
   const [heroUrl, setHeroUrl] = useState("");
   const [auditUrl, setAuditUrl] = useState(null);
+  // The dial on the landing page is live, not a picture of one. 64 lands in
+  // the middle of "Let it rip", the band the copy around it is written for.
+  const [aut, setAut] = useState(64);
+  const band = bandInfo(aut);
   const { region, pending: regionPending } = useRegion();
 
   // The free report runs before any account exists — that's the whole point of
@@ -124,7 +145,7 @@ export default function LandingPage() {
   }
 
   return (
-    <div ref={rootRef} style={{ minHeight: "100vh", fontSize: 16, overflowX: "hidden", background: "var(--color-bg)" }}>
+    <div ref={rootRef} className="marketing" style={{ minHeight: "100vh", fontSize: 16, overflowX: "hidden", background: "var(--color-bg)" }}>
       <header
         style={{
           position: "sticky",
@@ -137,7 +158,7 @@ export default function LandingPage() {
       >
         <div className="nav pad-responsive" style={{ maxWidth: 1180, margin: "0 auto", padding: "15px 28px" }}>
           <span className="nav-brand" style={{ display: "flex", alignItems: "center", gap: 11, color: "var(--fg)", marginRight: "auto" }}>
-            <Logo />
+            <MadbotMark size={30} />
             <span style={{ fontFamily: "var(--font-body)", fontWeight: 400, fontSize: 22, letterSpacing: "-.005em", color: "var(--fg)" }}>
               madbot
             </span>
@@ -166,177 +187,104 @@ export default function LandingPage() {
       </header>
 
       <main>
-        {/* HERO */}
-        <section aria-labelledby="hero-h" style={{ position: "relative", overflow: "hidden" }}>
-          <div
-            aria-hidden="true"
-            style={{
-              position: "absolute",
-              left: "50%",
-              top: -120,
-              width: 1100,
-              height: 700,
-              transform: "translateX(-30%)",
-              background:
-                "radial-gradient(50% 50% at 50% 50%, rgba(255,106,26,.16) 0%, rgba(168,85,247,.10) 45%, rgba(0,0,0,0) 72%)",
-              pointerEvents: "none",
-            }}
-          />
-          <div
-            data-reveal
-            data-stagger="85"
-            className="split-hero pad-responsive"
-            style={{
-              position: "relative",
-              maxWidth: 1180,
-              margin: "0 auto",
-              padding: "72px 28px 70px",
-              gap: 44,
-              alignItems: "center",
-            }}
-          >
-            <div className="reveal">
-              <span
-                className="tag"
-                style={{
-                  background: "var(--color-accent-2-100)",
-                  color: "var(--color-accent-2-800)",
-                  border: "1px solid var(--color-accent-2-400)",
-                  marginBottom: 20,
-                }}
-              >
-                Autonomous website marketing
-              </span>
-              <h1 id="hero-h" style={{ margin: "0 0 18px", fontSize: "clamp(31px,12.6vw,68px)", lineHeight: 1.02, letterSpacing: "-.02em" }}>
-                Give it a website.
-                <br />
-                <span style={{ color: "var(--color-accent)" }}>It does the marketing.</span>
-              </h1>
-              <p style={{ margin: "0 0 28px", fontSize: 19, lineHeight: 1.55, maxWidth: "30em", color: "var(--fg-80)" }}>
-                MADBOT reads your site, finds the openings, writes and ships the pages, earns the links, spots the
-                people who need you, and tells you exactly what it did. You keep a dial and a veto.
-              </p>
-              <form onSubmit={handleStartSubmit} style={{ display: "flex", gap: 10, maxWidth: 520, marginBottom: 14 }}>
-                <label style={{ flex: 1 }}>
-                  <span style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clipPath: "inset(50%)" }}>
-                    Your website address
-                  </span>
-                  <input
-                    className="input"
-                    type="text"
-                    inputMode="url"
-                    autoComplete="off"
-                    value={heroUrl}
-                    onChange={(e) => setHeroUrl(e.target.value)}
-                    placeholder="yourcompany.com"
-                    style={{ minHeight: 54, fontSize: 16, background: "var(--color-surface)", color: "var(--fg)", borderColor: "var(--color-divider)" }}
-                  />
-                </label>
-                <button className="btn btn-primary" type="submit" style={{ minHeight: 54, paddingInline: 26, flex: "none", color: "var(--on-accent)" }}>
-                  Read my site free
-                </button>
-              </form>
-              <p style={{ margin: "0 0 22px", fontSize: 13.5, color: "var(--fg-45)" }}>
-                A real report in about ten seconds. No account, no card, nothing touched.
-              </p>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 11,
-                  padding: "12px 16px",
-                  border: "1px solid var(--color-divider)",
-                  borderRadius: 999,
-                  maxWidth: 520,
-                  background: "var(--wash-1)",
-                }}
-              >
-                <span style={{ position: "relative", width: 9, height: 9, flex: "none" }}>
-                  <span style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "var(--color-accent)", animation: "softPulse 2.4s ease-in-out infinite" }} />
-                </span>
-                <span style={{ fontSize: 12.5, color: "var(--fg-45)", flex: "none" }}>It does</span>
-                <Ticker />
-              </div>
-              <dl style={{ display: "flex", gap: 38, margin: "34px 0 0", flexWrap: "wrap" }}>
-                <div>
-                  <dt style={{ fontSize: 11.5, letterSpacing: ".09em", textTransform: "uppercase", color: "var(--color-accent)" }}>
-                    The free report
-                  </dt>
-                  <dd style={{ margin: "5px 0 0", fontFamily: "var(--font-heading)", fontSize: 30 }}>No account</dd>
-                </div>
-                <div>
-                  <dt style={{ fontSize: 11.5, letterSpacing: ".09em", textTransform: "uppercase", color: "var(--color-accent-2-700)" }}>
-                    Checks run live
-                  </dt>
-                  <dd style={{ margin: "5px 0 0", fontFamily: "var(--font-heading)", fontSize: 30 }}>20+</dd>
-                </div>
-                <div>
-                  <dt style={{ fontSize: 11.5, letterSpacing: ".09em", textTransform: "uppercase", color: "var(--fg-45)" }}>
-                    Every action
-                  </dt>
-                  <dd style={{ margin: "5px 0 0", fontFamily: "var(--font-heading)", fontSize: 30 }}>Reversible</dd>
-                </div>
-              </dl>
+        {/* HERO — the opportunity map, live, behind the headline. */}
+        <section aria-labelledby="hero-h" data-hero-zone className="hero-full dark-stage grain">
+          <div className="hero-grid" aria-hidden="true" />
+          {/* When WebGL isn't available the still image takes the scene's place,
+              dimmed, so the section never renders as an empty dark box. */}
+          <HeroScene className="hero-scene">
+            <img
+              src="/opportunity-graph.png"
+              alt=""
+              aria-hidden="true"
+              width={1600}
+              height={1600}
+              style={{ position: "absolute", right: "-8%", top: "50%", width: "68%", maxWidth: 920, height: "auto", transform: "translateY(-50%)", opacity: 0.5, pointerEvents: "none" }}
+            />
+          </HeroScene>
+          <div className="hero-vignette" aria-hidden="true" />
+
+          {/* border-box, or width:100% plus the side padding overflows the
+              viewport on a phone — which is exactly what it did. Vertical
+              padding scales with the viewport so the hero isn't 1,100px tall
+              on a 375px screen. */}
+          <div data-reveal data-stagger="90" className="hero-copy pad-responsive" style={{ width: "100%", boxSizing: "border-box", maxWidth: 1180, margin: "0 auto", padding: "clamp(28px, 7.5vw, 104px) 28px clamp(28px, 5.5vw, 76px)" }}>
+            <div className="reveal kicker-row mono" style={{ marginBottom: 30 }}>
+              <span>Autonomous website marketing</span>
+              <span>One dial, one veto</span>
+              <span>Every action reversible</span>
             </div>
-            <figure className="reveal" style={{ margin: 0, position: "relative", overflow: "visible" }}>
-              <div
-                aria-hidden="true"
-                style={{
-                  position: "absolute",
-                  left: "50%",
-                  top: "50%",
-                  width: "150%",
-                  height: "150%",
-                  transform: "translate(-50%,-50%)",
-                  background:
-                    "radial-gradient(50% 50% at 50% 50%, rgba(255,106,26,.12) 0%, rgba(168,85,247,.09) 42%, rgba(0,0,0,0) 70%)",
-                  pointerEvents: "none",
-                }}
-              />
-              <img
-                src="/opportunity-graph.png"
-                width={1600}
-                height={1600}
-                alt="MADBOT's opportunity map: a glowing radial graph of scored growth opportunities around one site, the brightest routes already in progress"
-                style={{ position: "relative", width: "124%", maxWidth: "none", height: "auto", margin: "-12%" }}
-              />
-              <figcaption style={{ position: "relative", marginTop: "-6%", paddingLeft: "6%", fontSize: 11.5, color: "var(--fg-45)" }}>
-                Every opening around one site, scored and ranked — the brightest paths first.
-              </figcaption>
-            </figure>
+            <h1 id="hero-h" className="reveal display-xl" style={{ maxWidth: "10.5em" }}>
+              Give it a website.
+              <br />
+              <span style={{ color: "var(--color-accent)" }}>It does the marketing.</span>
+            </h1>
+            {/* "Earns the links" is gone from this line: nothing in the product
+                builds backlinks. Listing you in directories is what it does. */}
+            <p className="reveal" style={{ margin: "30px 0 34px", fontSize: "clamp(16px,1.55vw,20px)", lineHeight: 1.55, maxWidth: "32em", color: "var(--fg-80)" }}>
+              MADBOT reads your site, finds the openings, writes the pages, lists you where buyers look, spots the
+              companies who need you — and shows you exactly what it did. You keep a dial and a veto.
+            </p>
+            <form className="reveal" onSubmit={handleStartSubmit} style={{ display: "flex", gap: 10, maxWidth: 560, marginBottom: 14, flexWrap: "wrap" }}>
+              <label style={{ flex: "1 1 260px" }}>
+                <span style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clipPath: "inset(50%)" }}>Your website address</span>
+                <input
+                  className="input"
+                  type="text"
+                  inputMode="url"
+                  autoComplete="off"
+                  value={heroUrl}
+                  onChange={(e) => setHeroUrl(e.target.value)}
+                  placeholder="yourcompany.com"
+                  style={{ minHeight: 56, fontSize: 16, background: "var(--color-surface)", color: "var(--fg)", borderColor: "var(--color-divider)" }}
+                />
+              </label>
+              <button className="btn btn-primary" type="submit" style={{ minHeight: 56, paddingInline: 28, flex: "none", color: "var(--on-accent)" }}>
+                Read my site free
+              </button>
+            </form>
+            <p className="reveal" style={{ margin: "0 0 26px", fontSize: 13.5, color: "var(--fg-45)" }}>
+              A real report in about ten seconds. No account, no card, nothing touched.
+            </p>
+            <div className="reveal" style={{ display: "flex", alignItems: "center", gap: 11, padding: "12px 16px", border: "1px solid var(--color-divider)", borderRadius: 999, maxWidth: 560, background: "var(--scrim)" }}>
+              <span style={{ position: "relative", width: 9, height: 9, flex: "none" }}>
+                <span style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "var(--color-accent)", animation: "softPulse 2.4s ease-in-out infinite" }} />
+              </span>
+              <span style={{ fontSize: 12.5, color: "var(--fg-45)", flex: "none" }}>It does</span>
+              <Ticker />
+            </div>
+            <dl className="reveal" style={{ display: "flex", gap: 42, margin: "40px 0 0", flexWrap: "wrap" }}>
+              <div>
+                <dt className="mono" style={{ color: "var(--color-accent)" }}>The free report</dt>
+                <dd style={{ margin: "6px 0 0", fontFamily: "var(--font-heading)", fontSize: 30 }}>No account</dd>
+              </div>
+              <div>
+                <dt className="mono" style={{ color: "var(--color-accent-2-700)" }}>Checks run live</dt>
+                <dd style={{ margin: "6px 0 0", fontFamily: "var(--font-heading)", fontSize: 30 }}>20+</dd>
+              </div>
+              <div>
+                <dt className="mono">Every action</dt>
+                <dd style={{ margin: "6px 0 0", fontFamily: "var(--font-heading)", fontSize: 30 }}>Reversible</dd>
+              </div>
+            </dl>
           </div>
         </section>
 
-        {/* CUSTOMERS */}
-        {/* This was a logo strip reading "Running quietly for" over four named
-            businesses, which presented them as paying customers getting ongoing
-            results. They aren't, and naming a client publicly needs their
-            permission regardless. Replaced with something true. */}
-        <section aria-label="What the free report does" style={{ borderBlock: "1px solid var(--color-divider)", background: "var(--wash-1)" }}>
-          <div
-            data-reveal
-            data-stagger="45"
-            className="pad-responsive"
-            style={{ maxWidth: 1180, margin: "0 auto", padding: "20px 28px", display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap" }}
-          >
-            <span className="reveal-fade" style={{ fontSize: 12.5, color: "var(--fg-45)" }}>
-              The free report
-            </span>
-            {[
-              "Crawls what's actually there",
-              "20+ technical checks",
-              "Nothing written to your site",
-              "No account needed",
-            ].map((n) => (
-              <span key={n} className="reveal-fade" style={{ fontSize: 13.5, opacity: 0.62 }}>
-                {n}
-              </span>
+        {/* What the engine does, on a loop. Once a logo strip of "customers" who
+            weren't; then a static row of four facts; now the facts and the
+            ticker lines running as a marquee. Every line is something the code
+            does today. */}
+        <div className="marquee" aria-label="What MADBOT does">
+          <div className="marquee-track">
+            {[...MARQUEE, ...MARQUEE].map((t, i) => (
+              <span key={i} className="marquee-item">{t}</span>
             ))}
           </div>
-        </section>
+        </div>
 
         {/* HOW */}
-        <section id="how" aria-labelledby="how-h" style={{ maxWidth: 1180, margin: "0 auto", padding: "84px 28px 24px" }}>
+        <section id="how" aria-labelledby="how-h" className="pad-responsive" style={{ maxWidth: 1180, margin: "0 auto", padding: "84px 28px 24px" }}>
+          <div className="section-index"><span className="mono">01 — How it works</span></div>
           <h2 id="how-h" style={{ margin: "0 0 12px", fontSize: "clamp(24px,8.1vw,44px)", maxWidth: "16em" }}>
             Four things happen, over and over, without you
           </h2>
@@ -353,10 +301,15 @@ export default function LandingPage() {
               { n: "2", bg: "var(--color-accent-2-500)", fg: "var(--on-accent)", ring: false, glow: "rgba(168,85,247,.35)", title: "Picks its battles", body: "Every opportunity gets an expected value, a difficulty and a confidence score. Cheap wins first, moonshots last." },
               { n: "3", bg: "transparent", fg: "var(--color-accent)", ring: "var(--color-accent)", title: "Does the work", body: "Writes, publishes, fixes, submits, lists, pitches and finds buyers — inside the rules you wrote in plain English." },
               { n: "4", bg: "transparent", fg: "var(--color-accent-2-700)", ring: "var(--color-accent-2-500)", title: "Shows the receipts", body: "One Friday digest, one honest baseline it never re-bases, and a one-click rollback on every single action." },
-            ].map((s) => (
+            ].map((s, i) => (
               <li key={s.n} className="reveal" style={{ display: "flex", flexDirection: "column", gap: 13 }}>
                 <span
+                  className="float-slow"
                   style={{
+                    // Staggered so the four never bob in unison — four things
+                    // moving together read as one thing; four out of phase
+                    // read as alive.
+                    animationDelay: `${i * 0.7}s`,
                     width: 70,
                     height: 70,
                     borderRadius: "50%",
@@ -380,22 +333,32 @@ export default function LandingPage() {
         </section>
 
         {/* DOES */}
-        <section id="does" aria-labelledby="does-h" style={{ maxWidth: 1180, margin: "0 auto", padding: "72px 28px" }}>
+        <section id="does" aria-labelledby="does-h" className="pad-responsive" style={{ maxWidth: 1180, margin: "0 auto", padding: "72px 28px" }}>
+          <div className="section-index"><span className="mono">02 — What it does</span></div>
           <h2 id="does-h" style={{ margin: "0 0 36px", fontSize: "clamp(24px,8.1vw,44px)", maxWidth: "16em" }}>
             What it actually does all day
           </h2>
-          <div data-reveal data-stagger="70" className="grid-3" style={{ gap: 18 }}>
+          {/* Every line describes something in the codebase. The previous copy
+              promised fixes it doesn't make, links it doesn't earn, rank tracking
+              it doesn't have and a voice it doesn't learn. */}
+          <div data-reveal data-stagger="70" className="grid-3" style={{ gap: 14 }}>
             {[
-              { title: "Technical SEO, on autopilot", body: "Crawls, fixes and re-checks: metadata, structure, speed, schema, sitemaps, orphan pages. The boring work that decides everything.", border: "var(--color-divider)", bg: "var(--color-surface)" },
-              { title: "Content that sounds like you", body: "Learns your voice from your own pages, then writes pillars, comparisons and answers — and tells you how close to you it got.", border: "var(--color-accent-2-400)", bg: "linear-gradient(160deg, rgba(168,85,247,.14), var(--color-surface))" },
-              { title: "Distribution, not just publishing", body: "Directories, communities, dead-link reclamation, guest pitches. A page nobody sees was never worth writing.", border: "var(--color-divider)", bg: "var(--color-surface)" },
-              { title: "Buyers, found in public signals", body: "Companies with a deadline you can solve — never bought lists. Scored, drafted for, and capped so you stay a good citizen.", border: "var(--color-divider)", bg: "var(--color-surface)" },
-              { title: "Visibility inside AI answers", body: "Asks Claude the questions your buyers ask, with live web search, and reports whether you were named at all — and which rivals were named instead.", border: "var(--color-accent-400)", bg: "linear-gradient(160deg, rgba(255,106,26,.14), var(--color-surface))" },
-              { title: "A watch on your rivals", body: "When a competitor ships a page or slips a rank, you hear about it the same week — with a draft already waiting.", border: "var(--color-divider)", bg: "var(--color-surface)" },
+              { n: "01", shape: "shape-circle", title: "Technical SEO, measured", body: "Crawls, scores and re-checks: metadata, structure, speed, schema, sitemaps, orphan pages. Every finding names the page it was found on." },
+              { n: "02", shape: "shape-quarter", title: "Content that's checked before it's yours", body: "Researched, drafted and fact-checked against real sources, in the voice you pick — and it tells you which claims it couldn't verify. Goes live only through a pull request you merge." },
+              { n: "03", shape: "shape-bars", title: "Distribution, not just publishing", body: "Directory listings written to each form's exact limits. Social posts drafted to each network's own shape. All of it held for your approval." },
+              { n: "04", shape: "shape-half", title: "Buyers, found in public signals", body: "Companies with a reason to act now — a certificate expiring, no monitoring, a launch in progress — never bought lists. Scored, drafted for, and the draft waits for you to send." },
+              { n: "05", shape: "shape-ring", title: "Visibility inside AI answers", body: "Asks Claude the questions your buyers ask, with live web search, and reports whether you were named at all — and which rivals were named instead." },
+              { n: "06", shape: "shape-diamond", title: "A watch on your rivals", body: "When a competitor ships a page, rewrites a title or adds schema you don't have, you hear about it — and it lands on your opportunity map with the evidence attached." },
             ].map((c) => (
-              <article key={c.title} className="card reveal" style={{ padding: 26, gap: 9, border: `1px solid ${c.border}`, background: c.bg }}>
-                <h3 className="card-title" style={{ fontSize: 20 }}>{c.title}</h3>
-                <p className="card-body" style={{ fontSize: 14.5, opacity: 1, color: "var(--fg-60)" }}>{c.body}</p>
+              <article key={c.n} className="card card-3d hard reveal" style={{ padding: 26, gap: 18, minHeight: 300 }}>
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+                  <span className="hard-index">{c.n}</span>
+                  <span className={`shape ${c.shape}`} aria-hidden="true" />
+                </div>
+                <div style={{ marginTop: "auto" }}>
+                  <h3 className="card-title" style={{ fontSize: 20, marginBottom: 8 }}>{c.title}</h3>
+                  <p className="card-body" style={{ fontSize: 14, opacity: 1, color: "var(--fg-60)" }}>{c.body}</p>
+                </div>
               </article>
             ))}
           </div>
@@ -412,44 +375,71 @@ export default function LandingPage() {
             data-stagger="90"
             className="split-2 pad-responsive" style={{ maxWidth: 1180, margin: "0 auto", padding: "78px 28px", "--l": ".86fr", gap: 56, alignItems: "center" }}
           >
-            <div className="reveal" style={{ position: "relative", width: "100%", maxWidth: 400, aspectRatio: "1", justifySelf: "center" }}>
-              <div style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "var(--color-surface)", border: "1px solid var(--color-divider)" }} />
-              <svg viewBox="0 0 400 400" aria-hidden="true" style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}>
-                <circle cx="200" cy="200" r="150" fill="none" stroke="#2A2636" strokeWidth="18" strokeLinecap="round" strokeDasharray="706 943" transform="rotate(135 200 200)" />
-                <circle cx="200" cy="200" r="150" fill="none" stroke="#FF6A1A" strokeWidth="18" strokeLinecap="round" strokeDasharray="495 943" transform="rotate(135 200 200)" />
-              </svg>
-              <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", textAlign: "center", padding: "0 70px" }}>
-                <div>
-                  <span style={{ fontSize: 11, letterSpacing: ".15em", textTransform: "uppercase", color: "var(--color-accent)" }}>Autonomy</span>
-                  <div style={{ fontFamily: "var(--font-heading)", fontSize: 38, lineHeight: 1.05, margin: "5px 0 7px" }}>Let it rip</div>
-                  <p style={{ margin: 0, fontSize: 13, color: "var(--fg-60)" }}>Publishes and prospects alone. Asks before spending.</p>
-                </div>
-              </div>
-              <span style={{ position: "absolute", right: -4, top: "52%", width: 28, height: 28, borderRadius: "50%", background: "var(--on-accent)", border: "5px solid var(--color-accent)", boxShadow: "0 0 24px rgba(255,106,26,.7)" }} />
+            {/* A real dial, the same component the dashboard uses. Drag it,
+                click on it, or arrow-key it — the list beside it follows. The
+                container-type is for the centre text, which sizes itself to
+                the dial rather than to the viewport. */}
+            <div className="reveal" style={{ position: "relative", width: "100%", maxWidth: 400, aspectRatio: "1", justifySelf: "center", containerType: "inline-size" }}>
+              <div aria-hidden="true" style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "var(--color-surface)", border: "1px solid var(--color-divider)", boxShadow: "var(--shadow-lg)" }} />
+              <AutonomyDial value={aut} onChange={setAut} animateIn pulse copy={ROPE_COPY} ariaLabel="Try the autonomy dial" />
             </div>
             <div className="reveal">
+              <div className="section-index"><span className="mono">03 — Autonomy</span></div>
               <h2 id="rope-h" style={{ margin: "0 0 16px", fontSize: "clamp(24px,8.1vw,44px)", maxWidth: "14em" }}>You decide how much rope it gets</h2>
               <p style={{ margin: "0 0 24px", fontSize: 17, lineHeight: 1.6, maxWidth: "32em", color: "var(--fg-60)" }}>
                 Autonomy isn&apos;t a checkbox buried in settings. It&apos;s one dial on the front page of the product, and it
                 governs everything the engine is allowed to do.
               </p>
-              <ul style={{ listStyle: "none", margin: "0 0 28px", padding: 0, display: "flex", flexDirection: "column", gap: 13 }}>
-                <li style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
-                  <span className="tag tag-neutral" style={{ flex: "none", minWidth: 92, justifyContent: "center" }}>Watch</span>
-                  <span style={{ fontSize: 14.5, lineHeight: 1.5, color: "var(--fg-80)" }}>It looks, it reports, it changes nothing.</span>
-                </li>
-                <li style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
-                  <span className="tag tag-neutral" style={{ flex: "none", minWidth: 92, justifyContent: "center" }}>Suggest</span>
-                  <span style={{ fontSize: 14.5, lineHeight: 1.5, color: "var(--fg-80)" }}>A plan on your desk each morning. You press the buttons.</span>
-                </li>
-                <li style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
-                  <span className="tag" style={{ flex: "none", minWidth: 92, justifyContent: "center", background: "var(--color-accent)", color: "var(--on-accent)" }}>Let it rip</span>
-                  <span style={{ fontSize: 14.5, lineHeight: 1.5, color: "var(--fg)" }}>It publishes, distributes and prospects on its own — and asks before spending a cent.</span>
-                </li>
-                <li style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
-                  <span className="tag" style={{ flex: "none", minWidth: 92, justifyContent: "center", background: "var(--color-accent-2-200)", color: "var(--color-accent-2-800)" }}>Full send</span>
-                  <span style={{ fontSize: 14.5, lineHeight: 1.5, color: "var(--fg-80)" }}>It spends too, inside a budget you set, and hands you the receipts.</span>
-                </li>
+              {/* Each row is a button that swings the dial to the middle of its
+                  band, and the active row lights up as the dial moves. The
+                  list and the dial are two views of one number. */}
+              <ul style={{ listStyle: "none", margin: "0 0 28px", padding: 0, display: "flex", flexDirection: "column", gap: 8 }}>
+                {bands().map((b) => {
+                  const active = b.index === band.index;
+                  return (
+                    <li key={b.label}>
+                      <button
+                        type="button"
+                        onClick={() => setAut(b.mid)}
+                        aria-pressed={active}
+                        style={{
+                          display: "flex",
+                          gap: 14,
+                          alignItems: "flex-start",
+                          width: "100%",
+                          textAlign: "left",
+                          padding: "7px 10px 7px 6px",
+                          margin: "0 -6px",
+                          border: 0,
+                          borderRadius: 14,
+                          background: active ? "var(--wash-1)" : "transparent",
+                          cursor: "pointer",
+                          font: "inherit",
+                          color: "inherit",
+                          transition: "background .3s ease, transform .3s cubic-bezier(.22,.75,.30,1)",
+                          transform: active ? "translateX(4px)" : "none",
+                        }}
+                      >
+                        <span
+                          className="tag"
+                          style={{
+                            flex: "none",
+                            minWidth: 92,
+                            justifyContent: "center",
+                            transition: "background .3s ease, color .3s ease, opacity .3s ease",
+                            opacity: active ? 1 : 0.7,
+                            ...(active ? BAND_TAG_STYLE[b.index] : BAND_TAG_STYLE[0]),
+                          }}
+                        >
+                          {b.short}
+                        </span>
+                        <span style={{ fontSize: 14.5, lineHeight: 1.5, color: active ? "var(--fg)" : "var(--fg-80)", transition: "color .3s ease" }}>
+                          {ROPE_COPY[b.label]}
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
               </ul>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                 {["Guardrails in plain English", "One-click rollback", "Full audit trail"].map((t) => (
@@ -468,6 +458,7 @@ export default function LandingPage() {
             a report the visitor can run on their own site in ten seconds,
             converts better than a testimonial nobody can check. */}
         <section aria-labelledby="proof-h" style={{ maxWidth: 1180, margin: "0 auto", padding: "78px 28px" }}>
+          <div className="section-index"><span className="mono">04 — What it measures</span></div>
           <h2 id="proof-h" style={{ margin: "0 0 14px", fontSize: "clamp(24px,8.1vw,44px)", maxWidth: "17em" }}>
             No customer results to show you yet
           </h2>
@@ -484,7 +475,7 @@ export default function LandingPage() {
                 { k: "Free report", v: "~10s", n: "No account, no card, nothing written to your site", c: "var(--color-accent-2-700)" },
                 { k: "Reversible actions", v: "All", n: "Every change it makes, rolled back in one click", c: "var(--color-accent)" },
               ].map((s) => (
-                <div key={s.k} className="card reveal" style={{ padding: 22, gap: 5, background: "var(--color-surface)", border: "1px solid var(--color-divider)" }}>
+                <div key={s.k} className="card card-3d reveal" style={{ padding: 22, gap: 5, background: "var(--color-surface)", border: "1px solid var(--color-divider)" }}>
                   <span className="card-kicker" style={{ color: s.c }}>{s.k}</span>
                   <span style={{ fontFamily: "var(--font-heading)", fontSize: "clamp(26px,5vw,34px)", lineHeight: 1 }}>{s.v}</span>
                   <span style={{ fontSize: 12.5, lineHeight: 1.5, color: "var(--fg-45)" }}>{s.n}</span>
@@ -508,6 +499,7 @@ export default function LandingPage() {
             hardcoded copies of the price list before this (here, the pricing
             page, and the plan definitions), and they had already drifted apart. */}
         <section id="pricing" aria-labelledby="price-h" className="pad-responsive" style={{ maxWidth: 1180, margin: "0 auto", padding: "20px 28px 78px" }}>
+          <div className="section-index"><span className="mono">05 — Pricing</span></div>
           <h2 id="price-h" style={{ margin: "0 0 12px", fontSize: "clamp(24px,8.1vw,44px)" }}>Pay for the work, not the seats</h2>
           <p style={{ margin: "0 0 22px", fontSize: 17, maxWidth: "32em", color: "var(--fg-60)" }}>
             Every plan includes the whole engine. What changes is how much of it is allowed to run each month.
@@ -524,7 +516,7 @@ export default function LandingPage() {
             {PLAN_ORDER.map((id) => PLANS[id]).map((p) => (
               <article
                 key={p.id}
-                className="card reveal"
+                className="card card-3d reveal"
                 style={{
                   padding: 22,
                   gap: 10,
@@ -572,6 +564,7 @@ export default function LandingPage() {
         {/* FAQ */}
         <section id="faq" aria-labelledby="faq-h" style={{ borderBlock: "1px solid var(--color-divider)", background: "var(--wash-1)" }}>
           <div style={{ maxWidth: 940, margin: "0 auto", padding: "78px 28px" }}>
+            <div className="section-index"><span className="mono">06 — Fair questions</span></div>
             <h2 id="faq-h" style={{ margin: "0 0 32px", fontSize: "clamp(24px,8.1vw,44px)" }}>Fair questions</h2>
             <div data-reveal data-stagger="70" style={{ display: "flex", flexDirection: "column", gap: 24 }}>
               {FAQS.map((f) => (
@@ -619,7 +612,7 @@ export default function LandingPage() {
         <div className="footer-grid pad-responsive" style={{ maxWidth: 1180, margin: "0 auto", padding: "46px 28px", gap: 28 }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 11 }}>
-              <Logo size={26} ring={1.6} />
+              <MadbotMark size={26} />
               <span style={{ fontFamily: "var(--font-body)", fontWeight: 400, fontSize: 19, letterSpacing: "-.005em", color: "var(--fg)" }}>madbot</span>
             </div>
             <p style={{ margin: 0, fontSize: 13.5, maxWidth: "26em", color: "var(--fg-45)" }}>

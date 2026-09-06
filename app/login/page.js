@@ -1,16 +1,20 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { useAuth } from "../providers/AuthProvider";
 import { GoogleMark, GithubMark, MadbotMark } from "../components/Brand";
 import ThemeToggle from "../components/ThemeToggle";
 
+// The same live graph as the landing hero, client-only for the same reason.
+const HeroScene = dynamic(() => import("../components/HeroScene"), { ssr: false });
+
 const PREVIEW_LINES = [
   "Finds the pages you should have and don't",
-  "Fixes the technical debt holding your rankings down",
   "Marks up schema so answer engines can cite you",
+  "Lists you in the directories buyers check",
   "Scores companies who match your ideal customer",
 ];
 
@@ -27,6 +31,16 @@ function friendlyAuthError(err) {
   return err?.message || "Something went wrong. Try again.";
 }
 
+/**
+ * Sign-in.
+ *
+ * The previous version was a two-column template: a dimmed still image on the
+ * left, a small form floating in the right half. At a wide viewport that meant
+ * a 420px card marooned in a thousand pixels of black. This is the landing
+ * hero's stage — the live graph full-bleed, a display-scale headline on the
+ * left — with the form as a hard-edged panel pinned to the right column, so it
+ * has a definite place at every width rather than drifting toward the centre.
+ */
 function LoginInner() {
   const router = useRouter();
   const params = useSearchParams();
@@ -91,74 +105,66 @@ function LoginInner() {
     }
   }
 
+  const inputStyle = { minHeight: 50, fontSize: 15, background: "var(--color-bg)", color: "var(--fg)", borderColor: "var(--color-divider)" };
+
   return (
-    <div
-      className="split-auth"
-      style={{
-        minHeight: "100vh",
-        background: "var(--color-bg)",
-        fontSize: 16,
-        overflow: "hidden",
-      }}
-    >
-      <section
-        className="auth-aside"
-        style={{
-          position: "relative",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "space-between",
-          padding: "34px 40px",
-          overflow: "hidden",
-          borderRight: "1px solid var(--color-divider)",
-        }}
-      >
-        <div aria-hidden="true" style={{ position: "absolute", left: "66%", top: "26%", width: 1080, height: 1080, transform: "translate(-50%,-50%)", pointerEvents: "none" }}>
-          <img src="/opportunity-graph.png" width={1600} height={1600} alt="" style={{ width: "100%", height: "auto", opacity: 0.5 }} />
-        </div>
-        <div
+    <div className="marketing auth-stage dark-stage grain" data-hero-zone style={{ fontSize: 16 }}>
+      <div className="hero-grid" aria-hidden="true" />
+      <HeroScene className="hero-scene">
+        <img
+          src="/opportunity-graph.png"
+          alt=""
           aria-hidden="true"
-          style={{
-            position: "absolute",
-            inset: 0,
-            pointerEvents: "none",
-            background: "linear-gradient(to top right, var(--scrim-strong) 0%, var(--scrim) 38%, var(--scrim-soft) 68%, var(--scrim-none) 92%)",
-          }}
+          width={1600}
+          height={1600}
+          style={{ position: "absolute", left: "50%", top: "50%", width: "70%", maxWidth: 1000, height: "auto", transform: "translate(-60%,-50%)", opacity: 0.45, pointerEvents: "none" }}
         />
-        <Link href="/" style={{ position: "relative", display: "flex", alignItems: "center", gap: 10, textDecoration: "none", color: "var(--fg)", width: "max-content" }}>
+      </HeroScene>
+      <div className="auth-vignette" aria-hidden="true" />
+
+      {/* Left: the pitch, at the scale of the landing hero. */}
+      <section className="auth-aside" style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 40, padding: "clamp(22px, 3vw, 40px) clamp(20px, 3.2vw, 48px)" }}>
+        <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", color: "var(--fg)", width: "max-content" }}>
           <MadbotMark size={30} />
           <span style={{ fontFamily: "var(--font-body)", fontWeight: 400, fontSize: 22, letterSpacing: "-.005em", color: "var(--fg)" }}>madbot</span>
         </Link>
-        {/* The text column stays narrow for readability; the pill is a UI
-            element, not body copy, so it gets room for its longest line rather
-            than truncating one mid-sentence. */}
-        <div style={{ position: "relative", maxWidth: "34em", animation: "fadeUp .7s cubic-bezier(.22,.75,.3,1) both" }}>
-          <h2 style={{ margin: "0 0 12px", maxWidth: "22em", fontSize: 34, lineHeight: 1.1 }}>It keeps working while you&apos;re away.</h2>
-          <p style={{ margin: "0 0 22px", maxWidth: "26em", fontSize: 15, lineHeight: 1.6, color: "var(--fg-80)" }}>
+
+        <div style={{ maxWidth: "min(720px, 100%)", animation: "fadeUp .7s cubic-bezier(.22,.75,.3,1) both" }}>
+          <div className="kicker-row mono" style={{ marginBottom: 22 }}>
+            <span>Autonomous website marketing</span>
+            <span>{mode === "signup" ? "New account" : "Sign in"}</span>
+          </div>
+          <h2 className="display-xl" style={{ fontSize: "clamp(38px, 5.4vw, 88px)", maxWidth: "9.5em" }}>
+            It keeps working
+            <br />
+            while you&apos;re away.
+          </h2>
+          <p style={{ margin: "24px 0 26px", maxWidth: "26em", fontSize: "clamp(15px, 1.2vw, 17px)", lineHeight: 1.6, color: "var(--fg-80)" }}>
             Connect a site once. From then on, this is what a normal week looks like.
           </p>
-          <div style={{ display: "flex", alignItems: "center", gap: 11, width: "max-content", maxWidth: "100%", padding: "12px 16px", border: "1px solid var(--color-divider)", borderRadius: 999, background: "var(--scrim)" }}>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 11, maxWidth: "100%", padding: "11px 15px", border: "1px solid var(--color-divider)", borderRadius: 6, background: "var(--scrim)" }}>
             <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--color-accent)", flex: "none", animation: "softPulse 2.4s ease-in-out infinite" }} />
-            <span style={{ fontSize: 12.5, color: "var(--fg-60)", flex: "none" }}>For example</span>
-            <span key={tick} style={{ fontSize: 13, color: "var(--fg-80)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", animation: "revealFade .45s ease" }}>
+            <span className="mono" style={{ flex: "none" }}>For example</span>
+            <span key={tick} style={{ fontSize: 13, color: "var(--fg-80)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", minWidth: 0, animation: "revealFade .45s ease" }}>
               {PREVIEW_LINES[tick]}
             </span>
           </div>
         </div>
-        <p style={{ position: "relative", margin: 0, fontSize: 12.5, color: "var(--fg-32)" }}>
-          getmadbot.com · autonomous website marketing
-        </p>
+
+        <p className="mono" style={{ margin: 0 }}>getmadbot.com</p>
       </section>
 
-      <section style={{ display: "grid", placeItems: "center", padding: "40px 32px" }}>
-        <div style={{ width: "min(420px,100%)", animation: "fadeUp .6s cubic-bezier(.22,.75,.3,1) both" }}>
-          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 14 }}>
+      {/* Right: the form, in a hard-edged panel with a definite width. */}
+      <section className="auth-form" style={{ display: "grid", alignItems: "center", padding: "clamp(22px, 3vw, 40px) clamp(20px, 3.2vw, 48px)" }}>
+        <div className="card hard elev-lg" style={{ width: "100%", maxWidth: 480, marginInline: "auto", padding: "clamp(24px, 3vw, 36px)", gap: 0, animation: "fadeUp .6s cubic-bezier(.22,.75,.3,1) both" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
+            <span className="mono">{mode === "signup" ? "01 — Create account" : "01 — Sign in"}</span>
             <ThemeToggle compact />
           </div>
-          <h1 style={{ margin: "0 0 8px", fontSize: 38, lineHeight: 1.08 }}>
+          <h1 style={{ margin: "0 0 8px", fontSize: "clamp(30px, 2.6vw, 38px)", lineHeight: 1.06 }}>
             {mode === "signup" ? "Create your account" : "Welcome back"}
           </h1>
-          <p style={{ margin: "0 0 26px", fontSize: 15, color: "var(--fg-60)" }}>
+          <p style={{ margin: "0 0 24px", fontSize: 14.5, lineHeight: 1.55, color: "var(--fg-60)" }}>
             {mode === "signup"
               ? plan
                 ? `Setting you up on the ${plan} plan. No card required — checkout isn't live yet.`
@@ -166,7 +172,7 @@ function LoginInner() {
               : "Sign in and pick up where you left off."}
           </p>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 22 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 9, marginBottom: 20 }}>
             <button
               type="button"
               className="btn btn-secondary"
@@ -189,29 +195,21 @@ function LoginInner() {
             </button>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 22 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
             <span style={{ flex: 1, height: 1, background: "var(--color-divider)" }} />
-            <span style={{ fontSize: 12, color: "var(--fg-32)" }}>or with email</span>
+            <span className="mono">or with email</span>
             <span style={{ flex: 1, height: 1, background: "var(--color-divider)" }} />
           </div>
 
-          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             {mode === "signup" && (
               <div className="field">
-                <label htmlFor="lg-name" style={{ color: "var(--fg-60)" }}>Your name</label>
-                <input
-                  className="input"
-                  id="lg-name"
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Priya Raman"
-                  style={{ minHeight: 50, fontSize: 15, background: "var(--color-surface)", color: "var(--fg)", borderColor: "var(--color-divider)" }}
-                />
+                <label htmlFor="lg-name" className="mono" style={{ display: "block", marginBottom: 6 }}>Your name</label>
+                <input className="input" id="lg-name" type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Priya Raman" style={inputStyle} />
               </div>
             )}
             <div className="field">
-              <label htmlFor="lg-email" style={{ color: "var(--fg-60)" }}>Work email</label>
+              <label htmlFor="lg-email" className="mono" style={{ display: "block", marginBottom: 6 }}>Work email</label>
               <input
                 className="input"
                 id="lg-email"
@@ -221,11 +219,11 @@ function LoginInner() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@company.com"
-                style={{ minHeight: 50, fontSize: 15, background: "var(--color-surface)", color: "var(--fg)", borderColor: "var(--color-divider)" }}
+                style={inputStyle}
               />
             </div>
             <div className="field">
-              <label htmlFor="lg-pass" style={{ color: "var(--fg-60)" }}>Password</label>
+              <label htmlFor="lg-pass" className="mono" style={{ display: "block", marginBottom: 6 }}>Password</label>
               <input
                 className="input"
                 id="lg-pass"
@@ -236,26 +234,26 @@ function LoginInner() {
                 value={pass}
                 onChange={(e) => setPass(e.target.value)}
                 placeholder="••••••••••"
-                style={{ minHeight: 50, fontSize: 15, background: "var(--color-surface)", color: "var(--fg)", borderColor: "var(--color-divider)" }}
+                style={inputStyle}
               />
             </div>
 
             {error ? (
-              <div style={{ fontSize: 13, color: "var(--color-accent-700)", background: "var(--color-accent-100)", borderRadius: 14, padding: "10px 14px" }}>
+              <div style={{ fontSize: 13, color: "var(--color-accent-800)", background: "var(--color-accent-100)", borderRadius: 6, padding: "10px 14px" }}>
                 {error}
               </div>
             ) : null}
 
-            <button className="btn btn-primary" type="submit" disabled={busy} style={{ minHeight: 52, fontSize: 16, color: "var(--on-accent)" }}>
+            <button className="btn btn-primary" type="submit" disabled={busy} style={{ minHeight: 52, fontSize: 16, color: "var(--on-accent)", marginTop: 4 }}>
               {busy ? "Working…" : mode === "signup" ? "Create account" : "Sign in"}
             </button>
           </form>
 
-          <p style={{ margin: "22px 0 0", fontSize: 13.5, color: "var(--fg-45)" }}>
+          <p style={{ margin: "20px 0 0", fontSize: 13.5, color: "var(--fg-45)" }}>
             {mode === "signup" ? (
-              <>Already have an account? <button type="button" className="btn btn-ghost" style={{ fontSize: "inherit", padding: 0 }} onClick={() => setMode("signin")}>Sign in</button></>
+              <>Already have an account? <button type="button" className="btn btn-ghost" style={{ fontSize: "inherit", padding: 0, color: "var(--color-accent)" }} onClick={() => setMode("signin")}>Sign in</button></>
             ) : (
-              <>No account yet? <button type="button" className="btn btn-ghost" style={{ fontSize: "inherit", padding: 0 }} onClick={() => setMode("signup")}>Create one free</button></>
+              <>No account yet? <button type="button" className="btn btn-ghost" style={{ fontSize: "inherit", padding: 0, color: "var(--color-accent)" }} onClick={() => setMode("signup")}>Create one free</button></>
             )}
           </p>
         </div>
