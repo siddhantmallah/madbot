@@ -69,9 +69,11 @@ export default function OnboardingModal({ uid, canSkip, initialUrl, onClose, onF
         faviconUrl: siteInfo?.faviconUrl || null,
         audit: siteInfo?.audit ? { ...siteInfo.audit, ranAt: new Date().toISOString() } : null,
       });
-      await Promise.all(baseActivitySeed(domain).map((entry) => addActivity(uid, siteId, entry)));
+      await Promise.all(baseActivitySeed(domain, { read: !!siteInfo }).map((entry) => addActivity(uid, siteId, entry)));
       setTimeout(() => {
-        onFinish(siteId, url.trim(), `Connected ${domain}. Reading the full site now to build your opportunity map and starting leads.`);
+        // Leads need a confirmed buyer profile first, so "starting leads" here
+        // was a promise the product then didn't keep.
+        onFinish(siteId, url.trim(), `Connected ${domain}. Reading the full site now to build your opportunity map.`);
       }, 900);
     } catch (err) {
       setStarted(false);
@@ -94,7 +96,7 @@ export default function OnboardingModal({ uid, canSkip, initialUrl, onClose, onF
     >
       <div style={{ width: "min(880px,100%)", display: "flex", flexDirection: "column", alignItems: "center", gap: 22, animation: "rise .4s cubic-bezier(.2,.8,.2,1)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <MadbotMark size={26} stroke={1.6} />
+          <MadbotMark size={26} />
           <span style={{ fontFamily: "var(--font-body)", fontWeight: 400, fontSize: 21, letterSpacing: "-.005em" }}>madbot</span>
           <span className="tag tag-neutral" style={{ marginLeft: 8 }}>Step {step + 1} of 4</span>
         </div>

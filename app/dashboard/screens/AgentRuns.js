@@ -41,7 +41,8 @@ export default function AgentRuns({ jobs, onRunCrawl, onRunAudit, onRunCompetito
           </button>
         </div>
         <p style={{ margin: 0, fontSize: 11.5 }} className="text-muted">
-          Runs happen while this tab is open. Unattended scheduling needs a service account — see the note below.
+          Runs you start here happen while this tab is open. In production a scheduled sweep also runs every six
+          hours and picks up anything that is due.
         </p>
       </div>
 

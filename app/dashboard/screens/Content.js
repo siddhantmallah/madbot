@@ -2,6 +2,21 @@ import { useState } from "react";
 
 const DAY_ORDER = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
+// The date under each column is this week's real one. It used to be a
+// hardcoded "12 … 18" whatever the month — the kind of detail that makes a
+// dashboard read as a mockup.
+function weekDates() {
+  const now = new Date();
+  const offset = (now.getDay() + 6) % 7; // Monday = 0
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - offset);
+  return DAY_ORDER.map((_, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    return String(d.getDate());
+  });
+}
+
 const KINDS = ["Pillar", "Support", "Compare", "Answer", "Outreach"];
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -218,7 +233,6 @@ function FactCheckSummary({ factCheck, sources, researchWasThin }) {
 export default function Content({
   items,
   onPublish,
-  onRewrite,
   onAskForPiece,
   asking,
   onWrite,
@@ -239,11 +253,15 @@ export default function Content({
   const [connectOpen, setConnectOpen] = useState(false);
 
   const visible = view === "backlog" ? items.filter((c) => c.status !== "published") : items;
+  const dates = weekDates();
   const byDay = DAY_ORDER.map((name, i) => ({
     name,
-    date: visible.find((c) => c.day === i)?.date || String(12 + i),
+    date: dates[i],
     items: visible.filter((c) => c.day === i),
   }));
+  // Real counts by kind for the legend — not the "×4 ×2 ×3" it printed
+  // regardless of what was actually planned.
+  const kindCount = (...kinds) => items.filter((c) => kinds.includes(c.kind)).length;
 
   const selected = items.find((c) => c.id === previewId) || items.find((c) => c.status === "draft") || items[0];
   const previewItem = items.find((c) => c.id === previewId);
@@ -487,9 +505,6 @@ export default function Content({
                 </a>
               ) : null}
 
-              {!selected.article ? (
-                <button className="btn btn-ghost" onClick={() => onRewrite(selected.id)} style={{ fontSize: 13 }}>Try another angle</button>
-              ) : null}
             </div>
 
             {writingId === selected.id ? (
@@ -503,15 +518,15 @@ export default function Content({
             <h4 style={{ margin: 0 }}>What each piece is for</h4>
             <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: 12.5 }}>
               <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                <span style={{ width: 34, height: 34, borderRadius: "50%", background: "var(--color-accent-200)", flex: "none", display: "grid", placeItems: "center", fontWeight: 700, fontSize: 11 }}>×4</span>
+                <span style={{ width: 34, height: 34, borderRadius: "50%", background: "var(--color-accent-200)", flex: "none", display: "grid", placeItems: "center", fontWeight: 700, fontSize: 11 }}>×{kindCount("Pillar", "Support")}</span>
                 <span><strong>Pillar &amp; supporting</strong> — own your highest-value search terms end to end.</span>
               </div>
               <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                <span style={{ width: 34, height: 34, borderRadius: "50%", background: "var(--color-accent-2-200)", flex: "none", display: "grid", placeItems: "center", fontWeight: 700, fontSize: 11 }}>×2</span>
+                <span style={{ width: 34, height: 34, borderRadius: "50%", background: "var(--color-accent-2-200)", flex: "none", display: "grid", placeItems: "center", fontWeight: 700, fontSize: 11 }}>×{kindCount("Compare")}</span>
                 <span><strong>Comparison</strong> — catch people already shopping competitors.</span>
               </div>
               <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                <span style={{ width: 34, height: 34, borderRadius: "50%", background: "var(--color-neutral-300)", flex: "none", display: "grid", placeItems: "center", fontWeight: 700, fontSize: 11 }}>×3</span>
+                <span style={{ width: 34, height: 34, borderRadius: "50%", background: "var(--color-neutral-300)", flex: "none", display: "grid", placeItems: "center", fontWeight: 700, fontSize: 11 }}>×{kindCount("Answer")}</span>
                 <span><strong>Answer-engine bait</strong> — short, quotable, schema-marked definitions.</span>
               </div>
             </div>

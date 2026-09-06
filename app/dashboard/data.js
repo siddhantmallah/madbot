@@ -17,22 +17,19 @@ export function kindColor(k) {
       content: "var(--color-accent-300)",
       lead: "var(--color-accent-2-200)",
       link: "var(--color-neutral-300)",
+      social: "var(--color-accent-2-300)",
       win: "var(--color-accent-2-500)",
     }[k] || "var(--color-neutral-200)"
   );
 }
 
-export function autInfo(v) {
-  if (v < 25) return { label: "Watch only", desc: "I look, I report, I touch nothing at all." };
-  if (v < 48) return { label: "Suggest", desc: "A plan on your desk each morning. You press the buttons." };
-  if (v < 80) return { label: "Let it rip", desc: "I publish, distribute and prospect on my own. I ask before spending." };
-  return { label: "Full send", desc: "I spend too, inside your budget, and hand you the receipts." };
-}
 
 export const SCREEN_TITLES = {
   growth: "Growth",
   opps: "Opportunities",
   content: "Content & calendar",
+  social: "Social",
+  listings: "Directory listings",
   leads: "Lead intelligence",
   appr: "Approvals",
   vis: "AI search visibility",

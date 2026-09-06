@@ -27,6 +27,7 @@ export default function Growth({
   feedTop,
   onUndo,
   paused,
+  runningJobs = 0,
   domain,
   searchPanel,
   competitorPanel,
@@ -34,8 +35,10 @@ export default function Growth({
 }) {
   const drafted = content.filter((c) => c.status !== "published").length;
   const published = content.filter((c) => c.status === "published").length;
-  const sentLeads = leads.filter((l) => l.status === "sent").length;
-  const queuedLeads = leads.filter((l) => l.status === "queued").length;
+  // Leads move through stages; nothing is ever "sent" or "queued" by MADBOT.
+  // The old counters read fields no code writes, so they showed 0 · 0 forever.
+  const qualifiedLeads = leads.filter((l) => l.stage === "qualified").length;
+  const shortlistedLeads = leads.filter((l) => l.stage === "shortlisted").length;
 
   return (
     <section data-screen-label="Growth" style={{ display: "flex", flexDirection: "column", gap: 18 }}>
@@ -57,7 +60,7 @@ export default function Growth({
       <div className="grid-4" style={{ gap: 14 }}>
         <StatCard kicker="Actions logged" value={activity.length} meta="every one reversible" />
         <StatCard kicker="Content" value={drafted + published} meta={`${drafted} draft${drafted === 1 ? "" : "s"} · ${published} published`} />
-        <StatCard kicker="Prospects found" value={leads.length} meta={`${queuedLeads} queued · ${sentLeads} marked sent`} />
+        <StatCard kicker="Prospects found" value={leads.length} meta={`${qualifiedLeads} qualified · ${shortlistedLeads} shortlisted`} />
         <StatCard kicker="Waiting on you" value={pendingCount} meta={`of ${approvals.length} total in the queue`} />
       </div>
 
@@ -120,9 +123,19 @@ export default function Growth({
               );
             })}
           </ol>
+          {/* Says "working" only while a run is genuinely in flight. A spinner
+              that never stops is the dashboard lying about being busy. */}
           <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }} className="text-muted">
-            <span style={{ width: 14, height: 14, borderRadius: "50%", border: "2px solid var(--color-accent-300)", borderTopColor: "var(--color-accent)", animation: "sweep 1.4s linear infinite", display: "block", flex: "none" }} />
-            {paused ? "Paused — I will not touch anything until you resume." : `Working on ${domain}…`}
+            {!paused && runningJobs > 0 ? (
+              <span style={{ width: 14, height: 14, borderRadius: "50%", border: "2px solid var(--color-accent-300)", borderTopColor: "var(--color-accent)", animation: "sweep 1.4s linear infinite", display: "block", flex: "none" }} />
+            ) : (
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: paused ? "var(--color-neutral-400)" : "var(--ok)", display: "block", flex: "none", margin: "0 3px" }} />
+            )}
+            {paused
+              ? "Paused — I will not touch anything until you resume."
+              : runningJobs > 0
+              ? `Working on ${domain} — ${runningJobs} run${runningJobs === 1 ? "" : "s"} in flight`
+              : "Idle. Start a run from Agent runs, or wait for the scheduled sweep."}
           </div>
         </section>
 

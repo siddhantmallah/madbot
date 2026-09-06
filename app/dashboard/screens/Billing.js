@@ -28,7 +28,9 @@ export default function Billing({ usage, billing = [], siteCount, metered, regio
     trialExpired,
     intendedPlan,
   } = usage;
-  const unlicensed = plan.id === "trial";
+  // The two states with nothing paid for. There is no plan called "trial" —
+  // the old check matched nothing, so this was always false.
+  const unlicensed = plan.id === "free" || plan.id === "lapsed";
 
   // What they'd lose by settling on the plan they originally picked. Shown
   // during the trial so the end of it isn't a nasty surprise.
@@ -104,6 +106,7 @@ export default function Billing({ usage, billing = [], siteCount, metered, regio
               { label: "Autonomous actions", used: metered.credits || 0, allowance: plan.credits },
               { label: "Lead credits", used: metered.leadCredits || 0, allowance: plan.leadCredits },
               { label: "Content pieces", used: metered.contentPieces || 0, allowance: plan.contentPieces },
+              { label: "Social posts", used: metered.socialPosts || 0, allowance: plan.socialPosts || 0 },
               { label: "Outreach emails", used: metered.emails || 0, allowance: plan.emails },
             ].map((row) => {
               const d = describeUsage({ used: row.used, allowance: row.allowance });

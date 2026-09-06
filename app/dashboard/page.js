@@ -27,6 +27,12 @@ import {
   addCompetitor,
   updateCompetitor,
   removeCompetitor,
+  subscribeSocialPosts,
+  addSocialPost,
+  updateSocialPost,
+  deleteSocialPost,
+  subscribeListings,
+  saveListing,
 } from "../../lib/sites";
 import { diffSnapshots } from "../../lib/auditClient";
 import { buildOpportunities } from "../../lib/opportunities";
@@ -37,7 +43,7 @@ import { FEATURES, autonomyLabel } from "../../lib/plans";
 import { useRegion } from "../../lib/useRegion";
 import Billing from "./screens/Billing";
 import LockedFeature from "./screens/LockedFeature";
-import { buildSiteInsights, CONTENT_BODY, rewriteContentBody, hostnameOf } from "../../lib/seed";
+import { buildSiteInsights, CONTENT_BODY, hostnameOf } from "../../lib/seed";
 import { buildDigest, digestData } from "../../lib/digest";
 import { MadbotMark, SiteIcon } from "../components/Brand";
 import ThemeToggle from "../components/ThemeToggle";
@@ -55,6 +61,10 @@ import Visibility from "./screens/Visibility";
 import Autonomy from "./screens/Autonomy";
 import ActivityLog from "./screens/ActivityLog";
 import AgentRuns from "./screens/AgentRuns";
+import Social from "./screens/Social";
+import Listings from "./screens/Listings";
+import { POST_STATUS } from "../../lib/social";
+import { LISTING_STATUS } from "../../lib/listings";
 
 function NavButton({ label, badge, active, onClick }) {
   return (
@@ -122,6 +132,21 @@ function DashboardInner() {
   const [jobs, setJobs] = useState([]);
   const [jobBusy, setJobBusy] = useState(null);
 
+  // Social. `socialNetworks` stays null until the status call answers, so the
+  // screen can say "checking" rather than flashing "not connected" at someone
+  // whose accounts are connected fine.
+  const [socialPosts, setSocialPosts] = useState([]);
+  const [socialNetworks, setSocialNetworks] = useState(null);
+  const [socialAiConfigured, setSocialAiConfigured] = useState(false);
+  // Why it can't run, in the server's own words, so the screen says "the key is
+  // being rejected" rather than a generic "unavailable".
+  const [aiStatusMessage, setAiStatusMessage] = useState(null);
+  const [drafting, setDrafting] = useState(false);
+  const [socialPublishingId, setSocialPublishingId] = useState(null);
+
+  const [listings, setListings] = useState([]);
+  const [writingListingId, setWritingListingId] = useState(null);
+
   // Search Console. The OAuth access token is session-only by design: Firebase
   // hands back no refresh token, so we never persist it and just reconnect.
   const [gsc, setGsc] = useState({ status: "idle", error: "", properties: [], siteUrl: null, data: null });
@@ -129,7 +154,6 @@ function DashboardInner() {
   const [onboardOpen, setOnboardOpen] = useState(false);
 
   const [aut, setAut] = useState(62);
-  const [thr, setThr] = useState(58);
   const [rules, setRules] = useState([]);
   const [voice, setVoice] = useState("a");
   const [paused, setPaused] = useState(false);
@@ -165,7 +189,6 @@ function DashboardInner() {
       setSite(s);
       if (s) {
         setAut(s.autonomy);
-        setThr(s.throttle);
         setRules(s.rules || []);
         setVoice(s.voice || "a");
         setPaused(!!s.paused);
@@ -223,6 +246,76 @@ function DashboardInner() {
     return subscribeJobs(user.uid, activeSiteId, setJobs);
   }, [user, activeSiteId]);
 
+  useEffect(() => {
+    if (!user || !activeSiteId) {
+      setSocialPosts([]);
+      return undefined;
+    }
+    return subscribeSocialPosts(user.uid, activeSiteId, setSocialPosts);
+  }, [user, activeSiteId]);
+
+  useEffect(() => {
+    if (!user || !activeSiteId) {
+      setListings([]);
+      return undefined;
+    }
+    return subscribeListings(user.uid, activeSiteId, setListings);
+  }, [user, activeSiteId]);
+
+  // Connection state for the social accounts. Not a snapshot listener: the
+  // integration documents are server-only in the rules, precisely because they
+  // hold live posting credentials, so this reads the safe summary the API
+  // returns instead.
+  useEffect(() => {
+    if (!user || !activeSiteId) {
+      setSocialNetworks(null);
+      return undefined;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const idToken = await user.getIdToken();
+        const res = await fetch(`/api/integrations/social?siteId=${encodeURIComponent(activeSiteId)}`, {
+          headers: { "x-id-token": idToken },
+        });
+        const data = await res.json();
+        if (!cancelled) setSocialNetworks(data.ok ? data.networks : []);
+      } catch {
+        if (!cancelled) setSocialNetworks([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, activeSiteId]);
+
+  // Whether the server can draft at all. Asked once — it depends on the
+  // deployment, not on the site.
+  //
+  // Deliberately /api/ai-status rather than the cheaper "is the key set" probe:
+  // a revoked or out-of-credit key is still present in the environment, so
+  // checking presence reports everything as ready and then every button fails
+  // with a 401 nobody can interpret. That probe makes one live call and caches
+  // it, and it is the only thing that can tell the difference.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/ai-status");
+        const data = await res.json();
+        if (!cancelled) {
+          setSocialAiConfigured(!!data.ready);
+          setAiStatusMessage(data.ready ? null : data.message || null);
+        }
+      } catch {
+        if (!cancelled) setSocialAiConfigured(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // There is deliberately no background timer writing invented activity here.
   // The feed only grows when something real happens — a fetch at setup, or an
   // action the user takes. Faking "wins" on an interval is how a dashboard
@@ -265,6 +358,8 @@ function DashboardInner() {
       leads: featureAccess(subscription, FEATURES.LEADS),
       visibility: featureAccess(subscription, FEATURES.AI_VISIBILITY),
       competitors: featureAccess(subscription, FEATURES.COMPETITORS),
+      social: featureAccess(subscription, FEATURES.SOCIAL),
+      listings: featureAccess(subscription, FEATURES.LISTINGS),
     }),
     [subscription]
   );
@@ -349,9 +444,6 @@ function DashboardInner() {
     }
     updateSiteSettings(user.uid, activeSiteId, { autonomy: allowed });
   }
-  function commitThr() {
-    if (user && activeSiteId) updateSiteSettings(user.uid, activeSiteId, { throttle: thr });
-  }
   function saveRules(updater) {
     setRules((prev) => {
       const next = typeof updater === "function" ? updater(prev) : updater;
@@ -374,7 +466,12 @@ function DashboardInner() {
     if (user && activeSiteId) setActivityUndone(user.uid, activeSiteId, id, undone);
   }
   function approve(id) {
-    if (user && activeSiteId) setApprovalStatus(user.uid, activeSiteId, id, "yes");
+    if (!user || !activeSiteId) return;
+    setApprovalStatus(user.uid, activeSiteId, id, "yes");
+    // An approved draft is now the customer's to send from their own mail app.
+    // Reflect that on the lead, so its card stops saying the draft is waiting.
+    const a = approvals.find((x) => x.id === id);
+    if (a?.leadId) updateLead(user.uid, activeSiteId, a.leadId, { status: "approved" });
   }
   function decline(id) {
     if (user && activeSiteId) setApprovalStatus(user.uid, activeSiteId, id, "no");
@@ -519,16 +616,8 @@ function DashboardInner() {
       setPublishingId(null);
     }
   }
-  function rewriteContent(id) {
-    if (!user || !activeSiteId) return;
-    const item = content.find((c) => c.id === id);
-    if (!item || !insights) return;
-    const nextCount = (item.rewriteCount || 0) + 1;
-    updateContentItem(user.uid, activeSiteId, id, {
-      body: rewriteContentBody(item.kind, insights.name, nextCount),
-      rewriteCount: nextCount,
-    });
-  }
+  // "Try another angle" is gone. It rotated through two or three canned sentences
+  // and called that a rewrite — a fake of the real thing, which is "Write it".
   // Whether the model features can actually run — probed, not assumed. A key
   // that exists but has been disabled or revoked used to report as ready, so
   // every button was enabled and every click failed with an uninterpretable 401.
@@ -627,7 +716,6 @@ function DashboardInner() {
       await addContentItem(user.uid, activeSiteId, {
         day,
         dayName: dayNames[day],
-        date: String(12 + day),
         title: topic,
         kind,
         meta: "you asked for this",
@@ -827,6 +915,7 @@ function DashboardInner() {
   // ---- leads ----
   const [buildingProfile, setBuildingProfile] = useState(false);
   const [profileError, setProfileError] = useState("");
+  const [draftingOutreachId, setDraftingOutreachId] = useState(null);
   const buyerProfile = site?.buyerProfile || null;
 
   async function buildProfile() {
@@ -884,17 +973,63 @@ function DashboardInner() {
    */
   async function draftOutreach(lead) {
     if (!user || !activeSiteId) return;
-    await addApproval(user.uid, activeSiteId, {
-      kind: "outreach",
-      title: `Outreach to ${lead.co || lead.domain}`,
-      detail: lead.openingLine || lead.problemYouSolve || "",
-      to: lead.contactEmail,
-      leadId: lead.id,
-      why: lead.why || null,
-      provenance: lead.contactProvenance || null,
-    });
-    await updateLead(user.uid, activeSiteId, lead.id, { status: "drafted" });
-    setToast("Draft is waiting in Approvals. Nothing has been sent.");
+    setDraftingOutreachId(lead.id);
+    try {
+      const idToken = await user.getIdToken();
+      const res = await fetch("/api/leads/outreach", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          idToken,
+          siteId: activeSiteId,
+          lead: {
+            co: lead.co,
+            domain: lead.domain,
+            contactEmail: lead.contactEmail,
+            contactIsGeneric: lead.contactIsGeneric,
+            problemYouSolve: lead.problemYouSolve,
+            why: lead.why,
+            openingLine: lead.openingLine,
+            intentSignals: lead.intentSignals || [],
+          },
+          profile: buyerProfile,
+          site: {
+            name: site?.intelligence?.business?.name || insights?.name,
+            domain: site?.intelligence?.domain || insights?.domain,
+            summary: site?.intelligence?.business?.description || site?.description || "",
+            voice,
+            rules,
+          },
+        }),
+      });
+      const data = await res.json();
+      if (!data.ok) {
+        setToast(data.error || "Couldn't draft that email.");
+        return;
+      }
+      // A real subject and body now, not a one-line opener. Approvals renders
+      // exactly these fields, and "Approve" opens them in the customer's own
+      // mail client.
+      await addApproval(user.uid, activeSiteId, {
+        kind: "outreach",
+        title: `Outreach to ${lead.co || lead.domain}`,
+        subject: data.subject,
+        body: data.body,
+        confidence: data.confidence,
+        claims: data.claims || [],
+        to: lead.contactEmail,
+        leadId: lead.id,
+        leadName: lead.co || lead.domain,
+        why: lead.why || null,
+        provenance: lead.provenance || null,
+      });
+      await updateLead(user.uid, activeSiteId, lead.id, { status: "drafted" });
+      setToast("Draft is waiting in Approvals. Nothing has been sent.");
+    } catch (err) {
+      setToast(String(err?.message || err));
+    } finally {
+      setDraftingOutreachId(null);
+    }
   }
 
   async function runVisibilityCheck() {
@@ -918,6 +1053,208 @@ function DashboardInner() {
       setToast(String(err?.message || err));
     }
   }
+
+  // --- Social ---------------------------------------------------------------
+
+  /**
+   * Drafts a set of posts and stores each one separately.
+   *
+   * One document per network rather than one per run, because they are approved,
+   * edited, published and retried individually from here on — a LinkedIn post
+   * can go out while the Instagram one is still waiting for an image.
+   */
+  async function draftSocial({ source, link, networkIds }) {
+    if (!user || !activeSiteId) return;
+    setDrafting(true);
+    try {
+      const idToken = await user.getIdToken();
+      const res = await fetch("/api/social/draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          idToken,
+          siteId: activeSiteId,
+          site: {
+            name: site?.intelligence?.business?.name || site?.title,
+            domain: site?.intelligence?.domain || insights?.domain,
+            summary: site?.intelligence?.business?.summary || site?.description,
+            voice,
+            rules,
+          },
+          source,
+          link,
+          networkIds,
+        }),
+      });
+      const data = await res.json();
+      if (!data.ok) {
+        setToast(data.error || "Couldn't draft those.");
+        return;
+      }
+
+      const failures = (data.posts || []).filter((p) => p.error);
+      await Promise.all(
+        (data.posts || [])
+          .filter((p) => !p.error)
+          .map((p) =>
+            addSocialPost(user.uid, activeSiteId, {
+              networkId: p.networkId,
+              text: p.text,
+              imageBrief: p.imageBrief,
+              altText: p.altText,
+              firstComment: p.firstComment,
+              confidence: p.confidence,
+              guardrail: p.guardrail || null,
+              angle: data.chosenAngle?.hook || null,
+              link: link || null,
+              source: String(source).slice(0, 2000),
+              status: POST_STATUS.DRAFTED,
+            })
+          )
+      );
+
+      // Same shape as every other feed entry — {k, text, why, result}. The first
+      // version wrote {kind, title, detail} and rendered as an empty row.
+      const drafted = data.posts.filter((p) => !p.error).length;
+      await addActivity(user.uid, activeSiteId, {
+        k: "social",
+        text: `Drafted ${drafted} social post${drafted === 1 ? "" : "s"}`,
+        why: data.chosenAngle?.hook ? `Angle: ${data.chosenAngle.hook}` : "You asked for drafts",
+        result: "Waiting for approval",
+      });
+
+      setToast(
+        failures.length
+          ? `Drafted ${data.posts.length - failures.length}. ${failures.length} failed: ${failures[0].error}`
+          : "Drafted. Nothing goes out until you approve it."
+      );
+    } catch (err) {
+      setToast(String(err?.message || err));
+    } finally {
+      setDrafting(false);
+    }
+  }
+
+  const editSocialPost = (postId, patch) => updateSocialPost(user.uid, activeSiteId, postId, patch);
+  const approveSocialPost = (postId) => updateSocialPost(user.uid, activeSiteId, postId, { status: POST_STATUS.APPROVED, approvedAt: new Date() });
+  const declineSocialPost = (postId) => deleteSocialPost(user.uid, activeSiteId, postId);
+
+  async function publishSocialPost(post) {
+    if (!user || !activeSiteId) return;
+    setSocialPublishingId(post.id);
+    try {
+      const idToken = await user.getIdToken();
+      const res = await fetch("/api/social/publish", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken, siteId: activeSiteId, postId: post.id }),
+      });
+      const data = await res.json();
+      setToast(data.ok ? (data.warning ? data.warning : "Posted.") : data.error || "Couldn't post that.");
+    } catch (err) {
+      setToast(String(err?.message || err));
+    } finally {
+      setSocialPublishingId(null);
+    }
+  }
+
+  async function connectSocial(provider, token) {
+    if (!user || !activeSiteId) return;
+    try {
+      const idToken = await user.getIdToken();
+      const res = await fetch("/api/integrations/social", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken, siteId: activeSiteId, provider, token }),
+      });
+      const data = await res.json();
+      if (!data.ok) {
+        setToast(data.error || "Couldn't connect that.");
+        return;
+      }
+      setToast(
+        data.needsAuthorChoice
+          ? "Connected. Pick whether posts go out as you or as the Page before posting."
+          : data.needsPageChoice
+          ? "Connected. Pick which Page to post to."
+          : "Connected."
+      );
+      await refreshSocialNetworks();
+    } catch (err) {
+      setToast(String(err?.message || err));
+    }
+  }
+
+  async function disconnectSocial(provider) {
+    if (!user || !activeSiteId) return;
+    const idToken = await user.getIdToken();
+    await fetch("/api/integrations/social", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ idToken, siteId: activeSiteId, provider }),
+    });
+    setToast("Disconnected. Nothing already posted is affected.");
+    await refreshSocialNetworks();
+  }
+
+  async function refreshSocialNetworks() {
+    if (!user || !activeSiteId) return;
+    const idToken = await user.getIdToken();
+    const res = await fetch(`/api/integrations/social?siteId=${encodeURIComponent(activeSiteId)}`, {
+      headers: { "x-id-token": idToken },
+    });
+    const data = await res.json();
+    setSocialNetworks(data.ok ? data.networks : []);
+  }
+
+  // --- Directory listings -----------------------------------------------------
+
+  async function writeListingCopy(directoryId) {
+    if (!user || !activeSiteId) return;
+    setWritingListingId(directoryId);
+    try {
+      const idToken = await user.getIdToken();
+      const res = await fetch("/api/listings/prepare", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          idToken,
+          siteId: activeSiteId,
+          directoryId,
+          site: {
+            name: site?.intelligence?.business?.name || site?.title,
+            domain: site?.intelligence?.domain || insights?.domain,
+            summary: site?.intelligence?.business?.summary || site?.description,
+            pages: site?.intelligence?.pages || [],
+            voice,
+            rules,
+          },
+        }),
+      });
+      const data = await res.json();
+      if (!data.ok) {
+        setToast(data.error || "Couldn't write that one.");
+        return;
+      }
+      await saveListing(user.uid, activeSiteId, directoryId, {
+        copy: data.copy,
+        claims: data.claims || [],
+        problems: data.problems || [],
+        status: LISTING_STATUS.DRAFTED,
+      });
+      setToast(data.ready ? "Written. Check it, then paste it into their form." : "Written, but something is over a limit — see the notes.");
+    } catch (err) {
+      setToast(String(err?.message || err));
+    } finally {
+      setWritingListingId(null);
+    }
+  }
+
+  const saveListingCopy = (directoryId, patch) => {
+    saveListing(user.uid, activeSiteId, directoryId, patch);
+    setToast("Saved.");
+  };
+  const setListingStatus = (directoryId, status) => saveListing(user.uid, activeSiteId, directoryId, { status });
 
   async function handleSignOut() {
     setSigningOut(true);
@@ -956,6 +1293,9 @@ function DashboardInner() {
   }
 
   const pendingCount = approvals.filter((a) => a.status === "pending").length;
+  // What is genuinely in flight, so the header and the Growth feed say
+  // "working" only when something is — not a spinner that never stops.
+  const runningJobs = jobs.filter((j) => ["running", "verifying", "queued"].includes(j.status)).length;
 
   if (loading || (user && sites === null)) return <FullScreenLoading />;
   if (!user) return null;
@@ -1010,11 +1350,13 @@ function DashboardInner() {
           <NavButton label="Growth" active={screen === "growth"} onClick={() => go("growth")} />
           <NavButton label="Opportunities" active={screen === "opps"} onClick={() => go("opps")} />
           <NavButton label="Content" active={screen === "content"} onClick={() => go("content")} />
+          <NavButton label="Social" active={screen === "social"} onClick={() => go("social")} />
+          <NavButton label="Listings" active={screen === "listings"} onClick={() => go("listings")} />
           <NavButton label="Lead intelligence" active={screen === "leads"} onClick={() => go("leads")} />
           <NavButton label="Approvals" badge={pendingCount} active={screen === "appr"} onClick={() => go("appr")} />
           <NavButton label="AI visibility" active={screen === "vis"} onClick={() => go("vis")} />
           <NavButton label="Autonomy" active={screen === "aut"} onClick={() => go("aut")} />
-          <NavButton label="Agent runs" badge={jobs.filter((j) => ["running","verifying","queued"].includes(j.status)).length || undefined} active={screen === "runs"} onClick={() => go("runs")} />
+          <NavButton label="Agent runs" badge={runningJobs || undefined} active={screen === "runs"} onClick={() => go("runs")} />
           <NavButton label="Activity log" active={screen === "log"} onClick={() => go("log")} />
           <NavButton label="Billing" active={screen === "billing"} onClick={() => go("billing")} />
         </nav>
@@ -1026,7 +1368,7 @@ function DashboardInner() {
           >
             <div style={{ fontFamily: "var(--font-heading)", fontSize: 14, marginBottom: 3 }}>Brand voice</div>
             <div style={{ fontSize: 11.5, color: "var(--color-accent-2-800)", lineHeight: 1.45 }}>
-              {voice ? "Preference saved. Pick again any time." : "Tell me which sample sounds like you."}
+              {voice === "a" ? "Short and direct. Change it any time." : "Thorough and professional. Change it any time."}
             </div>
           </button>
           <button className="btn btn-secondary" onClick={requestAddSite} style={{ fontWeight: 600, fontSize: 12.5 }}>
@@ -1081,12 +1423,12 @@ function DashboardInner() {
               gap: 6,
               background: usage.trialing
                 ? "var(--color-accent-200)"
-                : usage.plan.id === "trial"
+                : usage.plan.id === "free" || usage.plan.id === "lapsed"
                 ? "var(--color-neutral-200)"
                 : "var(--color-accent-2-200)",
               color: usage.trialing
                 ? "var(--color-accent-900)"
-                : usage.plan.id === "trial"
+                : usage.plan.id === "free" || usage.plan.id === "lapsed"
                 ? "var(--color-neutral-800)"
                 : "var(--color-accent-2-800)",
             }}
@@ -1125,9 +1467,9 @@ function DashboardInner() {
                 >
                   <span style={{ position: "relative", width: 9, height: 9, flex: "none" }}>
                     <span style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "currentColor" }} />
-                    {!paused ? <span style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "currentColor", animation: "pulseRing 2.2s ease-out infinite" }} /> : null}
+                    {!paused && runningJobs > 0 ? <span style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "currentColor", animation: "pulseRing 2.2s ease-out infinite" }} /> : null}
                   </span>
-                  {paused ? "Paused by you" : "Engine running"}
+                  {paused ? "Paused by you" : runningJobs > 0 ? `${runningJobs} run${runningJobs === 1 ? "" : "s"} in flight` : "Engine idle"}
                 </span>
                 <button className="btn btn-secondary" onClick={togglePause} style={{ fontWeight: 600, fontSize: 13 }}>
                   {paused ? "Resume" : "Pause"}
@@ -1154,6 +1496,7 @@ function DashboardInner() {
                   feedTop={activity.slice(0, 6)}
                   onUndo={toggleUndo}
                   paused={paused}
+                  runningJobs={runningJobs}
                   searchPanel={
                     <SearchConsolePanel
                       state={gsc}
@@ -1222,7 +1565,6 @@ function DashboardInner() {
                 <Content
                   items={content}
                   onPublish={publishContent}
-                  onRewrite={rewriteContent}
                   onAskForPiece={askForPiece}
                   asking={asking}
                   onWrite={writeContent}
@@ -1238,6 +1580,58 @@ function DashboardInner() {
                   publishingId={publishingId}
                 />
               )}
+              {screen === "social" && !access.social.allowed && (
+                <LockedFeature
+                  title="Social"
+                  what="Posts written to each network's own shape, held until you approve them."
+                  access={access.social}
+                  usage={usage}
+                  region={region}
+                  onSeeBilling={() => go("billing")}
+                />
+              )}
+              {screen === "social" && access.social.allowed && (
+                <Social
+                  posts={socialPosts}
+                  networks={socialNetworks}
+                  aiConfigured={socialAiConfigured}
+                  aiMessage={aiStatusMessage}
+                  contentPieces={content.filter((c) => c.article)}
+                  onDraft={draftSocial}
+                  onEdit={editSocialPost}
+                  onApprove={approveSocialPost}
+                  onDecline={declineSocialPost}
+                  onPublish={publishSocialPost}
+                  onConnect={connectSocial}
+                  onDisconnect={disconnectSocial}
+                  drafting={drafting}
+                  publishingId={socialPublishingId}
+                />
+              )}
+
+              {screen === "listings" && !access.listings.allowed && (
+                <LockedFeature
+                  title="Directory listings"
+                  what="Copy written to each directory's exact form, and a record of where you've submitted."
+                  access={access.listings}
+                  usage={usage}
+                  region={region}
+                  onSeeBilling={() => go("billing")}
+                />
+              )}
+              {screen === "listings" && access.listings.allowed && (
+                <Listings
+                  listings={listings}
+                  site={site}
+                  aiConfigured={socialAiConfigured}
+                  aiMessage={aiStatusMessage}
+                  onWrite={writeListingCopy}
+                  onSave={saveListingCopy}
+                  onStatus={setListingStatus}
+                  writingId={writingListingId}
+                />
+              )}
+
               {screen === "leads" && !access.leads.allowed && (
                 <LockedFeature
                   title="Lead intelligence"
@@ -1263,6 +1657,8 @@ function DashboardInner() {
                       ? "discover"
                       : jobBusy === JOB_TYPES.LEAD_QUALIFY
                       ? "qualify"
+                      : draftingOutreachId
+                      ? "outreach"
                       : null
                   }
                   buildingProfile={buildingProfile}
@@ -1276,7 +1672,14 @@ function DashboardInner() {
                 />
               )}
               {screen === "appr" && (
-                <Approvals approvals={approvals} onApprove={approve} onDecline={decline} onEdit={editApproval} goAutonomy={() => go("aut")} />
+                <Approvals
+                  approvals={approvals}
+                  onApprove={approve}
+                  onDecline={decline}
+                  onEdit={editApproval}
+                  socialWaiting={socialPosts.filter((p) => p.status === POST_STATUS.DRAFTED).length}
+                  goSocial={() => go("social")}
+                />
               )}
               {screen === "vis" && !access.visibility.allowed && (
                 <LockedFeature
@@ -1313,9 +1716,6 @@ function DashboardInner() {
                   aut={aut}
                   setAut={setAut}
                   onCommitAut={commitAut}
-                  thr={thr}
-                  setThr={setThr}
-                  onCommitThr={commitThr}
                   rules={rules}
                   setRules={saveRules}
                   voice={voice}
@@ -1353,10 +1753,6 @@ function DashboardInner() {
                 <button className="btn btn-ghost" onClick={() => setToast(null)} style={{ marginLeft: "auto", color: "var(--color-accent-2-800)", fontSize: 16, paddingInline: 4 }}>×</button>
               </div>
               <p style={{ margin: 0, fontSize: 13.5, color: "var(--color-accent-2-900)", lineHeight: 1.5 }}>{toast}</p>
-              <div style={{ display: "flex", gap: 8 }}>
-                <button className="btn btn-primary" onClick={() => go("opps")} style={{ background: "var(--color-accent-2-600)", fontSize: 13 }}>Do more of this</button>
-                <button className="btn btn-ghost" onClick={() => setToast(null)} style={{ color: "var(--color-accent-2-800)", fontSize: 13 }}>Later</button>
-              </div>
             </div>
           </div>
         ) : null}

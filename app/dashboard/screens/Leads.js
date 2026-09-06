@@ -418,9 +418,15 @@ function Detail({ lead, onDraftOutreach, onDecline, busy }) {
           <button
             className="btn btn-primary btn-block"
             onClick={() => onDraftOutreach(lead)}
-            disabled={busy === "outreach" || lead.status === "drafted"}
+            disabled={busy === "outreach" || lead.status === "drafted" || lead.status === "approved"}
           >
-            {lead.status === "drafted" ? "Draft is in Approvals" : busy === "outreach" ? "Writing…" : "Draft an email for approval"}
+            {lead.status === "approved"
+              ? "Approved — sent from your mail app"
+              : lead.status === "drafted"
+              ? "Draft is in Approvals"
+              : busy === "outreach"
+              ? "Writing…"
+              : "Draft an email for approval"}
           </button>
           <p style={{ margin: 0, fontSize: 11.5, lineHeight: 1.5 }} className="text-muted">
             MADBOT never sends outreach itself, at any autonomy level. The draft goes to Approvals and you press send.

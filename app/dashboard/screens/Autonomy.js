@@ -1,44 +1,33 @@
 import { useState } from "react";
-import { autInfo } from "../data";
-
-function dialValFromEvent(e) {
-  const r = e.currentTarget.getBoundingClientRect();
-  let a = (Math.atan2(e.clientY - (r.top + r.height / 2), e.clientX - (r.left + r.width / 2)) * 180) / Math.PI;
-  a = (a - 135 + 720) % 360;
-  if (a > 270) a = a < 315 ? 270 : 0;
-  return Math.round((a / 270) * 100);
-}
-
-function thrValFromEvent(e) {
-  const r = e.currentTarget.getBoundingClientRect();
-  return Math.max(0, Math.min(100, Math.round(((e.clientX - r.left) / r.width) * 100)));
-}
 
 import DataRules from "./DataRules";
+import AutonomyDial from "../../components/AutonomyDial";
 
-export default function Autonomy({ aut, setAut, onCommitAut, thr, setThr, onCommitThr, rules, setRules, voice, setVoice, brandName, dataPolicy, onDataPolicyChange }) {
-  const [drag, setDrag] = useState(null);
+export default function Autonomy({ aut, setAut, onCommitAut, rules, setRules, voice, setVoice, brandName, dataPolicy, onDataPolicyChange }) {
   const [draftRule, setDraftRule] = useState("");
 
-  const info = autInfo(aut);
-  const ang = ((135 + aut * 2.7) * Math.PI) / 180;
-  const knobX = Math.round(152 * Math.cos(ang));
-  const knobY = Math.round(152 * Math.sin(ang));
-  const arc = `${(716 * aut) / 100} 955`;
-  const permsOn = aut >= 48;
-  const spendOn = aut >= 80;
-
+  // What the dial actually changes today, stated rather than promised.
+  //
+  // The previous list said "Publishing content · auto" and "Anything with a
+  // price tag · auto under budget" above certain settings. Nothing read the
+  // dial server-side, and nothing publishes or spends unattended — an article
+  // is a pull request you merge, a social post waits for approval, outreach is
+  // never sent. The one thing the setting gates is whether the scheduled AI
+  // visibility re-check, which costs money, may run without you (lib/scheduler.js).
+  const TONE = {
+    on: { bg: "var(--color-accent-2-100)", fg: "var(--color-accent-2-800)" },
+    ask: { bg: "var(--color-accent-100)", fg: "var(--color-accent-800)" },
+    always: { bg: "var(--color-neutral-100)", fg: "var(--color-neutral-800)" },
+  };
   const perms = [
-    { text: "Technical SEO fixes · auto", bg: "var(--color-accent-2-100)", fg: "var(--color-accent-2-800)" },
-    { text: permsOn ? "Publishing content · auto" : "Publishing content · ask me", bg: permsOn ? "var(--color-accent-2-100)" : "var(--color-accent-100)", fg: permsOn ? "var(--color-accent-2-800)" : "var(--color-accent-800)" },
-    { text: "Directory listings · auto", bg: "var(--color-accent-2-100)", fg: "var(--color-accent-2-800)" },
-    // Not affected by the dial. Outreach is drafted and queued at every level —
-    // the screen used to promise "auto, 40/day" at higher settings, which the
-    // engine deliberately never does.
-    { text: "Outreach email · always drafted for you to send", bg: "var(--color-neutral-100)", fg: "var(--color-neutral-800)" },
-    { text: spendOn ? "Anything with a price tag · auto under budget" : "Anything with a price tag · ask me", bg: spendOn ? "var(--color-accent-2-100)" : "var(--color-accent-100)", fg: spendOn ? "var(--color-accent-2-800)" : "var(--color-accent-800)" },
-    { text: "Big public claims · always ask me", bg: "var(--color-neutral-100)", fg: "var(--color-neutral-800)" },
-  ];
+    { text: "Audits, crawls, competitor snapshots · scheduled, read-only", tone: "on" },
+    aut >= 48
+      ? { text: "Weekly AI visibility re-check · allowed when switched on", tone: "on" }
+      : { text: "Weekly AI visibility re-check · off below Let it rip", tone: "ask" },
+    { text: "Articles · live only through a pull request you merge", tone: "always" },
+    { text: "Social posts · always held for your approval", tone: "always" },
+    { text: "Outreach email · always drafted, you press send", tone: "always" },
+  ].map((p) => ({ ...p, ...TONE[p.tone] }));
 
   function addRuleNow() {
     const t = draftRule.trim();
@@ -52,67 +41,37 @@ export default function Autonomy({ aut, setAut, onCommitAut, thr, setThr, onComm
       <div className="dial-column" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
         <h2 style={{ margin: 0, textAlign: "center" }}>How much rope do I get?</h2>
         <p className="text-muted" style={{ fontSize: 13.5, margin: "0 0 4px", textAlign: "center", maxWidth: 440 }}>
-          One dial. Turn it up when you trust me, down when you don&apos;t. Everything else in MADBOT follows it.
+          One dial. Turn it up when you trust me, down when you don&apos;t. What it changes today is listed under it.
         </p>
-        <div
-          onPointerDown={(e) => {
-            setDrag("dial");
-            setAut(dialValFromEvent(e));
-            e.currentTarget.setPointerCapture(e.pointerId);
-          }}
-          onPointerMove={(e) => {
-            if (drag === "dial") setAut(dialValFromEvent(e));
-          }}
-          onPointerUp={() => { setDrag(null); onCommitAut(); }}
-          style={{ position: "relative", width: 404, height: 404, display: "grid", placeItems: "center", touchAction: "none", cursor: "grab", userSelect: "none" }}
-        >
-          <div style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "var(--color-surface)", boxShadow: "var(--shadow-lg)" }} />
-          <div style={{ position: "absolute", inset: 28, borderRadius: "50%", background: "var(--color-bg)", border: "1px solid var(--color-divider)" }} />
-          <svg viewBox="0 0 404 404" style={{ position: "absolute", inset: 0, width: 404, height: 404, pointerEvents: "none" }}>
-            <circle cx="202" cy="202" r="152" fill="none" stroke="var(--color-neutral-300)" strokeWidth="16" strokeLinecap="round" strokeDasharray="716 955" transform="rotate(135 202 202)" />
-            <circle cx="202" cy="202" r="152" fill="none" stroke="var(--color-accent)" strokeWidth="16" strokeLinecap="round" strokeDasharray={arc} transform="rotate(135 202 202)" />
-          </svg>
-          <div style={{ position: "absolute", width: 34, height: 34, borderRadius: "50%", background: "var(--color-bg)", border: "5px solid var(--color-accent)", boxShadow: "var(--shadow-md)", pointerEvents: "none", transform: `translate(${knobX}px,${knobY}px)` }} />
-          <div style={{ textAlign: "center", position: "relative", pointerEvents: "none", padding: "0 56px" }}>
-            <div style={{ fontSize: 11, letterSpacing: ".12em", textTransform: "uppercase", color: "var(--color-accent-700)" }}>Autonomy</div>
-            <div style={{ fontFamily: "var(--font-heading)", fontSize: 44, lineHeight: 1.05, margin: "3px 0 5px" }}>{info.label}</div>
-            <div className="text-muted" style={{ fontSize: 12.5, lineHeight: 1.45 }}>{info.desc}</div>
-          </div>
-          <span style={{ position: "absolute", left: 34, bottom: 48, fontSize: 11.5, fontWeight: 600, color: "var(--color-neutral-600)", pointerEvents: "none" }}>Watch</span>
-          <span style={{ position: "absolute", left: 8, top: 152, fontSize: 11.5, fontWeight: 600, color: "var(--color-neutral-600)", pointerEvents: "none" }}>Suggest</span>
-          <span style={{ position: "absolute", right: 6, top: 152, fontSize: 11.5, fontWeight: 600, color: "var(--color-neutral-600)", pointerEvents: "none" }}>Let it rip</span>
-          <span style={{ position: "absolute", right: 26, bottom: 48, fontSize: 11.5, fontWeight: 600, color: "var(--color-neutral-600)", pointerEvents: "none" }}>Full send</span>
+        {/* The same dial the landing page shows, so the two can never drift.
+            The backdrop discs are this screen's dressing; everything that
+            moves lives in the shared component. */}
+        {/* Sized by the column rather than a fixed 404px, so it fits a phone
+            without the column scrolling sideways. The corner labels are in
+            percentages for the same reason. */}
+        <div style={{ position: "relative", width: "min(404px, 100%)", aspectRatio: "1", containerType: "inline-size" }}>
+          <div aria-hidden="true" style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "var(--color-surface)", boxShadow: "var(--shadow-lg)" }} />
+          <div aria-hidden="true" style={{ position: "absolute", inset: "7%", borderRadius: "50%", background: "var(--color-bg)", border: "1px solid var(--color-divider)" }} />
+          <AutonomyDial value={aut} onChange={setAut} onCommit={onCommitAut}>
+            <span style={{ position: "absolute", left: "8.5%", bottom: "12%", fontSize: 11.5, fontWeight: 600, color: "var(--color-neutral-600)", pointerEvents: "none" }}>Watch</span>
+            <span style={{ position: "absolute", left: "2%", top: "37.5%", fontSize: 11.5, fontWeight: 600, color: "var(--color-neutral-600)", pointerEvents: "none" }}>Suggest</span>
+            <span style={{ position: "absolute", right: "1.5%", top: "37.5%", fontSize: 11.5, fontWeight: 600, color: "var(--color-neutral-600)", pointerEvents: "none" }}>Let it rip</span>
+            <span style={{ position: "absolute", right: "6.5%", bottom: "12%", fontSize: 11.5, fontWeight: 600, color: "var(--color-neutral-600)", pointerEvents: "none" }}>Full send</span>
+          </AutonomyDial>
         </div>
         <div style={{ display: "flex", gap: 9, flexWrap: "wrap", justifyContent: "center", maxWidth: 600 }}>
           {perms.map((p) => (
             <span key={p.text} className="tag" style={{ background: p.bg, color: p.fg, fontSize: 11.5 }}>{p.text}</span>
           ))}
         </div>
-        <div className="card elev-sm" style={{ width: "100%", maxWidth: 600, marginTop: 4, padding: "17px 20px", gap: 14, flexDirection: "row", alignItems: "center" }}>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontFamily: "var(--font-heading)", fontSize: 15, marginBottom: 2 }}>Effort throttle</div>
-            <div className="text-muted" style={{ fontSize: 12 }}>
-              ~{Math.round(6 + thr * 0.5)} actions a day · about ${60 + thr * 2}/mo in credits
-            </div>
-          </div>
-          <div
-            onPointerDown={(e) => {
-              setDrag("thr");
-              setThr(thrValFromEvent(e));
-              e.currentTarget.setPointerCapture(e.pointerId);
-            }}
-            onPointerMove={(e) => {
-              if (drag === "thr") setThr(thrValFromEvent(e));
-            }}
-            onPointerUp={() => { setDrag(null); onCommitThr(); }}
-            style={{ flex: 1.15, height: 26, display: "flex", alignItems: "center", touchAction: "none", cursor: "pointer" }}
-          >
-            <div style={{ width: "100%", height: 10, borderRadius: 999, background: "var(--color-neutral-200)", position: "relative" }}>
-              <span style={{ display: "block", height: 10, borderRadius: 999, background: "var(--color-accent-2-500)", width: `${thr}%` }} />
-              <span style={{ position: "absolute", top: -6, left: `${thr}%`, width: 22, height: 22, borderRadius: "50%", background: "var(--color-bg)", border: "4px solid var(--color-accent-2-600)", transform: "translateX(-50%)", boxShadow: "var(--shadow-sm)" }} />
-            </div>
-          </div>
-        </div>
+        <p className="text-muted" style={{ margin: "2px 0 0", fontSize: 12, lineHeight: 1.55, textAlign: "center", maxWidth: 560 }}>
+          Everything public waits for you at every setting — by design, not as a limit of your plan. Higher settings
+          are where unattended publishing will land as it ships.
+        </p>
+        {/* The "Effort throttle" that sat here — "~N actions a day · about $X/mo"
+            — was a slider nothing read, with numbers made up on the spot. The
+            real spend limits are the plan's monthly allowances and the daily cap
+            in lib/costControl.js, both shown on the Billing screen. */}
       </div>
 
       <aside style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -141,10 +100,11 @@ export default function Autonomy({ aut, setAut, onCommitAut, thr, setThr, onComm
         <section className="card elev-sm" style={{ padding: 18, gap: 10 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <h4 style={{ margin: 0 }}>Brand voice trainer</h4>
-            <span className="tag tag-accent" style={{ marginLeft: "auto" }}>{voice ? "Preference saved" : "Not set"}</span>
+            <span className="tag tag-accent" style={{ marginLeft: "auto" }}>{voice === "a" ? "Short & direct" : "Thorough & formal"}</span>
           </div>
           <p className="card-body" style={{ margin: 0 }}>
-            I read your pages when you connected. Tell me which of these two sounds more like you and I get sharper.
+            Tell me which of these two sounds more like you. Every new draft — articles, social posts, outreach — is
+            written in that voice.
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <button
@@ -161,17 +121,23 @@ export default function Autonomy({ aut, setAut, onCommitAut, thr, setThr, onComm
             </button>
           </div>
           <div className="text-muted" style={{ fontSize: 11.5 }}>
-            {voice === "a" ? "Noted — short, blunt, no corporate throat-clearing." : "Pick one and I recalibrate every draft in the queue."}
+            {voice === "a" ? "Short, blunt, no corporate throat-clearing." : "Thorough and formal, never padded."} Applies to
+            drafts written from now on — nothing already written is changed.
           </div>
         </section>
+        {/* What actually exists. This used to promise Slack alerts and a Friday
+            digest. There is no Slack integration and the digest is sent when
+            you press the button, so it now says exactly that. */}
         <section className="card elev-sm" style={{ padding: 18, gap: 9, background: "var(--color-neutral-100)" }}>
           <h4 style={{ margin: 0 }}>How I reach you</h4>
           <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 12.5 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>Friday digest<span className="tag tag-accent-2" style={{ marginLeft: "auto", fontSize: 10 }}>Slack + email</span></div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>A win lands<span className="tag tag-accent-2" style={{ marginLeft: "auto", fontSize: 10 }}>Slack</span></div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>Something needs you<span className="tag tag-accent" style={{ marginLeft: "auto", fontSize: 10 }}>Slack, right away</span></div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>Everything else<span className="tag tag-neutral" style={{ marginLeft: "auto", fontSize: 10 }}>Silence</span></div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>Digest<span className="tag tag-accent-2" style={{ marginLeft: "auto", fontSize: 10 }}>Email, when you ask</span></div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>Something needs you<span className="tag tag-accent" style={{ marginLeft: "auto", fontSize: 10 }}>Approvals badge</span></div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>Every action taken<span className="tag tag-neutral" style={{ marginLeft: "auto", fontSize: 10 }}>Activity log</span></div>
           </div>
+          <p className="text-muted" style={{ margin: 0, fontSize: 11.5, lineHeight: 1.5 }}>
+            No Slack, no push notifications, no scheduled email yet. The digest is one button on the Growth screen.
+          </p>
         </section>
       </aside>
 
