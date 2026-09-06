@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { draftOutreachEmail } from "../../../../lib/leadEngine";
 import { authorize } from "../../../../lib/licenseServer";
+import { adminAuth } from "../../../../lib/firebaseAdmin";
 import { FEATURES } from "../../../../lib/plans";
 import { reserve, record } from "../../../../lib/costControl";
 
@@ -70,6 +71,18 @@ export async function POST(request) {
     );
   }
 
+  // The prompt asks the model to end on a [Your name] placeholder so it never
+  // invents a signature. Nothing was substituting it, so the placeholder went
+  // out in the approved email. The name comes from the verified account, not
+  // from the request.
+  let signOff = null;
+  try {
+    const account = await adminAuth().getUser(auth.uid);
+    signOff = account.displayName || null;
+  } catch {
+    // Falls through to the generic sign-off below.
+  }
+
   try {
     const draft = await draftOutreachEmail({
       lead,
@@ -88,10 +101,19 @@ export async function POST(request) {
 
     await record(gate.hold, draft.usage);
 
+    // Replace the sign-off placeholder here rather than in the prompt, so the
+    // model never has to guess at a name and the customer never sees the
+    // token. Falling back to their own site's name is better than leaving
+    // "[Your name]" in an email they are about to send.
+    const signature = signOff || site?.name || site?.domain || null;
+    const body = signature
+      ? String(draft.body || "").replaceAll("[Your name]", signature)
+      : String(draft.body || "").replaceAll("[Your name]", "").trimEnd();
+
     return NextResponse.json({
       ok: true,
       subject: draft.subject,
-      body: draft.body,
+      body,
       confidence: draft.confidence,
       claims: draft.claims,
     });

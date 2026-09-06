@@ -50,6 +50,10 @@ export default function ActivityLog({ feedAll, onToggleUndo }) {
         <button className="btn btn-secondary" onClick={() => exportCsv(rows)} disabled={rows.length === 0} style={{ fontWeight: 600, fontSize: 13 }}>Export CSV</button>
       </div>
       <div className="card" style={{ padding: "8px 14px", background: "var(--color-neutral-100)" }}>
+        {/* The other two tables in the app are wrapped; this one was not, and
+            below 900px the shell is overflow:visible, so it took the whole
+            document sideways on a phone rather than scrolling itself. */}
+        <div className="scroll-x">
         <table className="table">
           <thead>
             <tr><th>When</th><th>What I did</th><th>Why</th><th>Result</th><th></th></tr>
@@ -78,6 +82,7 @@ export default function ActivityLog({ feedAll, onToggleUndo }) {
             })}
           </tbody>
         </table>
+        </div>
       </div>
     </section>
   );

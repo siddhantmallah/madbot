@@ -91,7 +91,7 @@ export default function Opportunities({
         {/* The bubbles are absolutely positioned around a fixed 470,300 centre, so
             this cannot reflow. On a narrow screen it scrolls inside its own frame
             instead of widening the page. */}
-        <div className="graph-frame" style={{ position: "relative", height: 600, borderRadius: 34, overflow: "hidden", background: "radial-gradient(85% 78% at 34% 24%, var(--color-accent-2-100) 0%, var(--color-bg) 62%)", border: "1px solid var(--color-divider)" }}>
+        <div className="graph-frame" style={{ position: "relative", height: 600, borderRadius: 34, overflowX: "auto", overflowY: "hidden", background: "radial-gradient(85% 78% at 34% 24%, var(--color-accent-2-100) 0%, var(--color-bg) 62%)", border: "1px solid var(--color-divider)" }}>
           <div className="graph-canvas" style={{ position: "absolute", inset: 0, transform: `scale(${zoom})`, transition: "transform .35s cubic-bezier(.2,.8,.2,1)" }}>
             {[540, 360, 180].map((s) => (
               <div key={s} style={{ position: "absolute", left: 470, top: 300, width: s, height: s, borderRadius: "50%", border: "1px dashed var(--color-neutral-300)", transform: "translate(-50%,-50%)" }} />

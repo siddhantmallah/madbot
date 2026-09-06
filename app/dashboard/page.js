@@ -1488,7 +1488,15 @@ function DashboardInner() {
           {/* Anything the account is quietly missing, said out loud. Renders
               nothing when there is nothing to say. */}
           <AccountNotices />
-          {site && insights ? (
+
+          {/* Billing sits outside the site guard on purpose. It is an account
+              screen, not a site screen, and it is where the data export and
+              deletion controls live. Behind the guard, an account with no site
+              could not see its plan and could not exercise its access or
+              erasure rights at all, which is not a layout preference. */}
+          {screen === "billing" ? (
+            <Billing usage={usage} billing={billing} siteCount={siteCount} metered={usageNow} region={region} />
+          ) : site && insights ? (
             <>
               {screen === "growth" && (
                 <Growth
@@ -1745,7 +1753,6 @@ function DashboardInner() {
                 />
               )}
               {screen === "log" && <ActivityLog feedAll={activity} onToggleUndo={toggleUndo} />}
-              {screen === "billing" && <Billing usage={usage} billing={billing} siteCount={siteCount} metered={usageNow} region={region} />}
             </>
           ) : (
             <div className="text-muted" style={{ fontSize: 14 }}>Connect a site to get started.</div>
@@ -1769,7 +1776,10 @@ function DashboardInner() {
       {onboardOpen && user ? (
         <OnboardingModal
           uid={user.uid}
-          canSkip={(sites || []).length > 0}
+          // Always dismissible. It used to be a wall for anyone with no site
+          // yet, which trapped them on the one screen they could not use and
+          // out of the one holding their plan and their data controls.
+          canSkip
           initialUrl={(sites || []).length === 0 ? initialUrl : ""}
           onClose={() => setOnboardOpen(false)}
           onFinish={(newSiteId, siteUrl, text) => {

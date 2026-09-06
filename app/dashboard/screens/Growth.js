@@ -33,7 +33,11 @@ export default function Growth({
   competitorPanel,
   digestPanel,
 }) {
-  const drafted = content.filter((c) => c.status !== "published").length;
+  // A planned topic has a title and no article. Counting it as a draft
+  // overstates what exists, and Content.js already says out loud on the same
+  // data that these are "planned topics, not written articles".
+  const drafted = content.filter((c) => c.article && c.status !== "published").length;
+  const planned = content.filter((c) => !c.article && c.status !== "published").length;
   const published = content.filter((c) => c.status === "published").length;
   // Leads move through stages; nothing is ever "sent" or "queued" by MADBOT.
   // The old counters read fields no code writes, so they showed 0 · 0 forever.
@@ -59,7 +63,7 @@ export default function Growth({
       {/* Real counts, straight out of Firestore — nothing modelled or estimated. */}
       <div className="grid-4" style={{ gap: 14 }}>
         <StatCard kicker="Actions logged" value={activity.length} meta="nothing happens off the record" />
-        <StatCard kicker="Content" value={drafted + published} meta={`${drafted} draft${drafted === 1 ? "" : "s"} · ${published} published`} />
+        <StatCard kicker="Content" value={drafted + published} meta={`${drafted} draft${drafted === 1 ? "" : "s"} · ${planned} planned · ${published} published`} />
         <StatCard kicker="Prospects found" value={leads.length} meta={`${qualifiedLeads} qualified · ${shortlistedLeads} shortlisted`} />
         <StatCard kicker="Waiting on you" value={pendingCount} meta={`of ${approvals.length} total in the queue`} />
       </div>

@@ -82,7 +82,7 @@ export default function CompetitorPanel({ competitors, onAdd, onCheck, onRemove,
                 </div>
               ) : (
                 <div className="text-muted" style={{ fontSize: 12 }}>
-                  {c.lastCheckedAt ? "No changes since the last check." : ""}
+                  {c.lastCheckedAt ? "No changes since the last check." : "Watching. Nothing to compare against until the first check."}
                 </div>
               )}
             </div>

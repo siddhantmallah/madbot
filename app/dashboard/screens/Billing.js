@@ -182,7 +182,10 @@ export default function Billing({ usage, billing = [], siteCount, metered, regio
               note={overSiteLimit ? "over the limit — existing sites keep working, new ones are blocked" : null}
             />
             <Row label="Autonomy ceiling" value={autonomyLabel(plan.maxAutonomy)} />
-            <Row label={cancelAtPeriodEnd ? "Access until" : "Renews"} value={unlicensed ? "—" : when(renewsAt)} />
+            <Row
+              label={trialing ? "Trial ends" : cancelAtPeriodEnd ? "Access until" : "Renews"}
+              value={unlicensed ? "—" : when(renewsAt)}
+            />
           </div>
 
           {grantedManually ? (

@@ -557,3 +557,11 @@ textarea.input{min-height:90px;resize:vertical;border-radius:var(--radius-md)}
   .legal-toc{position:static;max-height:none;margin-bottom:8px}
   .legal-toc ol{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}
 }
+
+/* The opportunity graph is absolutely positioned and 810px wide at its
+   extent, so it cannot reflow. The frame used to gain a scroller only below
+   940px, which left a dead band from roughly 941px to 1467px where the outer
+   ring was clipped with no way to reach it. On a 1440px laptop that is most of
+   the graph. The frame now scrolls at any width, and this keeps the inner
+   canvas from collapsing to the frame's width. */
+.graph-frame > .graph-canvas{min-width:840px}
