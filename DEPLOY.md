@@ -110,17 +110,20 @@ Each pair independently switches on a **Connect** button in the dashboard. Draft
 
 ## 1b. Fill in `lib/company.js` before taking money
 
-Every legal page reads the company's details from `lib/company.js`. While any of
-these is `null`, all eleven policy pages render a visible orange banner saying the
-document is incomplete, and the footer omits the missing lines. That is deliberate:
-an incomplete policy that looks complete is worse than one that admits what it is
-missing. Grep for `MISSING_FOR_LAUNCH`.
+Every legal page reads the company's details from `lib/company.js`. While anything
+`missingForLaunch()` checks is `null`, all eleven policy pages render a visible orange
+banner saying the document is incomplete. That is deliberate: an incomplete policy that
+looks complete is worse than one that admits what it is missing.
+
+**This is now clear.** `missingForLaunch()` returns empty, the banners are gone, and the
+registered office, CIN and grievance officer all publish. The only `MISSING_FOR_LAUNCH`
+marker left is `gstin`, which must stay `null` until you are actually GST-registered.
 
 | Field | Where to get it | Why it is required |
 |---|---|---|
 | ~~`cin`~~ | Done: `U62011MH2026PTC475385` | Companies Act 2013 s.12(3)(c) requires the CIN on letterheads, invoices and official publications |
 | ~~`pan`, `tan`~~ | Done | Needed on invoices and for TDS. Deliberately not rendered on any public page: a tax id belongs on an invoice, not in a footer |
-| `registeredOffice.line1`, `.city`, `.postcode` | As filed with the Registrar of Companies | Consumer Protection (E-Commerce) Rules 2020 require the seller's legal name and registered address to be published; GDPR Art 13 requires the controller's identity. `state` is already set to Maharashtra, derived from the MH in the CIN |
+| ~~`registeredOffice`~~ | Done: Santacruz (East), Mumbai 400055 | Consumer Protection (E-Commerce) Rules 2020 require the seller's legal name and registered address to be published; GDPR Art 13 requires the controller's identity |
 | `gstin` | GST portal | **Leave null until actually GST-registered** — an invoice showing tax you are not registered to collect is a false document |
 | ~~`grievanceOfficer`~~ | Done: Siddhant Mallah, with email and telephone | Consumer Protection (E-Commerce) Rules 2020 and IT Rules 2021 both require a named grievance officer with a published contact. The 48-hour acknowledgement and 30-day resolution commitment are published alongside |
 | `emails.privacy`, `.security` | Mailboxes you create | Both fall back to `NEXT_PUBLIC_CONTACT_EMAIL`, which is set, so the pages do render a working address. Dedicated inboxes are nicer but not blocking. `legal` and `grievance` already point at `contact@mallahsoftware.com`, whose domain has live MX records |

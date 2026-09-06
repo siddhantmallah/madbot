@@ -81,8 +81,16 @@ const ORGANISATION = {
   ...(COMPANY.cin ? { identifier: { "@type": "PropertyValue", name: "CIN", value: COMPANY.cin } } : {}),
   address: {
     "@type": "PostalAddress",
+    ...(COMPANY.registeredOffice.line1
+      ? {
+          streetAddress: [COMPANY.registeredOffice.line1, COMPANY.registeredOffice.line2]
+            .filter(Boolean)
+            .join(", "),
+        }
+      : {}),
     ...(COMPANY.registeredOffice.city ? { addressLocality: COMPANY.registeredOffice.city } : {}),
     ...(COMPANY.registeredOffice.state ? { addressRegion: COMPANY.registeredOffice.state } : {}),
+    ...(COMPANY.registeredOffice.postcode ? { postalCode: COMPANY.registeredOffice.postcode } : {}),
     addressCountry: "IN",
   },
   ...(COMPANY.grievanceOfficer.email
