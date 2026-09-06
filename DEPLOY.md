@@ -25,9 +25,45 @@ Set each for **Production** and **Preview**. Names must match exactly.
 
 | Variable | Value |
 |---|---|
-| `FIREBASE_SERVICE_ACCOUNT_B64` | Project settings → Service accounts → **Generate new private key**, then base64 the whole JSON file as one line. PowerShell: `[Convert]::ToBase64String([IO.File]::ReadAllBytes("C:\path\to\key.json")) \| Set-Clipboard`. macOS/Linux: `base64 -w0 key.json`. |
+| `FIREBASE_SERVICE_ACCOUNT_B64` | The service account JSON for **this** project, base64 encoded as a single line. See below. |
 
-Without it every licence check refuses, the cron does nothing, and paid features stay off. Never commit the JSON — it is gitignored.
+**Check whether you need to do this at all.** Usually you do not:
+
+```bash
+curl -s -H "Authorization: Bearer $CRON_SECRET" https://<your-domain>/api/admin-status
+```
+
+`"admin":true` with `"projectId":"madbot-256aa"` means the service account already
+works and this variable should be left alone.
+
+If you do need to set it, get the file from Firebase console → Project settings →
+**Service accounts** → Generate new private key. Check the `project_id` inside the file
+says `madbot-256aa`. A key from a different Firebase project will authenticate fine and
+then read an empty database, which fails in a confusing way rather than an obvious one.
+
+Then encode it. **Replace the path with your own file** — these are not
+copy-paste-ready until you do:
+
+```powershell
+[Convert]::ToBase64String([IO.File]::ReadAllBytes("C:/Users/you/madbot-key.json")) | Set-Clipboard
+```
+
+```bash
+base64 -w0 madbot-key.json | pbcopy
+```
+
+The encoded value is now on your clipboard. Paste it into Vercel as the entire value,
+with no line breaks and no surrounding quotes.
+
+Without it every licence check refuses, the cron does nothing, and paid features stay
+off.
+
+**Treat the JSON as a password.** It grants full admin access to the project, bypassing
+every Firestore security rule. Never commit it, never paste it into a chat, an issue or
+a support ticket, and never email it. If it is exposed, revoke it immediately in Google
+Cloud console → IAM & Admin → Service Accounts → Keys, then generate a replacement. The
+`.gitignore` already covers `*firebase-adminsdk*.json`, `*serviceaccount*.json` and
+`*service-account*.json`, but that only protects you from git.
 
 ### AI
 
