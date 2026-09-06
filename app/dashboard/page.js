@@ -52,6 +52,7 @@ import CompetitorPanel from "./panels/CompetitorPanel";
 import DigestPanel from "./panels/DigestPanel";
 import { SCREEN_TITLES } from "./data";
 import OnboardingModal from "./OnboardingModal";
+import AccountNotices from "./panels/AccountNotices";
 import Growth from "./screens/Growth";
 import Opportunities from "./screens/Opportunities";
 import Content from "./screens/Content";
@@ -1480,6 +1481,9 @@ function DashboardInner() {
         </header>
 
         <div style={{ padding: "26px 30px 56px" }}>
+          {/* Anything the account is quietly missing, said out loud. Renders
+              nothing when there is nothing to say. */}
+          <AccountNotices />
           {site && insights ? (
             <>
               {screen === "growth" && (

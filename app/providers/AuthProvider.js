@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import {
   onAuthStateChanged,
   createUserWithEmailAndPassword,
@@ -8,12 +8,14 @@ import {
   signInWithPopup,
   linkWithPopup,
   reauthenticateWithPopup,
+  sendPasswordResetEmail,
   GoogleAuthProvider,
   signOut,
   updateProfile,
 } from "firebase/auth";
 import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { auth, db, googleProvider, githubProvider } from "../../lib/firebase";
+import { MIN_LENGTH, isAcceptable } from "../../lib/password";
 
 const AuthContext = createContext(null);
 
@@ -31,38 +33,110 @@ async function ensureUserDoc(user) {
 }
 
 /**
- * Starts the free trial if this account hasn't had one.
+ * A password the client refuses before Firebase ever sees it.
  *
- * Runs after every sign-in, not just signup: the server refuses a second trial,
- * so calling it repeatedly is harmless and it also repairs accounts created
- * before trials existed. A failure here must never block sign-in — the worst
- * case is landing on the trial-less tier, which the dashboard states plainly.
+ * Firebase's own floor is six characters, which is not a password policy. The
+ * real rules live in lib/password.js so the checklist the person sees while
+ * typing and the check that blocks submission are the same code.
+ *
+ * This is a usability guard, not a security boundary: anyone can call the
+ * Firebase SDK directly. The boundary is Firebase's own hashing and rate
+ * limiting. Worth being clear about which is which.
  */
-async function ensureTrial(user, intendedPlan) {
-  try {
-    const idToken = await user.getIdToken();
-    await fetch("/api/billing/start-trial", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ idToken, intendedPlan: intendedPlan || null }),
-    });
-  } catch {
-    // Deliberately swallowed. See above.
+function assertUsablePassword(password, context) {
+  if (!isAcceptable(password, context)) {
+    const err = new Error(
+      `That password is too easy to guess. Use at least ${MIN_LENGTH} characters, avoid common words, and don't reuse your name or email.`
+    );
+    err.code = "madbot/weak-password";
+    throw err;
   }
 }
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(undefined);
+  // What the server said about this account's trial, so the dashboard can
+  // explain being on the free tier rather than leaving it a mystery.
+  const [trialStatus, setTrialStatus] = useState(null);
+  const lastTrialCheck = useRef(null);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => setUser(u));
     return unsub;
   }, []);
 
+  /**
+   * Starts the free trial if this person hasn't had one.
+   *
+   * Runs after every sign-in, not just signup: the server refuses a second
+   * trial, so calling it repeatedly is harmless, and it also repairs accounts
+   * created before trials existed and picks up a freshly verified address.
+   *
+   * A failure here must never block sign-in. The worst case is landing on the
+   * free tier, which the dashboard states plainly.
+   */
+  const ensureTrial = useCallback(async (u, intendedPlan) => {
+    try {
+      const idToken = await u.getIdToken();
+      const res = await fetch("/api/billing/start-trial", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken, intendedPlan: intendedPlan || null }),
+      });
+      const data = await res.json().catch(() => null);
+      if (data) setTrialStatus(data);
+      return data;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  /** Sends (or resends) the confirm-your-address email. */
+  const sendVerification = useCallback(async () => {
+    const current = auth.currentUser;
+    if (!current) throw new Error("Sign in first.");
+    const idToken = await current.getIdToken();
+    const res = await fetch("/api/auth/send-verification", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ idToken }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) throw new Error(data.error || "The email could not be sent.");
+    return data;
+  }, []);
+
+  /**
+   * Re-reads the account from Firebase. Verification happens in a different
+   * tab or on a phone, so the only way this tab finds out is by asking.
+   * Returns the fresh emailVerified value.
+   */
+  const refreshUser = useCallback(async () => {
+    const current = auth.currentUser;
+    if (!current) return false;
+    await current.reload();
+    // reload() mutates the same object, so React needs a new reference to
+    // notice anything changed.
+    setUser(Object.assign(Object.create(Object.getPrototypeOf(current)), current));
+    if (current.emailVerified && lastTrialCheck.current !== current.uid + ":verified") {
+      lastTrialCheck.current = current.uid + ":verified";
+      await ensureTrial(current, null);
+    }
+    return current.emailVerified;
+  }, [ensureTrial]);
+
   async function signUp(email, password, name, intendedPlan) {
+    assertUsablePassword(password, { email, name });
     const cred = await createUserWithEmailAndPassword(auth, email, password);
     if (name) await updateProfile(cred.user, { displayName: name });
     await ensureUserDoc({ ...cred.user, displayName: name || cred.user.displayName });
+    // Sent before the trial call, because the trial is what verification
+    // unlocks — asking first and explaining why reads better than a refusal.
+    try {
+      await sendVerification();
+    } catch {
+      // The sign-in still worked. The dashboard offers a resend button.
+    }
     await ensureTrial(cred.user, intendedPlan);
     return cred.user;
   }
@@ -88,7 +162,23 @@ export function AuthProvider({ children }) {
     return cred.user;
   }
 
+  /**
+   * Password reset. Deliberately reports success whether or not the address
+   * has an account: telling a stranger which addresses are registered turns
+   * the form into an account-enumeration tool.
+   */
+  async function resetPassword(email) {
+    try {
+      await sendPasswordResetEmail(auth, email);
+    } catch (err) {
+      // A genuinely broken configuration should still surface.
+      if (err?.code === "auth/invalid-email" || err?.code === "auth/missing-email") throw err;
+    }
+    return true;
+  }
+
   function logOut() {
+    setTrialStatus(null);
     return signOut(auth);
   }
 
@@ -128,7 +218,23 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading: user === undefined, signUp, logIn, logInWithGoogle, logInWithGithub, logOut, connectSearchConsole }}
+      value={{
+        user,
+        loading: user === undefined,
+        // Only meaningful for email/password accounts. Google and GitHub hand
+        // back an already-verified address.
+        emailVerified: user ? !!user.emailVerified : false,
+        trialStatus,
+        signUp,
+        logIn,
+        logInWithGoogle,
+        logInWithGithub,
+        logOut,
+        resetPassword,
+        sendVerification,
+        refreshUser,
+        connectSearchConsole,
+      }}
     >
       {children}
     </AuthContext.Provider>

@@ -97,6 +97,16 @@ service cloud.firestore {
       }
     }
 
+    // One free trial per person, keyed on a hash of the normalised email
+    // address rather than on the account, so deleting an account and making a
+    // new one does not mint another trial. Server-only in both directions: a
+    // client that could delete its own row could take unlimited trials, and
+    // one that could read the collection could test whether a given address
+    // has ever signed up. See lib/trialLedger.js.
+    match /trialLedger/{emailHash} {
+      allow read, write: if false;
+    }
+
     // Delivery state and the suppression list. Server-only in both directions:
     // a client that could delete a suppression could resume mailing an address
     // that complained, and one that could read the list could enumerate every
