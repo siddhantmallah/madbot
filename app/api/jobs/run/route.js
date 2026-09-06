@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { executeJob } from "../../../../lib/jobRunner";
-import { JOB_STATUS, JOB_TYPES, JOB_FEATURE } from "../../../../lib/jobTypes";
+import { JOB_STATUS, JOB_TYPES, JOB_FEATURE, JOB_METER } from "../../../../lib/jobTypes";
 import { authorize } from "../../../../lib/licenseServer";
 import { reserve, record } from "../../../../lib/costControl";
 
@@ -8,19 +8,6 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
-// What each job type spends, in customer-facing credits, plus the internal AI
-// job it maps to for cost estimation. A job absent from here spends nothing and
-// runs without metering — crawling and auditing are cheap enough to be free.
-const METERED = {
-  [JOB_TYPES.CRAWL_SITE]: { action: "CRAWL_PAGE" },
-  [JOB_TYPES.AUDIT_SITE]: { action: "AUDIT_SITE" },
-  [JOB_TYPES.COMPETITOR_SCAN]: { action: "COMPETITOR_SNAPSHOT" },
-  [JOB_TYPES.AI_VISIBILITY]: { action: "VISIBILITY_CHECK", job: "visibility_answer" },
-  // Discovery is cheap and searches; qualification is the expensive half and is
-  // metered per company by the caller, which passes leadCredits.
-  [JOB_TYPES.LEAD_DISCOVER]: { action: "LEAD_DISCOVER", job: "lead_classify" },
-  [JOB_TYPES.LEAD_QUALIFY]: { action: "LEAD_ANALYSE", job: "lead_analyse" },
-};
 
 /**
  * Runs one job's work and returns the outcome plus the writes to apply. The
@@ -58,7 +45,7 @@ export async function POST(request) {
     return NextResponse.json({ ok: false, error: "That job belongs to another account." }, { status: 403 });
   }
 
-  const meter = METERED[job.type];
+  const meter = JOB_METER[job.type];
   const siteId = job.siteId;
   let hold = null;
 
