@@ -326,6 +326,12 @@ export default function RefundsPage() {
             Email:{" "}
             {grievanceEmail ? <a href={`mailto:${grievanceEmail}`}>{grievanceEmail}</a> : "our published contact address"}
           </li>
+          {COMPANY.grievanceOfficer.phone ? (
+            <li>
+              Telephone:{" "}
+              <a href={`tel:${COMPANY.grievanceOfficer.phone}`}>{COMPANY.grievanceOfficer.phoneDisplay}</a>
+            </li>
+          ) : null}
           <li>
             Acknowledgement within {COMPANY.grievanceOfficer.acknowledgeHours} hours, resolution within{" "}
             {COMPANY.grievanceOfficer.resolveDays} days.

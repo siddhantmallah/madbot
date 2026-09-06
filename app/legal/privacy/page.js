@@ -916,6 +916,11 @@ export default function PrivacyPage() {
                 , <a href={`mailto:${grievanceEmail}`}>{grievanceEmail}</a>
               </>
             ) : null}
+            {COMPANY.grievanceOfficer.phone ? (
+              <>
+                , <a href={`tel:${COMPANY.grievanceOfficer.phone}`}>{COMPANY.grievanceOfficer.phoneDisplay}</a>
+              </>
+            ) : null}
             {address ? <>, {address}</> : null}.
           </p>
         ) : (

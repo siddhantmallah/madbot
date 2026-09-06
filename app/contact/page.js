@@ -126,6 +126,13 @@ export default function ContactPage() {
             {officer.name && officerEmail ? (
               <p style={{ margin: "0 0 8px" }}>
                 {officer.name}, {officer.designation}.
+                {officer.phone ? (
+                  <>
+                    {" "}
+                    Telephone{" "}
+                    <a href={`tel:${officer.phone}`}>{officer.phoneDisplay}</a>.
+                  </>
+                ) : null}
               </p>
             ) : null}
             <p style={{ margin: "0 0 8px" }}>

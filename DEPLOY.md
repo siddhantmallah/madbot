@@ -122,8 +122,8 @@ missing. Grep for `MISSING_FOR_LAUNCH`.
 | ~~`pan`, `tan`~~ | Done | Needed on invoices and for TDS. Deliberately not rendered on any public page: a tax id belongs on an invoice, not in a footer |
 | `registeredOffice.line1`, `.city`, `.postcode` | As filed with the Registrar of Companies | Consumer Protection (E-Commerce) Rules 2020 require the seller's legal name and registered address to be published; GDPR Art 13 requires the controller's identity. `state` is already set to Maharashtra, derived from the MH in the CIN |
 | `gstin` | GST portal | **Leave null until actually GST-registered** — an invoice showing tax you are not registered to collect is a false document |
-| `grievanceOfficer.name` and `.email` | Your appointment | Consumer Protection (E-Commerce) Rules 2020 and IT Rules 2021 both require a named grievance officer with a published contact. The pages already publish the 48-hour acknowledgement and 30-day resolution commitment |
-| `emails.support` / `.privacy` / `.legal` / `.security` | Mailboxes you create | Each falls back to `NEXT_PUBLIC_CONTACT_EMAIL`. With that unset too, the Contact page currently renders **zero working addresses** |
+| ~~`grievanceOfficer`~~ | Done: Siddhant Mallah, with email and telephone | Consumer Protection (E-Commerce) Rules 2020 and IT Rules 2021 both require a named grievance officer with a published contact. The 48-hour acknowledgement and 30-day resolution commitment are published alongside |
+| `emails.privacy`, `.security` | Mailboxes you create | Both fall back to `NEXT_PUBLIC_CONTACT_EMAIL`, which is set, so the pages do render a working address. Dedicated inboxes are nicer but not blocking. `legal` and `grievance` already point at `contact@mallahsoftware.com`, whose domain has live MX records |
 | `euRepresentative`, `ukRepresentative` | Only if you appoint one | GDPR Art 27 requires an EU representative for a non-EU controller offering services to people in the EU, unless processing is occasional and low-risk. The Privacy Policy currently states plainly that none is appointed |
 
 ## 1c. Legal review
@@ -174,7 +174,9 @@ The Search Console connection asks for `https://www.googleapis.com/auth/webmaste
    firebase init firestore   # existing project madbot-256aa; keep firestore.rules; accept the default indexes file
    firebase deploy --only firestore:rules
    ```
-   **New in this release:** rules for `users/{uid}/sites/{siteId}/social/*` and `.../listings/*`, plus a server-only `trialLedger/{emailHash}` collection. Until they are published, the Social and Listings screens get permission-denied on read and show nothing. The trial ledger is written by the Admin SDK, which bypasses rules, so it works either way, but the deny rule must be published so no client can read or clear it.
+   **Already deployed.** The live ruleset is `ec81f6bf-a267-43c6-9b47-ebcca5aedc22` and matches `firestore.rules` byte for byte, verified by reading it back. It was previously stuck on `029bd549-0d4b-4105-9581-dedb897b9fd5`, which had no rules for `social/` or `listings/`, so both screens were getting permission-denied in production. To roll back, release that older ruleset id again.
+
+   Redeploy after any change to `firestore.rules`. Forgetting is silent: the code ships, the screen reads nothing, and no error appears anywhere except the browser console.
 3. Indexes: **none required.** Every client query is a single-field `orderBy`; the cron's collection-group reads are unfiltered. If Firestore ever logs a "requires an index" error it will include a one-click link.
 
 ### Service account
@@ -215,3 +217,39 @@ Then sign in with Google on the live site, connect one real website, and let the
 - **One trial per person.** Sign up, confirm the address, then delete the account from Billing and sign up again with the same address. The second account should land on the free plan with the "No trial on this account" notice. A `+tag` or extra dots in a Gmail address should not defeat it.
 - **Data export and deletion.** Both live on the Billing screen. The export downloads a JSON file; deletion requires typing a confirmation phrase and is irreversible.
 - **Regional pricing.** `/pricing` should default to the local currency in India, the US, the EU, the UK, the UAE and Singapore, and to USD everywhere else. Adding a country is one line in `app/api/region/route.js`.
+
+## 6. Maintenance scripts
+
+`scripts/prune-orphan-users.cjs` deletes Firestore user documents whose Firebase
+Auth account no longer exists. These accumulate from accounts removed through the
+Firebase console rather than through the product, and each one is personal data
+belonging to somebody who no longer has an account. The in-product delete route
+removes both, so nothing new should orphan.
+
+Dry run, which is the default:
+
+```bash
+node scripts/prune-orphan-users.cjs
+```
+
+Then, once you have read the list:
+
+```bash
+node scripts/prune-orphan-users.cjs --confirm
+```
+
+It refuses to touch any orphan that holds a subscription record, since that is the
+one signal it might have been a real customer. Deletion is recursive and cannot be
+undone.
+
+## 7. The site's own SEO
+
+MADBOT sells search visibility, so its own site should pass its own audit. Point the
+free report at `https://www.getmadbot.com` after any deploy that changes the marketing
+pages. `app/robots.js` and `app/sitemap.js` generate `/robots.txt` and `/sitemap.xml`,
+canonicals resolve per page from the root layout, and `Organization` plus `WebSite`
+structured data is emitted site-wide from `app/layout.js`.
+
+Adding a public page means adding one line to `app/sitemap.js`. That is deliberate: a
+filesystem-generated sitemap would silently list the next page somebody adds, whether
+or not it should be indexed.

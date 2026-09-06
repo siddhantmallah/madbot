@@ -2,12 +2,19 @@ import "./globals.css";
 import { AuthProvider } from "./providers/AuthProvider";
 import CookieConsent from "./components/CookieConsent";
 import { themeBootScript } from "./components/ThemeToggle";
+import { COMPANY, SITE_URL } from "../lib/company";
 
 export const metadata = {
-  metadataBase: new URL("https://getmadbot.com"),
+  // The www host, because the apex redirects to it. Pointing canonicals and
+  // Open Graph URLs at a redirect is a small own goal.
+  metadataBase: new URL(SITE_URL),
+  // A relative canonical resolves against metadataBase plus the current route,
+  // so every page gets its own rather than all of them claiming to be the
+  // homepage. MADBOT's own audit flags a missing canonical as a finding.
+  alternates: { canonical: "./" },
   title: "MADBOT — autonomous website marketing that runs itself",
   description:
-    "Connect your website once. MADBOT finds the opportunities, writes and publishes the pages, earns the links, spots the buyers and reports what it did — at the level of autonomy you choose.",
+    "Connect your website once. MADBOT audits it, writes the pages, lists you where buyers look and finds the companies who need you. You keep a dial and a veto.",
   // A favicon sits on browser chrome this app does not control, so unlike the
   // in-app mark it cannot be recoloured by the theme at runtime. It has to ship
   // in both, selected by `media`, or the dark mark vanishes against a dark tab
@@ -54,6 +61,53 @@ export const metadata = {
   },
 };
 
+
+// Structured data. MADBOT's own report marks "no structured data at all" as
+// critical and pitches schema markup as a reason to buy, so the site having
+// none was the most quietly embarrassing finding in its own audit.
+//
+// Every property here is verifiable. There is no aggregateRating and no review,
+// because there are no customers yet and inventing either would be a fabricated
+// record rather than an optimisation.
+const ORGANISATION = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "@id": `${SITE_URL}/#organization`,
+  name: COMPANY.product,
+  legalName: COMPANY.legalName,
+  url: SITE_URL,
+  logo: `${SITE_URL}/icon-192.png`,
+  foundingDate: COMPANY.incorporatedOn,
+  ...(COMPANY.cin ? { identifier: { "@type": "PropertyValue", name: "CIN", value: COMPANY.cin } } : {}),
+  address: {
+    "@type": "PostalAddress",
+    ...(COMPANY.registeredOffice.city ? { addressLocality: COMPANY.registeredOffice.city } : {}),
+    ...(COMPANY.registeredOffice.state ? { addressRegion: COMPANY.registeredOffice.state } : {}),
+    addressCountry: "IN",
+  },
+  ...(COMPANY.grievanceOfficer.email
+    ? {
+        contactPoint: {
+          "@type": "ContactPoint",
+          contactType: "customer support",
+          email: COMPANY.grievanceOfficer.email,
+          ...(COMPANY.grievanceOfficer.phone ? { telephone: COMPANY.grievanceOfficer.phone } : {}),
+          availableLanguage: ["en"],
+        },
+      }
+    : {}),
+};
+
+const WEBSITE = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "@id": `${SITE_URL}/#website`,
+  name: COMPANY.product,
+  url: SITE_URL,
+  publisher: { "@id": `${SITE_URL}/#organization` },
+  inLanguage: "en",
+};
+
 export default function RootLayout({ children }) {
   return (
     <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
@@ -62,6 +116,10 @@ export default function RootLayout({ children }) {
             that runs after hydration is too late — the visitor would see a
             flash of the wrong theme first. */}
         <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify([ORGANISATION, WEBSITE]) }}
+        />
       </head>
       <body>
         <AuthProvider>

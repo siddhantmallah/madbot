@@ -453,6 +453,12 @@ export default function TermsPage() {
               "our published contact address"
             )}
           </li>
+          {COMPANY.grievanceOfficer.phone ? (
+            <li>
+              Telephone:{" "}
+              <a href={`tel:${COMPANY.grievanceOfficer.phone}`}>{COMPANY.grievanceOfficer.phoneDisplay}</a>
+            </li>
+          ) : null}
         </ul>
         <p>
           We acknowledge a grievance within {COMPANY.grievanceOfficer.acknowledgeHours} hours and aim to resolve it
