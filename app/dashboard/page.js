@@ -1749,7 +1749,7 @@ function DashboardInner() {
         </div>
 
         {toast ? (
-          <div style={{ position: "fixed", right: 24, bottom: 24, zIndex: 60, width: 352, animation: "rise .35s cubic-bezier(.2,.8,.2,1)" }}>
+          <div style={{ position: "fixed", right: 24, bottom: 24, zIndex: 75, width: 352, animation: "rise .35s cubic-bezier(.2,.8,.2,1)" }}>
             <div className="card elev-lg" style={{ padding: 18, gap: 10, background: "var(--color-accent-2-100)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
                 <span style={{ width: 28, height: 28, borderRadius: "50%", background: "var(--color-accent-2-500)", flex: "none", animation: "drift 3s ease-in-out infinite" }} />

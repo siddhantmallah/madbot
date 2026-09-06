@@ -127,7 +127,15 @@ export default function CookieConsent() {
         left: 0,
         right: 0,
         bottom: 0,
-        zIndex: 90,
+        // Layer order, lowest first: consent 70, dashboard toast 75,
+        // onboarding 80, screen modals 90, the free report 100.
+        //
+        // This was 90, which tied with the content and social modals and beat
+        // the onboarding modal at 80. A tie is broken by DOM order and this
+        // component is mounted after the page in the root layout, so it won
+        // both: a brand new user got a cookie banner across the bottom of the
+        // onboarding they were halfway through.
+        zIndex: 70,
         padding: "0 12px 12px",
         pointerEvents: "none",
       }}
