@@ -1,5 +1,6 @@
 import "./globals.css";
 import { AuthProvider } from "./providers/AuthProvider";
+import CookieConsent from "./components/CookieConsent";
 import { themeBootScript } from "./components/ThemeToggle";
 
 export const metadata = {
@@ -49,7 +50,12 @@ export default function RootLayout({ children }) {
         <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
       </head>
       <body>
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          {children}
+          {/* Renders nothing until it knows where the visitor is, then asks the
+              question their jurisdiction actually requires. See lib/consent.js. */}
+          <CookieConsent />
+        </AuthProvider>
       </body>
     </html>
   );
