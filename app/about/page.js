@@ -1,13 +1,17 @@
 import Link from "next/link";
+import { pageMeta } from "../../lib/seo";
 import LegalPage, { LegalSection, Callout, DefTable } from "../components/LegalPage";
 import { COMPANY, registeredAddressLine, emailFor } from "../../lib/company";
 import { CONTACT_EMAIL } from "../../lib/contact";
 
-export const metadata = {
-  title: "About MADBOT",
+// Through the shared helper, like every other route, so the canonical, the
+// Open Graph URL and the title suffix cannot drift from the rest of the site.
+export const metadata = pageMeta({
+  title: "About — who builds MADBOT and what it does",
   description:
-    "MADBOT is autonomous website marketing, built by a private limited company in India. What it does, who makes it, and what is still missing.",
-};
+    "MADBOT is autonomous website marketing, built by a private limited company in India. What it does, who makes it, how it is built, and what is still missing.",
+  path: "/about",
+});
 
 const TOC = [
   { id: "what", title: "What MADBOT is" },

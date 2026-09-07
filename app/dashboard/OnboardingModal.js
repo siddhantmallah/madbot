@@ -246,7 +246,7 @@ export default function OnboardingModal({ uid, canSkip, initialUrl, onClose, onF
               <div style={{ fontSize: 13, color: "var(--color-accent-700)" }}>{readError}</div>
             ) : null}
             <div style={{ display: "flex", gap: 9, flexWrap: "wrap", justifyContent: "center", maxWidth: 520 }}>
-              <span className="tag tag-neutral">Rollback always on</span>
+              <span className="tag tag-neutral">Approval always required</span>
               <span className="tag tag-neutral">Nothing published without your rules</span>
             </div>
             {canSkip ? (

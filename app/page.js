@@ -12,6 +12,7 @@ import dynamic from "next/dynamic";
 import { bandInfo, bands } from "../lib/autonomyDial";
 import { PLANS, PLAN_ORDER, REGIONS, formatPrice, priceFor, highlightsFor } from "../lib/plans";
 import { useRegion } from "../lib/useRegion";
+import { SITE_URL } from "../lib/company";
 
 // three.js talks to the GPU, not the server. Client-only, so the page still
 // prerenders and the scene arrives after.
@@ -24,7 +25,7 @@ const TICKER_LINES = [
   "Marks up your schema so answer engines can cite you",
   "Writes and ships the pages, then tracks what moved",
   "Spots the companies who have your problem this week",
-  "Rolls any of it back in one click",
+  "Holds every publish for your approval",
 ];
 
 // The strip under the hero. Each line is something the code does today.
@@ -37,7 +38,7 @@ const MARQUEE = [
   "Lists you in the directories buyers check",
   "Spots the companies who have your problem this week",
   "Nothing sent, nothing published, without you",
-  "Rolls any of it back in one click",
+  "Every action logged, with the reason it was taken",
 ];
 
 const FAQS = [
@@ -47,7 +48,7 @@ const FAQS = [
   },
   {
     q: "How is this different from an SEO tool?",
-    a: "An SEO tool hands you a list of problems and a monthly bill. MADBOT does the work — ships the pages, fixes the debt, earns the links, finds the buyers — and then tells you what changed.",
+    a: "An SEO tool hands you a list of problems and a monthly bill. MADBOT does the work — writes the pages, marks up the schema, lists you in the directories buyers check, finds the companies who need you — and then shows you what changed and why.",
   },
   {
     q: "What does it need from me to get started?",
@@ -63,7 +64,7 @@ const FAQS = [
   },
   {
     q: "What happens if I turn it off?",
-    a: "Everything it made is yours and stays on your site. Export the audit trail on the way out, and roll back anything you'd rather undo.",
+    a: "Everything it made is yours and stays on your site — the articles were merged by you, so they are just files in your repository. Export the full audit trail on the way out, and delete the account and everything in it from Billing whenever you like.",
   },
 ];
 
@@ -126,6 +127,62 @@ function FaqItem({ q, a }) {
   );
 }
 
+/**
+ * Structured data for the landing page.
+ *
+ * The FAQ schema is built from the same FAQS array the page renders, which is
+ * the only way it is allowed to exist: Google requires the questions and
+ * answers to be visible on the page, and a hand-maintained second copy would
+ * drift into being markup that describes a page nobody can see.
+ *
+ * MADBOT's own report marks "No FAQ or Q&A markup" as a finding and calls
+ * question-shaped markup the format answer engines quote most readily. Selling
+ * that while not doing it was the last thing left in its own audit.
+ *
+ * No aggregateRating and no review, here or anywhere: there are no customers
+ * yet, and inventing either would be a fabricated record dressed as an
+ * optimisation. Rich-result markup is the easiest place in a codebase to lie,
+ * because nobody reads it.
+ */
+function landingSchema(faqs) {
+  return [
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "@id": `${SITE_URL}/#faq`,
+      mainEntity: faqs.map((f) => ({
+        "@type": "Question",
+        name: f.q,
+        acceptedAnswer: { "@type": "Answer", text: f.a },
+      })),
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "@id": `${SITE_URL}/#software`,
+      name: "MADBOT",
+      applicationCategory: "BusinessApplication",
+      applicationSubCategory: "Marketing automation",
+      operatingSystem: "Web browser",
+      url: SITE_URL,
+      publisher: { "@id": `${SITE_URL}/#organization` },
+      description:
+        "Connect a website once. MADBOT audits it, writes the pages, lists you where buyers look and finds the companies who need you, at the level of autonomy you choose.",
+      // Real numbers from lib/plans.js. Quoted in USD because schema takes one
+      // currency and USD is the international list; /pricing shows the local
+      // price for each region we sell in.
+      offers: {
+        "@type": "AggregateOffer",
+        priceCurrency: "USD",
+        lowPrice: "0",
+        highPrice: "299",
+        offerCount: "5",
+        url: `${SITE_URL}/pricing`,
+      },
+    },
+  ];
+}
+
 export default function LandingPage() {
   const rootRef = usePageReveal();
   const [heroUrl, setHeroUrl] = useState("");
@@ -147,6 +204,10 @@ export default function LandingPage() {
 
   return (
     <div ref={rootRef} className="marketing" style={{ minHeight: "100vh", fontSize: 16, overflowX: "hidden", background: "var(--color-bg)" }}>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(landingSchema(FAQS)) }}
+      />
       <header
         style={{
           position: "sticky",
@@ -264,8 +325,8 @@ export default function LandingPage() {
                 <dd style={{ margin: "6px 0 0", fontFamily: "var(--font-heading)", fontSize: 30 }}>20+</dd>
               </div>
               <div>
-                <dt className="mono">Every action</dt>
-                <dd style={{ margin: "6px 0 0", fontFamily: "var(--font-heading)", fontSize: 30 }}>Reversible</dd>
+                <dt className="mono">Published without asking</dt>
+                <dd style={{ margin: "6px 0 0", fontFamily: "var(--font-heading)", fontSize: 30 }}>Nothing</dd>
               </div>
             </dl>
           </div>
@@ -301,7 +362,7 @@ export default function LandingPage() {
               { n: "1", bg: "var(--color-accent)", fg: "var(--on-accent)", ring: false, glow: "rgba(255,106,26,.35)", title: "Reads your site", body: "Products, buyers, rivals, technical debt, and the 83 openings you didn't know were there. One URL, no tags." },
               { n: "2", bg: "var(--color-accent-2-500)", fg: "var(--on-accent)", ring: false, glow: "rgba(168,85,247,.35)", title: "Picks its battles", body: "Every opportunity gets an expected value, a difficulty and a confidence score. Cheap wins first, moonshots last." },
               { n: "3", bg: "transparent", fg: "var(--color-accent)", ring: "var(--color-accent)", title: "Does the work", body: "Writes, publishes, fixes, submits, lists, pitches and finds buyers — inside the rules you wrote in plain English." },
-              { n: "4", bg: "transparent", fg: "var(--color-accent-2-700)", ring: "var(--color-accent-2-500)", title: "Shows the receipts", body: "One Friday digest, one honest baseline it never re-bases, and a one-click rollback on every single action." },
+              { n: "4", bg: "transparent", fg: "var(--color-accent-2-700)", ring: "var(--color-accent-2-500)", title: "Shows the receipts", body: "One Friday digest, one honest baseline it never re-bases, and every action on the record with the reason it was taken." },
             ].map((s, i) => (
               <li key={s.n} className="reveal" style={{ display: "flex", flexDirection: "column", gap: 13 }}>
                 <span
@@ -443,7 +504,7 @@ export default function LandingPage() {
                 })}
               </ul>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                {["Guardrails in plain English", "One-click rollback", "Full audit trail"].map((t) => (
+                {["Guardrails in plain English", "Nothing published without you", "Full audit trail"].map((t) => (
                   <span key={t} className="tag" style={{ background: "var(--color-accent-2-100)", color: "var(--color-accent-2-800)", border: "1px solid var(--color-accent-2-400)" }}>
                     {t}
                   </span>
