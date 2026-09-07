@@ -565,3 +565,22 @@ textarea.input{min-height:90px;resize:vertical;border-radius:var(--radius-md)}
    the graph. The frame now scrolls at any width, and this keeps the inner
    canvas from collapsing to the frame's width. */
 .graph-frame > .graph-canvas{min-width:840px}
+
+/* ---------------------------------------------------------------------------
+   The product surface
+   The display face is an editorial choice: it earns its keep on a landing page
+   where a headline is the point, and works against a dashboard, where headings
+   are signposts you scan past on the way to a number. `.marketing` hard-edges
+   the public pages; this is its opposite, and both exist so one file decides
+   which surface a page belongs to.
+
+   Overriding the two tokens is enough, because every heading and every inline
+   fontFamily in the dashboard resolves through them.
+   --------------------------------------------------------------------------- */
+.product{
+  --font-heading: var(--font-body);
+  /* Caprasimo ships one weight, 400. Figtree at 400 reads as body copy, so a
+     heading needs the bold. */
+  --font-heading-weight: 700;
+}
+.product h1,.product h2,.product h3,.product h4,.product h5,.product h6{letter-spacing:-0.011em}

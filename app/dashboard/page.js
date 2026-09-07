@@ -1308,7 +1308,7 @@ function DashboardInner() {
   const displayName = user.displayName || user.email || "you";
 
   return (
-    <div className="shell" style={{ height: "100vh", fontSize: 15, color: "var(--color-text)", background: "var(--color-bg)", overflow: "hidden" }}>
+    <div className="shell product" style={{ height: "100vh", fontSize: 15, color: "var(--color-text)", background: "var(--color-bg)", overflow: "hidden" }}>
       <aside className="shell-nav" style={{ background: "var(--color-surface)", padding: "18px 14px 14px", display: "flex", flexDirection: "column", gap: 16, borderRight: "1px solid var(--color-divider)", overflow: "auto" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "0 6px" }}>
           <MadbotMark size={29} />

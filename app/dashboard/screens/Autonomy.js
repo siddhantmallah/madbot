@@ -1,10 +1,19 @@
 import { useState } from "react";
+import { bandInfo, bands, labelPoint } from "../../../lib/autonomyDial";
 
 import DataRules from "./DataRules";
 import AutonomyDial from "../../components/AutonomyDial";
 
+// How far the dial is inset inside its box, to leave a margin for the band
+// labels. One constant, because the padding, the two background rings and the
+// label positions all have to agree about it.
+const DIAL_INSET = 11;
+const DIAL_SPAN = (100 - DIAL_INSET * 2) / 100;
+
 export default function Autonomy({ aut, setAut, onCommitAut, rules, setRules, voice, setVoice, brandName, dataPolicy, onDataPolicyChange }) {
   const [draftRule, setDraftRule] = useState("");
+  // Which band the dial is in, so its label can be the one highlighted.
+  const band = bandInfo(aut);
 
   // What the dial actually changes today, stated rather than promised.
   //
@@ -32,7 +41,10 @@ export default function Autonomy({ aut, setAut, onCommitAut, rules, setRules, vo
   function addRuleNow() {
     const t = draftRule.trim();
     if (!t) return;
-    setRules((r) => [...r, { id: "r" + r.length + "-" + t.slice(0, 4), text: t }]);
+    // Not r.length: delete one rule, add another starting with the same four
+    // characters, and the id repeats. That is a duplicate React key and a
+    // Remove that filters by id, so it deletes both rows.
+    setRules((r) => [...r, { id: `r${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, text: t }]);
     setDraftRule("");
   }
 
@@ -49,15 +61,48 @@ export default function Autonomy({ aut, setAut, onCommitAut, rules, setRules, vo
         {/* Sized by the column rather than a fixed 404px, so it fits a phone
             without the column scrolling sideways. The corner labels are in
             percentages for the same reason. */}
-        <div style={{ position: "relative", width: "min(404px, 100%)", aspectRatio: "1", containerType: "inline-size" }}>
-          <div aria-hidden="true" style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "var(--color-surface)", boxShadow: "var(--shadow-lg)" }} />
-          <div aria-hidden="true" style={{ position: "absolute", inset: "7%", borderRadius: "50%", background: "var(--color-bg)", border: "1px solid var(--color-divider)" }} />
-          <AutonomyDial value={aut} onChange={setAut} onCommit={onCommitAut}>
-            <span style={{ position: "absolute", left: "8.5%", bottom: "12%", fontSize: 11.5, fontWeight: 600, color: "var(--color-neutral-600)", pointerEvents: "none" }}>Watch</span>
-            <span style={{ position: "absolute", left: "2%", top: "37.5%", fontSize: 11.5, fontWeight: 600, color: "var(--color-neutral-600)", pointerEvents: "none" }}>Suggest</span>
-            <span style={{ position: "absolute", right: "1.5%", top: "37.5%", fontSize: 11.5, fontWeight: 600, color: "var(--color-neutral-600)", pointerEvents: "none" }}>Let it rip</span>
-            <span style={{ position: "absolute", right: "6.5%", bottom: "12%", fontSize: 11.5, fontWeight: 600, color: "var(--color-neutral-600)", pointerEvents: "none" }}>Full send</span>
-          </AutonomyDial>
+        {/* Padded, so the band labels sit outside the ring instead of on top
+            of it. The dial fills the inset; the labels live in the margin. */}
+        <div style={{ position: "relative", width: "min(404px, 100%)", aspectRatio: "1", containerType: "inline-size", padding: `${DIAL_INSET}%`, boxSizing: "border-box" }}>
+          <div aria-hidden="true" style={{ position: "absolute", inset: `${DIAL_INSET}%`, borderRadius: "50%", background: "var(--color-surface)", boxShadow: "var(--shadow-lg)" }} />
+          <div aria-hidden="true" style={{ position: "absolute", inset: `${DIAL_INSET + 6}%`, borderRadius: "50%", background: "var(--color-bg)", border: "1px solid var(--color-divider)" }} />
+
+          {/* Positions come from lib/autonomyDial.js, not from four guessed
+              percentages. They used to collide with the stroke, and "Suggest"
+              clipped the left edge of the box. */}
+          {bands().map((b) => {
+            // labelPoint works in the dial's own box. The dial is inset by
+            // DIAL_INSET here to leave room for these labels, so the point has
+            // to be mapped into the padded frame or the two extremes hang off
+            // the left and right edges.
+            const at = labelPoint(b.mid, 1.34);
+            const left = DIAL_INSET + at.leftPct * DIAL_SPAN;
+            const top = DIAL_INSET + at.topPct * DIAL_SPAN;
+            return (
+              <span
+                key={b.label}
+                aria-hidden="true"
+                style={{
+                  position: "absolute",
+                  left: `${left}%`,
+                  top: `${top}%`,
+                  transform: "translate(-50%, -50%)",
+                  fontSize: 11.5,
+                  fontWeight: 600,
+                  whiteSpace: "nowrap",
+                  color: b.index === band.index ? "var(--color-accent)" : "var(--fg-45)",
+                  pointerEvents: "none",
+                  transition: "color .2s",
+                }}
+              >
+                {b.short}
+              </span>
+            );
+          })}
+
+          <div style={{ position: "absolute", inset: `${DIAL_INSET}%` }}>
+            <AutonomyDial value={aut} onChange={setAut} onCommit={onCommitAut} />
+          </div>
         </div>
         <div style={{ display: "flex", gap: 9, flexWrap: "wrap", justifyContent: "center", maxWidth: 600 }}>
           {perms.map((p) => (
