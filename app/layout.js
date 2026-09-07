@@ -1,6 +1,7 @@
 import "./globals.css";
 import { AuthProvider } from "./providers/AuthProvider";
 import CookieConsent from "./components/CookieConsent";
+import AdSense from "./components/AdSense";
 import { themeBootScript } from "./components/ThemeToggle";
 import { COMPANY, SITE_URL } from "../lib/company";
 
@@ -135,6 +136,9 @@ export default function RootLayout({ children }) {
           {/* Renders nothing until it knows where the visitor is, then asks the
               question their jurisdiction actually requires. See lib/consent.js. */}
           <CookieConsent />
+          {/* Loads only once advertising consent allows it. See the note in
+              the component about Google's certified-CMP requirement. */}
+          <AdSense />
         </AuthProvider>
       </body>
     </html>

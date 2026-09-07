@@ -1,0 +1,4 @@
+# Authorised Digital Sellers. Google will not serve ads on a domain that has an
+# ads.txt it is missing from, so this file is not optional once AdSense is live.
+# The last field is Google's own certification authority id, a public constant.
+google.com, pub-2309671102557521, DIRECT, f08c47fec0942fa0

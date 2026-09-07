@@ -70,7 +70,7 @@ function ReachUs({ address }) {
 const TOC = [
   { id: "what-this-is", title: "What this page covers" },
   { id: "inventory", title: "Everything we store, in full" },
-  { id: "empty-categories", title: "No analytics, no advertising" },
+  { id: "empty-categories", title: "Advertising, and why analytics is still empty" },
   { id: "by-country", title: "Why the banner differs by country" },
   { id: "gpc", title: "Global Privacy Control" },
   { id: "change", title: "How to change your answer" },
@@ -163,22 +163,38 @@ export default function CookiesPage() {
         </p>
       </LegalSection>
 
-      <LegalSection id="empty-categories" index={3} title="No analytics, no advertising">
+      <LegalSection id="empty-categories" index={3} title="Advertising, and why analytics is still empty">
         <p>
-          {COMPANY.product} runs <b>no analytics</b> and <b>no advertising or
-          tracking cookies</b>. There is no Google Analytics, no pixel, no
-          fingerprinting, no session recorder, no A/B testing tool and no ad
-          network. Nobody is building a profile of you from this site, and we do
-          not sell or share anything for advertising.
+          This site carries advertising, served by <b>Google AdSense</b>. Where
+          you have allowed the Advertising category, Google sets its own cookies
+          here and uses them to decide which ads you see, on this site and on
+          others. That is profiling, and calling it anything else would be
+          dishonest. Where you have not allowed it, the AdSense script is never
+          requested at all, so nothing of Google&apos;s is loaded, set or read.
         </p>
         <p>
-          The two categories named{" "}
-          <b>{INVENTORY[CATEGORIES.ANALYTICS].label}</b> and{" "}
-          <b>{INVENTORY[CATEGORIES.MARKETING].label}</b> still appear in the
-          table above with nothing in them. That is deliberate. An empty category on the record is a
-          verifiable claim: you can see that we considered the question and that
-          the answer is currently none. Deleting the category would make the
-          claim disappear rather than making it stronger.
+          Under the California CPRA and the equivalent state laws, allowing that
+          category means we <b>share</b> personal information for cross-context
+          behavioural advertising. You can withdraw it at any time from{" "}
+          <b>Cookie preferences</b> in the footer of any page, and a browser
+          sending a Global Privacy Control signal is treated as a refusal before
+          we ask you anything.
+        </p>
+        <p>
+          <b>Analytics is a different answer.</b> {COMPANY.product} runs no
+          analytics at all: no Google Analytics, no pixel, no fingerprinting, no
+          session recorder and no A/B testing tool. Nobody here is measuring
+          your behaviour on this site.
+        </p>
+        <p>
+          The category named{" "}
+          <b>{INVENTORY[CATEGORIES.ANALYTICS].label}</b> still appears in the
+          table above with nothing in it. That is deliberate. An empty category
+          on the record is a verifiable claim: you can see that we considered
+          the question and that the answer is currently none. Deleting the
+          category would make the claim disappear rather than making it
+          stronger, and it is the switch a future analytics tool would have to
+          pass through before it ran.
         </p>
         {nothingOptionalInUse ? (
           <Callout>

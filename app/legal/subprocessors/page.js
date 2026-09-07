@@ -85,6 +85,12 @@ const ROWS = [
     "United States and globally",
     "Only if you connect that account",
   ],
+  [
+    "Google AdSense",
+    "Serving the advertising on our public pages, and the cookies it uses to choose which ads a visitor sees. Never touches anything inside a customer dashboard.",
+    "United States and globally",
+    "Public pages only, and only where a visitor has allowed the Advertising category",
+  ],
 ];
 
 export default function SubprocessorsPage() {

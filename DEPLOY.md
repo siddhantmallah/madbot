@@ -262,3 +262,43 @@ structured data is emitted site-wide from `app/layout.js`.
 Adding a public page means adding one line to `app/sitemap.js`. That is deliberate: a
 filesystem-generated sitemap would silently list the next page somebody adds, whether
 or not it should be indexed.
+
+## 8. Google AdSense
+
+The tag is live at publisher id `ca-pub-2309671102557521`, loaded by
+`app/components/AdSense.js` and `/ads.txt` is served from `public/`. Google will
+not serve ads on a domain whose `ads.txt` omits its publisher id, so that file is
+not optional.
+
+**It only loads once a visitor allows the Advertising category.** Google's own
+tag is an unconditional `<script async>`, and pasted in as-is that is unlawful in
+the EEA and the UK: the ePrivacy Directive puts consent on the storage itself, so
+the script sets Google's cookies before any banner has finished asking. Refusing
+here means the file is never requested, not requested and then asked to behave.
+
+Adding it changed three statements on the site that had been true, and they were
+corrected in the same commit: the Cookie Policy said the site carried no
+advertising, and the Privacy Policy twice said we never share personal
+information for cross-context behavioural advertising. Under the CPRA, allowing
+that category **is** sharing, so both now disclose it and name the opt-out.
+Google AdSense is on the sub-processor list. `CONSENT_VERSION` went to 3, which
+invalidates every stored answer, because an existing "reject optional" was an
+answer to a question that never mentioned advertising.
+
+### Three things to know before you count on the revenue
+
+- **Google requires a certified consent management platform to serve ads to EEA
+  and UK visitors.** The gate in this codebase is honest and enforced, but it is
+  not on Google's certified list, so Google may restrict or refuse EEA ad serving
+  whatever a visitor here agrees to. Either adopt a certified CMP, or accept that
+  European traffic may not monetise. This is not fixable in our own code.
+- **AdSense approval is not automatic.** Google reviews the site for substantial
+  original content. A landing page, a pricing page and a set of policies may be
+  refused as thin. There are no ad slots placed anywhere yet either: the script
+  loads, but nothing calls `adsbygoogle.push`, so no ad renders until you add
+  units.
+- **Worth a second thought on a B2B product.** These ads are contextual, which on
+  a page about marketing software means competitors. It puts other people's
+  adverts next to your own pricing table, in front of a buyer who is deciding.
+  Your call entirely, but it is the kind of decision that is easier to make
+  before launch than after.
