@@ -2,6 +2,7 @@ import "./globals.css";
 import { AuthProvider } from "./providers/AuthProvider";
 import CookieConsent from "./components/CookieConsent";
 import AdSense from "./components/AdSense";
+import { ADSENSE_CLIENT } from "../lib/adsense";
 import { themeBootScript } from "./components/ThemeToggle";
 import { COMPANY, SITE_URL } from "../lib/company";
 
@@ -43,6 +44,14 @@ export const metadata = {
     // mark and a wider margin to survive the mask.
     apple: [{ url: "/apple-icon.png", type: "image/png", sizes: "180x180" }],
     shortcut: ["/favicon.ico"],
+  },
+  // AdSense site verification. The script-snippet method cannot work on this
+  // site: the tag is consent-gated, so Google's crawler never sees it execute
+  // and verification fails, which is exactly what happened. This meta tag is
+  // Google's documented alternative, it is static, and it stores nothing, so
+  // it needs no consent and is safe to render unconditionally.
+  other: {
+    "google-adsense-account": ADSENSE_CLIENT,
   },
   openGraph: {
     type: "website",

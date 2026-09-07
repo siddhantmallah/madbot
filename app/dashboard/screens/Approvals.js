@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { ago, minutesAgo } from "../data";
 
 /**
@@ -25,7 +25,13 @@ export default function Approvals({ approvals, onApprove, onDecline, onEdit, soc
   const [draftSubject, setDraftSubject] = useState("");
   const [draftBody, setDraftBody] = useState("");
 
-  const pending = approvals.filter((a) => a.status === "pending").length;
+  // Split, not filtered by a counter. The headline used to count only pending
+  // items while the list below rendered every approval ever made, so a clear
+  // queue sat directly above three decided cards and read as a contradiction.
+  // History is worth keeping; it just needs saying which half it is.
+  const waiting = approvals.filter((a) => a.status === "pending");
+  const decided = approvals.filter((a) => a.status !== "pending");
+  const pending = waiting.length;
   const headline =
     approvals.length === 0
       ? "Nothing waiting yet."
@@ -68,8 +74,13 @@ export default function Approvals({ approvals, onApprove, onDecline, onEdit, soc
         </button>
       ) : null}
 
-      {approvals.map((a) => {
+      {decided.length && pending > 0 ? (
+        <h3 className="mono" style={{ margin: "4px 0 -6px" }}>Waiting on you</h3>
+      ) : null}
+
+      {[...waiting, ...decided].map((a, i) => {
         const status = a.status === "pending" ? null : a.status;
+        const firstDecided = !!status && i === waiting.length;
         const isEditing = editingId === a.id;
         const subject = a.subject || a.title || "";
         const body = a.body || a.detail || "";
@@ -77,8 +88,15 @@ export default function Approvals({ approvals, onApprove, onDecline, onEdit, soc
         const shaky = conf !== null && conf < 60;
 
         return (
+          <Fragment key={a.id}>
+          {/* A heading before the first decided card, so the history below a
+              clear queue is obviously history rather than a to-do list. */}
+          {firstDecided ? (
+            <h3 className="mono" style={{ margin: "10px 0 -6px" }}>
+              Already decided
+            </h3>
+          ) : null}
           <div
-            key={a.id}
             className="card elev-sm"
             style={{ padding: 20, gap: 12, background: status ? "var(--color-neutral-100)" : "var(--color-surface)", opacity: status ? 0.62 : 1 }}
           >
@@ -189,6 +207,7 @@ export default function Approvals({ approvals, onApprove, onDecline, onEdit, soc
               )}
             </div>
           </div>
+          </Fragment>
         );
       })}
 

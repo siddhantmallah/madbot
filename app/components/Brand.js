@@ -1,3 +1,8 @@
+"use client";
+import { getAuth } from "firebase/auth";
+import { getApp } from "firebase/app";
+import { useEffect, useState } from "react";
+
 // Official Google and GitHub marks, plus the MADBOT logo mark, as inline SVG
 // so they render without any external asset request (the CSP-safe route).
 
@@ -69,16 +74,69 @@ export function MadbotMark({ size = 30, color = "var(--fg)", label }) {
 
 // A connected site's favicon, falling back to a monogram tile when the site
 // has none or it fails to load.
+// One in-flight fetch and one result per icon URL, for the whole page. SiteIcon
+// renders in the header, the site switcher and several screen titles at once,
+// and without this each instance would fetch the same icon again.
+const ICON_CACHE = new Map();
+
+function useProxiedIcon(faviconUrl) {
+  const [src, setSrc] = useState(() => ICON_CACHE.get(faviconUrl) || null);
+
+  useEffect(() => {
+    if (!faviconUrl) return undefined;
+    if (ICON_CACHE.has(faviconUrl)) {
+      setSrc(ICON_CACHE.get(faviconUrl));
+      return undefined;
+    }
+
+    let alive = true;
+    (async () => {
+      try {
+        const user = getAuth(getApp()).currentUser;
+        if (!user) return;
+        // Fetched rather than set as an <img src> so the id token travels in a
+        // header. An <img> cannot send one, and putting a bearer token in a
+        // query string that the browser then caches and logs is worse than a
+        // letter tile.
+        const res = await fetch(`/api/favicon?url=${encodeURIComponent(faviconUrl)}`, {
+          headers: { "x-id-token": await user.getIdToken() },
+        });
+        if (!res.ok) throw new Error(String(res.status));
+        const url = URL.createObjectURL(await res.blob());
+        ICON_CACHE.set(faviconUrl, url);
+        if (alive) setSrc(url);
+      } catch {
+        // Cached as a failure so one unreachable icon is not retried by every
+        // other instance on the page. The letter tile shows through.
+        ICON_CACHE.set(faviconUrl, null);
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, [faviconUrl]);
+
+  return src;
+}
+
+/**
+ * A connected site's icon, with its first letter behind it.
+ *
+ * The letter tile is always rendered and the icon is layered over it, so any
+ * failure reveals the letter rather than leaving a gap.
+ *
+ * The icon comes through /api/favicon rather than straight from the site.
+ * Plenty of well-configured sites send Cross-Origin-Resource-Policy with their
+ * favicon, which tells the browser not to let another origin embed it, so a
+ * direct <img> failed and every one of those sites showed a letter. Proxying it
+ * through our own origin is the only way to render it without handing the
+ * customer's client-site domains to a third-party favicon service.
+ */
 export function SiteIcon({ site, size = 18 }) {
   const letter = (site?.title || site?.url || "?").replace(/^https?:\/\//, "").charAt(0).toUpperCase();
+  const src = useProxiedIcon(site?.faviconUrl || null);
 
-  // The letter tile is always rendered, with the favicon layered over it. When
-  // the image fails the letter is simply revealed — no state, and it covers
-  // every failure mode rather than only a missing URL.
-  //
-  // Failures are routine: a client site may serve its icon with a
-  // Cross-Origin-Resource-Policy header that blocks embedding (certnotify.com
-  // does), or 404, or be slow. Previously onError hid the image and left a gap.
   return (
     <span
       style={{
@@ -97,15 +155,12 @@ export function SiteIcon({ site, size = 18 }) {
       }}
     >
       {letter}
-      {site?.faviconUrl ? (
+      {src ? (
         <img
-          src={site.faviconUrl}
+          src={src}
           alt=""
           width={size}
           height={size}
-          loading="lazy"
-          // Don't leak which MADBOT customer is looking at which client site.
-          referrerPolicy="no-referrer"
           style={{
             position: "absolute",
             inset: 0,

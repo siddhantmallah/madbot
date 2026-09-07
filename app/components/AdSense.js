@@ -3,10 +3,7 @@
 import Script from "next/script";
 import { useEffect, useState } from "react";
 import { CATEGORIES, allows } from "../../lib/consent";
-
-// Public identifier, not a secret: it is in the script URL on every page that
-// serves an ad. Kept here so there is one place to change it.
-export const ADSENSE_CLIENT = "ca-pub-2309671102557521";
+import { ADSENSE_CLIENT } from "../../lib/adsense";
 
 /**
  * Loads Google AdSense, but only once the visitor's advertising consent allows
