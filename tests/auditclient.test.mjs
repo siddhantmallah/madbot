@@ -1,7 +1,7 @@
 // lib/auditClient.js — diffSnapshots (pure) and the THRESHOLDS contract.
 //   node --no-warnings --import ./tests/_register.mjs tests/auditclient.test.mjs
 import { suite, test, eq, truthy, report } from "./_harness.mjs";
-import { diffSnapshots, THRESHOLDS } from "../lib/auditClient.js";
+import { BANDS, SCORE_FLOOR, bandFor, criticalCeiling, diffSnapshots, THRESHOLDS } from "../lib/auditClient.js";
 import { runSnapshot } from "../lib/audit.js";
 
 suite("lib/auditClient.js — diffSnapshots");
@@ -178,6 +178,60 @@ await test("finding copy quotes the same numbers the gauges use", async () => {
   }
   if (mismatches.length) throw new Error(mismatches.join("; "));
   return "copy and gauges agree";
+});
+
+// ---------------------------------------------------------------------------
+suite("lib/auditClient.js — BANDS and criticalCeiling");
+
+await test("the bands cover every score with no gap and no overlap", () => {
+  for (let s = 0; s <= 100; s += 1) {
+    const b = bandFor(s);
+    truthy(b && b.label, `score ${s} has a band`);
+  }
+  // Descending mins, so the first match is the highest band that applies.
+  for (let i = 1; i < BANDS.length; i += 1) {
+    if (BANDS[i].min >= BANDS[i - 1].min) throw new Error(`BANDS are not in descending order at index ${i}`);
+  }
+  eq(BANDS[BANDS.length - 1].min, 0, "the lowest band starts at 0");
+  return BANDS.map((b) => `${b.label}≥${b.min}`).join(", ");
+});
+
+await test("a page with no critical findings is not capped at all", () => {
+  eq(criticalCeiling(0), 100, "zero criticals");
+  eq(criticalCeiling(undefined), 100, "count not supplied");
+});
+
+await test("one critical finding denies the top band", () => {
+  // The report prints "Costing you now" directly above the score. A page can
+  // not be called Healthy while that list has something in it.
+  const ceiling = criticalCeiling(1);
+  if (bandFor(ceiling).label === BANDS[0].label) {
+    throw new Error(`one critical still allows "${BANDS[0].label}" (ceiling ${ceiling})`);
+  }
+  eq(ceiling, BANDS[0].min - 1, "capped just below the top band");
+});
+
+await test("four critical findings reach the bottom band", () => {
+  const bottom = BANDS[BANDS.length - 1].label;
+  eq(bandFor(criticalCeiling(4)).label, bottom, `four criticals land in "${bottom}"`);
+  // Three should not — otherwise the ceiling is doing all the work and the
+  // measured score none of it.
+  if (bandFor(criticalCeiling(3)).label === bottom) {
+    throw new Error(`three criticals already force "${bottom}" (ceiling ${criticalCeiling(3)})`);
+  }
+  return `3 → ${criticalCeiling(3)}, 4 → ${criticalCeiling(4)}`;
+});
+
+await test("the ceiling falls as criticals accumulate and never goes below the floor", () => {
+  let prev = criticalCeiling(1);
+  for (let n = 2; n <= 12; n += 1) {
+    const c = criticalCeiling(n);
+    if (c > prev) throw new Error(`ceiling rose from ${prev} to ${c} at ${n} criticals`);
+    prev = c;
+  }
+  const many = criticalCeiling(12);
+  if (many < SCORE_FLOOR) throw new Error(`ceiling ${many} is below the documented floor of ${SCORE_FLOOR}`);
+  return `12 criticals → ${many}, floor ${SCORE_FLOOR}`;
 });
 
 report();

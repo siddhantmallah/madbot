@@ -1,9 +1,9 @@
 // lib/audit.js — runAudit shape, invariants, threshold fidelity, degradation.
 //   node --no-warnings --import ./tests/_register.mjs tests/audit.test.mjs
-import { suite, test, skipped, eq, truthy, report, rejects } from "./_harness.mjs";
+import { suite, test, eq, truthy, report, rejects } from "./_harness.mjs";
 import { runAudit, runSnapshot } from "../lib/audit.js";
 import { THRESHOLDS as T } from "../lib/auditClient.js";
-import { serveFixture, viaPublicRedirect, redirectorAvailable, buildPage, chars, visibleWordCount } from "./_fixture.mjs";
+import { withFixtureHost, buildPage, chars, visibleWordCount } from "./_fixture.mjs";
 
 suite("lib/audit.js — runAudit");
 
@@ -87,25 +87,31 @@ await test("example.com (thin, no schema, no OG) is scored worse than a full mar
 //    gauges against these exact numbers, so the boundary the audit applies has
 //    to be the same number, not one near it.
 // ---------------------------------------------------------------------------
-const haveRedirect = await redirectorAvailable();
-
-/** Audit an exact byte-for-byte page by routing a public redirect at it. */
-async function auditFixture(routes, path = "/") {
-  const fx = await serveFixture(routes);
-  try {
-    const r = await runAudit(viaPublicRedirect(fx.url(path)));
-    return { r, fx };
-  } finally {
-    await fx.close();
-  }
+/**
+ * Audit an exact byte-for-byte page.
+ *
+ * These cases used to serve the page from loopback and point a public
+ * redirector at it, which is the one thing the SSRF guard exists to refuse: it
+ * validates every hop, and 127.0.0.1 on an ephemeral port fails both the
+ * private-address and the allowed-port check. So all five of them had been
+ * failing with "port" since that guard landed — the fixture was wrong, not the
+ * guard. They now run against a reserved .test hostname whose DNS and fetch
+ * are supplied by the test, so normalizeUrl, assertPublicHost, safeFetch and
+ * every redirect check all execute for real and pass.
+ */
+async function auditFixture(routes, path = "/", options) {
+  return withFixtureHost(routes, async (fx) => ({ r: await runAudit(fx.url(path)), fx }), options);
 }
 
 const titles = (r) => r.findings.map((f) => f.title);
 const has = (r, re) => r.findings.some((f) => re.test(f.title));
 
-if (!haveRedirect) {
-  skipped("THRESHOLDS boundary fixtures", "no public redirector reachable to serve a controlled page to a guard that requires a public host");
-} else {
+// Case (a) audits a page sitting exactly on the good side of every boundary;
+// case (c) audits one that fails almost everything. Comparing the two is the
+// invariant worth asserting, and it survives a change of scoring model.
+let boundaryScore = null;
+
+{
   // (a) Everything sitting exactly ON the good side of each boundary.
   await test("THRESHOLDS: values exactly at the boundary are treated as acceptable", async () => {
     const html = buildPage({
@@ -137,7 +143,8 @@ if (!haveRedirect) {
     const alt = r.findings.find((f) => /images have no alt text/.test(f.title));
     if (alt && alt.severity !== "warning") problems.push(`exactly ${T.altMissingPct}% missing alt is "${alt.severity}", expected "warning" (altMissingPct=${T.altMissingPct} uses >)`);
     if (problems.length) throw new Error(problems.join("; "));
-    return `all boundaries clean at the documented numbers`;
+    boundaryScore = r.score;
+    return `all boundaries clean at the documented numbers (score ${r.score})`;
   });
 
   // (b) One step past every boundary.
@@ -178,7 +185,7 @@ if (!haveRedirect) {
   });
 
   // (c) The low side of each boundary, plus the score floor.
-  await test("THRESHOLDS: under-length title/description and the 5-point score floor", async () => {
+  await test("THRESHOLDS: under-length title/description, and a bad page scores below a clean one", async () => {
     const html = buildPage({
       title: chars(T.titleMin - 1), // 19
       description: chars(T.descriptionMin - 1), // 69
@@ -214,9 +221,18 @@ if (!haveRedirect) {
     if (!t.includes(`Meta description is only ${T.descriptionMin - 1} characters`)) missing.push(`no short-description warning at ${T.descriptionMin - 1} chars`);
     if (!t.includes(`Only ~${T.wordsCritical - 1} words of text on the homepage`)) missing.push(`${T.wordsCritical - 1} words did not trip the wordsCritical branch`);
     if (!t.includes("Everything lives on one page")) missing.push("0 linked pages + 3 anchors did not trip the single-page critical");
-    eq(r.score, 5, "score floor with a page this bad");
+    // This used to assert score === 5 exactly. That was not a specification;
+    // it was the old subtractive model saturating — penalties summed past 100
+    // on any bad page, so the floor was the answer for all of them and the
+    // number carried no information. The score is now the share of what was
+    // achievable, so what is worth asserting is the documented range and the
+    // ordering against the boundary page, both of which outlive the model.
+    if (r.score < 5 || r.score > 100) throw new Error(`score ${r.score} outside the documented 5..100`);
+    if (boundaryScore !== null && r.score >= boundaryScore) {
+      missing.push(`scored ${r.score}, no worse than the all-boundaries page's ${boundaryScore}`);
+    }
     if (missing.length) throw new Error(missing.join("; "));
-    return `score floored at 5, ${r.counts.critical} criticals`;
+    return `score ${r.score} vs the boundary page's ${boundaryScore}, ${r.counts.critical} criticals`;
   });
 
   await test("robots.txt that only blocks a named bot is NOT reported as blocking all crawlers", async () => {

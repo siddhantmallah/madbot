@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { SiteIcon } from "./Brand";
-import { THRESHOLDS as T } from "../../lib/auditClient";
+import { THRESHOLDS as T, bandFor } from "../../lib/auditClient";
 
 const GATE_AFTER_MS = 60_000;
 
@@ -23,11 +23,11 @@ const AREAS = ["Foundations", "Crawlability", "AI & structured data", "Sharing",
 // The AdSense section's own areas, in the order buildAdsenseReport walks them.
 const ADSENSE_AREAS = ["Inventory", "Eligibility", "Policy", "Setup"];
 
-function band(score) {
-  if (score >= 80) return { label: "Healthy", tone: "good" };
-  if (score >= 55) return { label: "Needs work", tone: "warning" };
-  return { label: "Losing traffic", tone: "critical" };
-}
+// The bands come from lib/auditClient.js, where the audit reads them too: it
+// expresses its own score ceilings in terms of these edges, so a copy here
+// could put a label and the number it labels on opposite sides of a boundary.
+// Called directly rather than aliased to a module-scope const — Turbopack
+// evaluates that alias before the imported module is ready.
 
 // One frame later, so CSS transitions have a "from" to animate out of.
 function useRevealed() {
@@ -43,7 +43,7 @@ function ScoreRing({ score, size = 176, stroke = 12 }) {
   const on = useRevealed();
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
-  const b = band(score);
+  const b = bandFor(score);
   return (
     <div style={{ position: "relative", width: size, height: size, flex: "none" }}>
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ transform: "rotate(-90deg)", display: "block" }} aria-hidden="true">
@@ -360,7 +360,7 @@ function Finding({ f, index, actionLabel = "MADBOT would →" }) {
  * into one number would make both of them mean less.
  */
 function AdsenseSection({ index, report }) {
-  const b = band(report.score);
+  const b = bandFor(report.score);
   const areaRows = ADSENSE_AREAS.map((a) => {
     const fs = report.findings.filter((f) => f.area === a);
     return { area: a, fs, right: fs.filter((f) => f.severity === "good").length };
@@ -556,7 +556,7 @@ export default function AuditModal({ url, adsense = false, onClose }) {
   const goods = d ? d.findings.filter((f) => f.severity === "good") : [];
   const total = d ? d.findings.length : 0;
   const metrics = d ? metricsFor(d) : [];
-  const b = d ? band(d.score) : null;
+  const b = d ? bandFor(d.score) : null;
   const time = state.checkedAt ? state.checkedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
 
   const areaRows = d

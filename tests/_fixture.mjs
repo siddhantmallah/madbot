@@ -1,13 +1,138 @@
-// Serving a controlled page to code that insists on a *public* hostname.
+// Handing controlled bytes to code that insists on a public host.
 //
-// runAudit/runSnapshot call assertPublicHost() before fetching, so a plain
-// http://127.0.0.1 fixture can't be used. The only way to hand them a page
-// whose exact byte content we control is to go through a public host that
-// redirects inward — which is itself the SSRF finding these tests report.
-// Every helper here therefore degrades to "skip" if the redirect stops
-// working, so the suite still runs once the hole is closed.
+// runAudit and runSnapshot call assertPublicHost() before fetching, and
+// safeFetch re-validates every redirect hop, so there is no URL a loopback
+// server can be reached at: 127.0.0.1 is a private address and its port is not
+// 80 or 443. Both refusals are correct and neither should be relaxed to make a
+// test pass.
+//
+// There are therefore two strategies here, for two different jobs.
+//
+//   installFixtureHost() — for testing what the audit CONCLUDES. It replaces
+//   DNS and fetch for one reserved hostname, so the guards run in full and
+//   pass, and the bytes come from the test. Hermetic: no server, no sockets,
+//   no network.
+//
+//   serveFixture() + viaPublicRedirect() — for testing what the guard
+//   REFUSES. The SSRF suite needs a real public host redirecting to a real
+//   loopback server, because the finding being regression-tested is that the
+//   redirect target goes unchecked. Those helpers must keep talking to the
+//   network, and they degrade to "skip" when the redirector is unreachable.
 
 import http from "node:http";
+import dns from "node:dns/promises";
+
+// --- hermetic fixture host ------------------------------------------------
+
+// RFC 2606 reserves .test, so this can never collide with a real domain, and
+// it is not one of the suffixes assertPublicHost refuses outright.
+const FIXTURE_HOST = "fixture.madbot.test";
+
+// TEST-NET-3, RFC 5737. Deliberately a documentation range: public as far as
+// the guard's private-range checks are concerned, and routable nowhere, so a
+// patch that leaks cannot reach anything.
+const FIXTURE_ADDRESS = "203.0.113.7";
+
+/**
+ * Builds a Response that arrives in chunks, the way a socket delivers one.
+ *
+ * This matters for the byte-cap test. `new Response(string)` hands its whole
+ * body over in a single read, so safeFetch's cap — which is checked after each
+ * chunk — would never engage and the test would prove nothing. Chunking makes
+ * the fixture behave like the transport it stands in for.
+ */
+function chunkedResponse(route, chunkBytes) {
+  const bytes = new TextEncoder().encode(route.body ?? "");
+  const headers = { "content-type": route.type || "text/html; charset=utf-8", ...(route.headers || {}) };
+  if (!bytes.length) return new Response(null, { status: route.status ?? 200, headers });
+
+  let at = 0;
+  const stream = new ReadableStream({
+    pull(controller) {
+      if (at >= bytes.length) return controller.close();
+      controller.enqueue(bytes.subarray(at, at + chunkBytes));
+      at += chunkBytes;
+      return undefined;
+    },
+  });
+  return new Response(stream, { status: route.status ?? 200, headers });
+}
+
+/**
+ * Serves `routes` at a hostname the guards accept, by replacing DNS resolution
+ * and fetch for that one host and passing everything else through.
+ *
+ * `routes` maps a pathname to { status, type, body, headers }. Anything not
+ * listed answers 404, which is also what makes the audit's 404 probe see a
+ * correctly configured site.
+ *
+ * The http:// origin answers a 301 to https://, so the audit's http-to-https
+ * probe reads as an ordinary well-configured host rather than one serving both
+ * schemes. A test that wants the opposite passes `redirectToHttps: false`.
+ *
+ * Every suite runs in its own child process (see run-all.mjs), and restore()
+ * puts both globals back, so the patch cannot reach another suite or the
+ * real-site cases in this one.
+ */
+export function installFixtureHost(routes, { redirectToHttps = true, chunkBytes = 65_536 } = {}) {
+  const realFetch = globalThis.fetch;
+  const realLookup = dns.lookup;
+
+  dns.lookup = async (hostname, options) => {
+    if (String(hostname).toLowerCase() === FIXTURE_HOST) {
+      return [{ address: FIXTURE_ADDRESS, family: 4 }];
+    }
+    return realLookup(hostname, options);
+  };
+
+  globalThis.fetch = async (input, init) => {
+    let u;
+    try {
+      u = new URL(input instanceof URL ? input : String(input));
+    } catch {
+      return realFetch(input, init);
+    }
+    if (u.hostname.toLowerCase() !== FIXTURE_HOST) return realFetch(input, init);
+
+    if (u.protocol === "http:" && redirectToHttps) {
+      return new Response(null, {
+        status: 301,
+        headers: { location: `https://${FIXTURE_HOST}${u.pathname}` },
+      });
+    }
+
+    const route = routes[u.pathname];
+    if (!route) {
+      return chunkedResponse(
+        { status: 404, body: "<!doctype html><html><head><title>Not found</title></head><body>404</body></html>" },
+        chunkBytes
+      );
+    }
+    return chunkedResponse(route, chunkBytes);
+  };
+
+  return {
+    host: FIXTURE_HOST,
+    origin: `https://${FIXTURE_HOST}`,
+    url: (p = "/") => `https://${FIXTURE_HOST}${p}`,
+    restore() {
+      globalThis.fetch = realFetch;
+      dns.lookup = realLookup;
+    },
+  };
+}
+
+/** installFixtureHost, run a body against it, and always put the globals back. */
+export async function withFixtureHost(routes, fn, options) {
+  const fx = installFixtureHost(routes, options);
+  try {
+    return await fn(fx);
+  } finally {
+    fx.restore();
+  }
+}
+
+// --- real network, for the SSRF suite only --------------------------------
 
 export const REDIRECTOR = "https://httpbin.org/redirect-to";
 
@@ -85,7 +210,7 @@ export function chars(n, word = "boundary") {
  * Build a page whose measured word count is exactly `words`, with the given
  * title/description/link/image/script counts.
  */
-export function buildPage({ title, description, words, links = [], anchors = 0, images = 0, imagesWithAlt = 0, scripts = 0, schema = null, viewport = true, lang = true, canonical = true, og = true, h1 = 1 }) {
+export function buildPage({ title, description, words, links = [], anchors = 0, images = 0, imagesWithAlt = 0, scripts = 0, schema = null, viewport = true, lang = true, canonical = true, og = true, h1 = 1, extraHead = "" }) {
   const head = [
     title === null ? "" : `<title>${title}</title>`,
     description === null ? "" : `<meta name="description" content="${description}">`,
@@ -94,6 +219,7 @@ export function buildPage({ title, description, words, links = [], anchors = 0, 
     og ? '<meta property="og:title" content="og t"><meta property="og:description" content="og d"><meta property="og:image" content="/i.png">' : "",
     '<link rel="icon" href="/favicon.ico">',
     schema ? `<script type="application/ld+json">{"@context":"https://schema.org","@type":"${schema}"}</script>` : "",
+    extraHead,
   ].join("");
 
   // ld+json counts as a <script tag too.
