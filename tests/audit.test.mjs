@@ -241,7 +241,7 @@ if (!haveRedirect) {
     return `correctly not flagged (score ${r.score})`;
   });
 
-  await test("degrades on a very large page (caps at safeFetch's 400KB, no throw)", async () => {
+  await test("degrades on a very large page (caps at runAudit's 1.2MB, no throw)", async () => {
     const filler = Array.from({ length: 400_000 }, (_, i) => `w${i}`).join(" ");
     const html = `<!doctype html><html lang="en"><head><title>${chars(40)}</title></head><body><h1>Big</h1><p>${filler}</p></body></html>`;
     const { r } = await auditFixture({
@@ -250,7 +250,7 @@ if (!haveRedirect) {
       "/sitemap.xml": { status: 404, type: "text/plain", body: "" },
     });
     assertShape(r, "huge-page");
-    if (r.stats.htmlKb > 600) throw new Error(`read ${r.stats.htmlKb}KB from a ${Math.round(html.length / 1024)}KB page — cap not applied`);
+    if (r.stats.htmlKb > 1400) throw new Error(`read ${r.stats.htmlKb}KB from a ${Math.round(html.length / 1024)}KB page — cap not applied`);
     return `${Math.round(html.length / 1024)}KB page truncated to ${r.stats.htmlKb}KB, ${r.stats.wordCount} words counted`;
   });
 }

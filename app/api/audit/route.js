@@ -25,6 +25,9 @@ function throttled(ip) {
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const raw = searchParams.get("url");
+  // Opt-in, because it costs one more outbound request (ads.txt) and most
+  // people asking for a site report are not publishers.
+  const adsense = ["1", "true", "yes"].includes(String(searchParams.get("adsense") || "").toLowerCase());
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
 
   if (throttled(ip)) {
@@ -32,7 +35,7 @@ export async function GET(request) {
   }
 
   try {
-    const result = await runAudit(raw);
+    const result = await runAudit(raw, { adsense });
     return NextResponse.json(result);
   } catch (err) {
     const msg = String(err?.message || "");

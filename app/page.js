@@ -31,7 +31,7 @@ const TICKER_LINES = [
 // The strip under the hero. Each line is something the code does today.
 const MARQUEE = [
   "Crawls what's actually there",
-  "20+ technical checks, run live",
+  "25+ technical checks, run live",
   "Finds the pages you should have and don't",
   "Marks up schema so answer engines can cite you",
   "Writes the page, opens the pull request, you merge",
@@ -186,7 +186,10 @@ function landingSchema(faqs) {
 export default function LandingPage() {
   const rootRef = usePageReveal();
   const [heroUrl, setHeroUrl] = useState("");
-  const [auditUrl, setAuditUrl] = useState(null);
+  // The AdSense section is opt-in: it costs an extra request and most people
+  // reading their site report are not publishers.
+  const [wantAdsense, setWantAdsense] = useState(false);
+  const [audit, setAudit] = useState(null);
   // The dial on the landing page is live, not a picture of one. 64 lands in
   // the middle of "Let it rip", the band the copy around it is written for.
   const [aut, setAut] = useState(64);
@@ -199,7 +202,7 @@ export default function LandingPage() {
     e.preventDefault();
     const url = heroUrl.trim();
     if (!url) return;
-    setAuditUrl(url);
+    setAudit({ url, adsense: wantAdsense });
   }
 
   return (
@@ -276,10 +279,15 @@ export default function LandingPage() {
               <span>One dial, one veto</span>
               <span>Nothing publishes itself</span>
             </div>
-            <h1 id="hero-h" className="reveal display-xl" style={{ maxWidth: "10.5em" }}>
-              Give it a website.
+            {/* No maxWidth. display-xl reaches 118px, so at every viewport the
+                line box is already narrower than any em-based cap would be —
+                the 10.5em that used to sit here never once applied. The break
+                is placed by hand instead, so the accent phrase always starts
+                its own line however the rest of it wraps. */}
+            <h1 id="hero-h" className="reveal display-xl">
+              Turn your website into
               <br />
-              <span style={{ color: "var(--color-accent)" }}>It does the marketing.</span>
+              <span style={{ color: "var(--color-accent)" }}>your growth engine.</span>
             </h1>
             {/* "Earns the links" is gone from this line: nothing in the product
                 builds backlinks. Listing you in directories is what it does. */}
@@ -305,6 +313,37 @@ export default function LandingPage() {
                 Read my site free
               </button>
             </form>
+            {/* Opt-in rather than always-on. Running ads is a minority
+                position, and a publisher who needs it needs it badly. */}
+            <label
+              className="reveal"
+              style={{
+                display: "inline-flex",
+                alignItems: "flex-start",
+                gap: 10,
+                marginBottom: 14,
+                padding: "11px 15px",
+                border: `1px solid ${wantAdsense ? "var(--color-accent-400)" : "var(--color-divider)"}`,
+                borderRadius: 6,
+                background: wantAdsense ? "rgba(255,106,26,.10)" : "var(--scrim)",
+                cursor: "pointer",
+                maxWidth: 560,
+                transition: "border-color .2s, background .2s",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={wantAdsense}
+                onChange={(e) => setWantAdsense(e.target.checked)}
+                style={{ width: 16, height: 16, marginTop: 2, accentColor: "var(--color-accent)", flex: "none" }}
+              />
+              <span style={{ fontSize: 13.5, lineHeight: 1.45, color: "var(--fg-80)" }}>
+                Also check <b style={{ fontWeight: 700 }}>AdSense readiness</b>
+                <span style={{ display: "block", fontSize: 12.5, color: "var(--fg-45)", marginTop: 2 }}>
+                  ads.txt, the ad crawler, the policy pages Google requires, and ad-to-content balance
+                </span>
+              </span>
+            </label>
             <p className="reveal" style={{ margin: "0 0 26px", fontSize: 13.5, color: "var(--fg-45)" }}>
               A real report in about ten seconds. No account, no card, nothing touched.
             </p>
@@ -322,7 +361,7 @@ export default function LandingPage() {
               </div>
               <div>
                 <dt className="mono" style={{ color: "var(--color-accent-2-700)" }}>Checks run live</dt>
-                <dd style={{ margin: "6px 0 0", fontFamily: "var(--font-heading)", fontSize: 30 }}>20+</dd>
+                <dd style={{ margin: "6px 0 0", fontFamily: "var(--font-heading)", fontSize: 30 }}>25+</dd>
               </div>
               <div>
                 <dt className="mono">Published without asking</dt>
@@ -532,7 +571,7 @@ export default function LandingPage() {
           <div className="split-2" style={{ gap: 48, alignItems: "center" }}>
             <div data-reveal data-stagger="90" className="grid-2" style={{ gap: 16 }}>
               {[
-                { k: "Technical checks per crawl", v: "20+", n: "Every one traceable to a line on your page", c: "var(--color-accent)" },
+                { k: "Technical checks per crawl", v: "25+", n: "Every one traceable to a line on your page", c: "var(--color-accent)" },
                 { k: "Buying questions put to AI", v: "Live", n: "Real model calls with web search, not a lookup table", c: "var(--color-accent-2-700)" },
                 { k: "Free report", v: "~10s", n: "No account, no card, nothing written to your site", c: "var(--color-accent-2-700)" },
                 { k: "Published without asking", v: "None", n: "Articles arrive as a pull request you merge, posts wait for your approval", c: "var(--color-accent)" },
@@ -672,7 +711,7 @@ export default function LandingPage() {
 
       <SiteFooter />
 
-      {auditUrl ? <AuditModal url={auditUrl} onClose={() => setAuditUrl(null)} /> : null}
+      {audit ? <AuditModal url={audit.url} adsense={audit.adsense} onClose={() => setAudit(null)} /> : null}
     </div>
   );
 }

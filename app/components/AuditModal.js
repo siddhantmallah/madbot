@@ -18,7 +18,10 @@ const TONE = {
 };
 
 // Same order the engine walks them in, so the report reads like the audit ran.
-const AREAS = ["Foundations", "Crawlability", "AI & structured data", "Sharing", "Content", "Performance"];
+const AREAS = ["Foundations", "Crawlability", "AI & structured data", "Sharing", "Content", "Performance", "Security"];
+
+// The AdSense section's own areas, in the order buildAdsenseReport walks them.
+const ADSENSE_AREAS = ["Inventory", "Eligibility", "Policy", "Setup"];
 
 function band(score) {
   if (score >= 80) return { label: "Healthy", tone: "good" };
@@ -238,16 +241,58 @@ function metricsFor(d) {
       marks: [{ at: T.scripts, label: `${T.scripts} limit` }],
       note: s.scripts > T.scripts ? "Each one is work before the page is usable" : "Within a sensible budget",
     },
+    {
+      kind: "gauge",
+      label: "Images sized",
+      display: s.images ? `${s.images - s.imagesMissingDims}/${s.images}` : "—",
+      value: s.images ? s.images - s.imagesMissingDims : null,
+      max: Math.max(1, s.images),
+      tone: !s.images
+        ? "none"
+        : s.imagesMissingDims === 0
+        ? "good"
+        : (s.imagesMissingDims / s.images) * 100 > T.dimsMissingPct
+        ? "warning"
+        : "good",
+      marks: s.images ? [{ at: s.images, label: "all" }] : [],
+      note: !s.images
+        ? "No images on the homepage"
+        : s.imagesMissingDims === 0
+        ? "No layout shift as they load"
+        : `${s.imagesMissingDims} with no width/height — the layout jumps`,
+    },
+    {
+      kind: "gauge",
+      label: "Readable text",
+      display: `${s.textRatio}%`,
+      value: s.textRatio,
+      max: Math.max(25, s.textRatio),
+      tone: s.textRatio < T.textRatioMin ? "warning" : "good",
+      marks: [{ at: T.textRatioMin, label: `${T.textRatioMin}% floor` }],
+      note: s.textRatio < T.textRatioMin ? "Mostly markup — bytes shipped for very little content" : "A sensible share of the bytes is copy",
+    },
+    {
+      kind: "gauge",
+      label: "Render-blocking scripts",
+      display: String(s.blockingScripts),
+      value: s.blockingScripts,
+      max: Math.max(6, s.blockingScripts),
+      tone: s.blockingScripts > T.blockingScripts ? "warning" : "good",
+      marks: [{ at: T.blockingScripts, label: `${T.blockingScripts} limit` }],
+      note: s.blockingScripts > T.blockingScripts ? "The page stays blank until these load" : "Nothing much is holding up the first paint",
+    },
   ];
 }
 
-function Scanning({ domain }) {
+function Scanning({ domain, adsense }) {
   const steps = [
     `Fetching ${domain}`,
     "Reading titles, headings and meta tags",
     "Looking for structured data",
-    "Checking robots.txt and sitemap",
+    "Checking robots.txt, sitemap and 404s",
+    "Reading the security and compression headers",
     "Measuring response time and page weight",
+    ...(adsense ? ["Reading ads.txt and the AdSense policy pages"] : []),
     "Working out what it all costs you",
   ];
   const [i, setI] = useState(0);
@@ -273,7 +318,15 @@ function Scanning({ domain }) {
   );
 }
 
-function Finding({ f, index }) {
+/**
+ * `actionLabel` exists because the default one is a promise.
+ *
+ * "MADBOT would →" is true of the SEO findings: writing the missing page and
+ * marking up the schema is the product. It is not true of "install a certified
+ * consent platform" or "publish an ads.txt" — those are the owner's to do, and
+ * labelling them as ours would be selling work that does not happen.
+ */
+function Finding({ f, index, actionLabel = "MADBOT would →" }) {
   const t = TONE[f.severity] || TONE.good;
   return (
     <div style={{ display: "grid", gridTemplateColumns: "auto minmax(0,1fr)", gap: "0 16px", padding: "16px 18px", borderRadius: 6, background: "var(--color-surface)", border: "1px solid var(--color-divider)" }}>
@@ -289,12 +342,107 @@ function Finding({ f, index }) {
         {f.detail ? <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.6, color: "var(--fg-60)" }}>{f.detail}</p> : null}
         {f.fix ? (
           <div style={{ marginTop: 11, paddingTop: 10, borderTop: "1px solid var(--color-divider)", fontSize: 13, lineHeight: 1.55, display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <span className="mono" style={{ color: "var(--color-accent)", flex: "none" }}>MADBOT would →</span>
+            <span className="mono" style={{ color: "var(--color-accent)", flex: "none" }}>{actionLabel}</span>
             <span style={{ color: "var(--fg-80)", flex: "1 1 240px", minWidth: 0 }}>{f.fix}</span>
           </div>
         ) : null}
       </div>
     </div>
+  );
+}
+
+/**
+ * The AdSense readiness section — asked for, so it sits above the SEO
+ * findings rather than at the bottom.
+ *
+ * It carries its own score because it answers a different question from the
+ * rest of the report: not "will this rank" but "can this earn". Mixing the two
+ * into one number would make both of them mean less.
+ */
+function AdsenseSection({ index, report }) {
+  const b = band(report.score);
+  const areaRows = ADSENSE_AREAS.map((a) => {
+    const fs = report.findings.filter((f) => f.area === a);
+    return { area: a, fs, right: fs.filter((f) => f.severity === "good").length };
+  }).filter((r) => r.fs.length);
+
+  const problems = report.findings.filter((f) => f.severity !== "good");
+  const wins = report.findings.filter((f) => f.severity === "good");
+  const s = report.stats;
+
+  return (
+    <section>
+      <SectionHead index={index} title="AdSense readiness" count={`${report.findings.length} checks`} />
+
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "22px 32px", alignItems: "center", marginBottom: 18 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap", minWidth: 0 }}>
+          <ScoreRing score={report.score} size={126} stroke={10} />
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, minWidth: 0 }}>
+            <span className="mono" style={{ color: "var(--fg-45)" }}>Mechanically</span>
+            <span style={{ fontFamily: "var(--font-heading)", fontSize: 25, lineHeight: 1, color: TONE[b.tone].color }}>
+              {report.counts.critical === 0 ? "Ready" : report.counts.critical > 2 ? "Not ready" : "Nearly"}
+            </span>
+            <span style={{ fontSize: 12.5, color: "var(--fg-60)" }}>
+              {report.counts.critical} blocking · {report.counts.warning} to tidy · {report.counts.good} already right
+            </span>
+          </div>
+        </div>
+
+        <div style={{ flex: "1 1 320px", minWidth: 0, display: "grid", gridTemplateColumns: "auto minmax(0,1fr) auto", gap: "10px 14px", alignItems: "center" }}>
+          {areaRows.map((r) => (
+            <Fragment key={r.area}>
+              <span className="mono" style={{ whiteSpace: "nowrap" }}>{r.area}</span>
+              <SegmentBar segments={r.fs.map((f) => ({ pct: 100 / r.fs.length, color: TONE[f.severity].color }))} height={11} />
+              <span style={{ fontSize: 12.5, color: "var(--fg-60)", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>
+                {r.right}/{r.fs.length} right
+              </span>
+            </Fragment>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 1, marginBottom: 16, background: "var(--color-divider)", border: "1px solid var(--color-divider)" }}>
+        {[
+          ["Ad code", s.installed ? "loaded" : "not present"],
+          ["Ad slots", s.slots || "none"],
+          ["Publisher id", s.clients.length ? s.clients[0].replace(/^ca-/, "") : "none found"],
+          ["ads.txt", s.adsTxt.exists ? `${s.adsTxt.records} record${s.adsTxt.records === 1 ? "" : "s"}` : "absent"],
+          ["Google authorised", s.adsTxt.googlePubIds.length ? "yes" : "no"],
+          ["Consent platform", s.consent.length ? s.consent[0] : "none"],
+          ["Pages found", s.pageCount || "1"],
+          ["Words per ad", s.wordsPerSlot === null ? "—" : s.wordsPerSlot],
+        ].map(([label, val]) => (
+          <div key={label} style={{ background: "var(--color-bg)", padding: "11px 14px" }}>
+            <div className="mono" style={{ fontSize: 9.5, marginBottom: 4 }}>{label}</div>
+            <div style={{ fontFamily: "var(--font-heading)", fontSize: 17, lineHeight: 1.15, wordBreak: "break-word" }}>{val}</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {problems.map((f, i) => <Finding key={f.title} f={f} index={i + 1} actionLabel="To be ready →" />)}
+      </div>
+
+      {wins.length ? (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 8, marginTop: 8 }}>
+          {wins.map((f) => (
+            <div key={f.title} style={{ display: "flex", gap: 10, fontSize: 13.5, padding: "11px 14px", borderRadius: 6, background: "var(--wash-1)", border: "1px solid var(--color-divider)" }}>
+              <span style={{ color: TONE.good.color, flex: "none" }}>✓</span>
+              <span style={{ color: "var(--fg-80)" }}>{f.title}</span>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {/* Said out loud, because the section would otherwise read as a verdict
+          on whether Google will say yes — which nothing measurable can be. */}
+      <div style={{ marginTop: 14, padding: "13px 16px", borderRadius: 6, border: "1px dashed var(--color-divider)", display: "flex", flexDirection: "column", gap: 7 }}>
+        <span className="mono" style={{ color: "var(--fg-45)" }}>What this can&apos;t tell you</span>
+        {report.notes.map((n) => (
+          <span key={n} style={{ fontSize: 12.5, lineHeight: 1.5, color: "var(--fg-60)" }}>{n}</span>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -356,7 +504,7 @@ function Gate({ url }) {
  * each. Every number on screen is measured live from the site — nothing is
  * modelled or estimated.
  */
-export default function AuditModal({ url, onClose }) {
+export default function AuditModal({ url, adsense = false, onClose }) {
   const [state, setState] = useState({ phase: "loading" });
   const [gated, setGated] = useState(false);
 
@@ -367,7 +515,7 @@ export default function AuditModal({ url, onClose }) {
     const startedAt = Date.now();
     (async () => {
       try {
-        const res = await fetch(`/api/audit?url=${encodeURIComponent(url)}`);
+        const res = await fetch(`/api/audit?url=${encodeURIComponent(url)}${adsense ? "&adsense=1" : ""}`);
         const data = await res.json();
         // Hold the scanning view briefly so the steps don't flash past.
         const wait = Math.max(0, 3200 - (Date.now() - startedAt));
@@ -382,7 +530,7 @@ export default function AuditModal({ url, onClose }) {
     return () => {
       alive = false;
     };
-  }, [url]);
+  }, [url, adsense]);
 
   useEffect(() => {
     if (state.phase !== "done") return undefined;
@@ -419,6 +567,11 @@ export default function AuditModal({ url, onClose }) {
     : [];
 
   const pad = "clamp(18px, 3vw, 34px)";
+
+  // 01 is the header and score, 02 the measurements; everything after is
+  // numbered as it is emitted. Reset on every render by being declared here.
+  let sectionNo = 2;
+  const nextIndex = () => String((sectionNo += 1)).padStart(2, "0");
 
   return (
     <div
@@ -457,7 +610,7 @@ export default function AuditModal({ url, onClose }) {
         {gated ? <Gate url={url} /> : null}
 
         <div style={{ maxHeight: "94vh", overflowY: "auto" }}>
-          {state.phase === "loading" ? <Scanning domain={domain} /> : null}
+          {state.phase === "loading" ? <Scanning domain={domain} adsense={adsense} /> : null}
 
           {state.phase === "error" ? (
             <div style={{ padding: "64px 40px", textAlign: "center" }}>
@@ -548,11 +701,21 @@ export default function AuditModal({ url, onClose }) {
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 1, marginTop: 14, background: "var(--color-divider)", border: "1px solid var(--color-divider)" }}>
                   {[
                     ["HTML weight", `${d.stats.htmlKb} KB`],
+                    ["Compression", d.stats.compression || "none"],
+                    ["DOM elements", d.stats.domElements.toLocaleString()],
                     ["Internal links", d.stats.internalLinks],
                     ["External links", d.stats.externalLinks],
                     ["Sitemap URLs", d.stats.sitemapUrls || "none"],
                     ["H2 headings", d.stats.h2],
                     ["Stylesheets", d.stats.stylesheets],
+                    ["Charset", d.stats.charset || "undeclared"],
+                    ["X/Twitter card", d.stats.twitterCard || "none"],
+                    ["Social profiles", d.stats.social.length || "none"],
+                    ["Analytics", d.stats.analytics.length ? d.stats.analytics.length : "none"],
+                    ["http → https", d.stats.httpsRedirect === null ? "—" : d.stats.httpsRedirect ? "redirects" : "both live"],
+                    ["404 handling", d.stats.notFoundOk === null ? "—" : d.stats.notFoundOk ? "correct" : "answers 200"],
+                    ["Security headers", d.stats.securityHeadersMissing.length ? `${d.stats.securityHeadersMissing.length} missing` : "set"],
+                    ["Indexable", d.stats.noindex ? "noindex" : "yes"],
                   ].map(([label, val]) => (
                     <div key={label} style={{ background: "var(--color-bg)", padding: "11px 14px" }}>
                       <div className="mono" style={{ fontSize: 9.5, marginBottom: 4 }}>{label}</div>
@@ -562,11 +725,16 @@ export default function AuditModal({ url, onClose }) {
                 </div>
               </section>
 
-              {/* 03–05 — Findings */}
+              {/* 03 onwards — the AdSense section if it was asked for, then
+                  the findings. Numbered from a counter rather than by hand:
+                  the indices used to be spelled out per section and adding one
+                  more meant three separate expressions had to agree. */}
               <div style={{ padding: `26px ${pad} ${pad}`, display: "flex", flexDirection: "column", gap: 30 }}>
+                {d.adsense ? <AdsenseSection index={nextIndex()} report={d.adsense} /> : null}
+
                 {criticals.length ? (
                   <section>
-                    <SectionHead index="03" title="Costing you now" count={`${criticals.length}`} />
+                    <SectionHead index={nextIndex()} title="Costing you now" count={`${criticals.length}`} />
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                       {criticals.map((f, i) => <Finding key={f.title} f={f} index={i + 1} />)}
                     </div>
@@ -575,7 +743,7 @@ export default function AuditModal({ url, onClose }) {
 
                 {warnings.length ? (
                   <section>
-                    <SectionHead index={criticals.length ? "04" : "03"} title="Worth fixing" count={`${warnings.length}`} />
+                    <SectionHead index={nextIndex()} title="Worth fixing" count={`${warnings.length}`} />
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                       {warnings.map((f, i) => <Finding key={f.title} f={f} index={criticals.length + i + 1} />)}
                     </div>
@@ -584,7 +752,7 @@ export default function AuditModal({ url, onClose }) {
 
                 {goods.length ? (
                   <section>
-                    <SectionHead index={`0${2 + (criticals.length ? 1 : 0) + (warnings.length ? 1 : 0) + 1}`} title="Already right" count={`${goods.length}`} />
+                    <SectionHead index={nextIndex()} title="Already right" count={`${goods.length}`} />
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 8 }}>
                       {goods.map((f) => (
                         <div key={f.title} style={{ display: "flex", gap: 10, fontSize: 13.5, padding: "11px 14px", borderRadius: 6, background: "var(--wash-1)", border: "1px solid var(--color-divider)" }}>

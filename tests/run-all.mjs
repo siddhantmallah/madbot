@@ -9,6 +9,8 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const SUITES = [
   "urlguard.test.mjs",
   "auditclient.test.mjs",
+  "htmlparse.test.mjs",
+  "adsense.test.mjs",
   "audit.test.mjs",
   "crawler.test.mjs",
   "officialsources.test.mjs",
