@@ -402,15 +402,12 @@ export default function PrivacyPage() {
           ]}
         />
         <p>
-          We do not sell personal data and we do not pass it to data brokers.
-          We do <b>share</b> it for cross-context behavioural advertising in one
-          specific way: this site carries Google AdSense, and where a visitor
-          has allowed the Advertising category, Google receives the signals it
-          needs to target ads. That is the whole of it, it is switchable from{" "}
-          <Link href="/legal/cookies">Cookie preferences</Link> at any time, and
-          it never applies to anything inside your dashboard. The only other
-          circumstance in which we would hand data over is a valid legal demand,
-          and we would tell you about it unless we were forbidden from doing so.
+          We do not sell personal data, we do not pass it to data brokers, and
+          we do not share it for cross-context behavioural advertising. This
+          site briefly carried Google AdSense and no longer does; there is no ad
+          network here and nothing is sent to one. The only circumstance in
+          which we would hand data over is a valid legal demand, and we would
+          tell you about it unless we were forbidden from doing so.
         </p>
       </LegalSection>
 
@@ -703,17 +700,16 @@ export default function PrivacyPage() {
         <Callout>
           <p style={{ margin: 0 }}>
             <b>
-              We do not sell personal information. We do share it for
-              cross-context behavioural advertising, through Google AdSense, and
-              only where you have allowed the Advertising category,
+              We do not sell personal information and we do not share it for
+              cross-context behavioural advertising,
             </b>{" "}
             as those terms are defined in the California Consumer Privacy Act as
-            amended by the CPRA and in the equivalent state laws. To opt out, use{" "}
-            <b>Cookie preferences</b> in the footer of any page and switch
-            Advertising off; a Global Privacy Control signal from your browser is
-            honoured automatically and needs no action from you. We do not use or
-            disclose sensitive personal information
-            for any purpose beyond providing the service.
+            amended by the CPRA and in the equivalent state laws. There is no ad
+            network on this site and no advertising cookies are set, so there is
+            nothing here to opt out of — a Global Privacy Control signal from
+            your browser is honoured regardless. We do not use or disclose
+            sensitive personal information for any purpose beyond providing the
+            service.
           </p>
         </Callout>
         <p>

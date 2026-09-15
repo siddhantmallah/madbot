@@ -263,42 +263,48 @@ Adding a public page means adding one line to `app/sitemap.js`. That is delibera
 filesystem-generated sitemap would silently list the next page somebody adds, whether
 or not it should be indexed.
 
-## 8. Google AdSense
+## 8. Advertising: none, and why
 
-The tag is live at publisher id `ca-pub-2309671102557521`, loaded by
-`app/components/AdSense.js` and `/ads.txt` is served from `public/`. Google will
-not serve ads on a domain whose `ads.txt` omits its publisher id, so that file is
-not optional.
+There is no ad network on this site, and the Advertising consent category is
+empty. Google AdSense was live here briefly at publisher id
+`ca-pub-2309671102557521` and has been removed — loader, verification meta tag
+and `/ads.txt` with it.
 
-**It only loads once a visitor allows the Advertising category.** Google's own
-tag is an unconditional `<script async>`, and pasted in as-is that is unlawful in
-the EEA and the UK: the ePrivacy Directive puts consent on the storage itself, so
-the script sets Google's cookies before any banner has finished asking. Refusing
-here means the file is never requested, not requested and then asked to behave.
+**Google refused the site**, for "low value content". That verdict was correct.
+Of the thirteen URLs in the sitemap, nine are legal notices and one is the login
+screen; eighty-seven percent of the site's text is terms, privacy, DPA and
+sub-processor boilerplate. AdSense buys inventory beside material people came to
+read, and a product site has none. Passing a re-review would mean becoming a
+publisher — a real section of original writing, deep enough that the policy
+pages are a footnote — which is weeks of work for an ad network nobody wanted
+here anyway.
 
-Adding it changed three statements on the site that had been true, and they were
-corrected in the same commit: the Cookie Policy said the site carried no
-advertising, and the Privacy Policy twice said we never share personal
-information for cross-context behavioural advertising. Under the CPRA, allowing
-that category **is** sharing, so both now disclose it and name the opt-out.
-Google AdSense is on the sub-processor list. `CONSENT_VERSION` went to 3, which
-invalidates every stored answer, because an existing "reject optional" was an
-answer to a question that never mentioned advertising.
+Two reasons it was the wrong fit regardless of the refusal, both known before
+the application went in:
 
-### Three things to know before you count on the revenue
+- **Contextual ads on a page about marketing software mean competitors.** It
+  puts other people's adverts beside your own pricing table, in front of a buyer
+  who is deciding.
+- **Google requires a certified consent management platform for EEA and UK ad
+  serving.** The gate in this codebase is honest and enforced but is not on
+  Google's list, so a large share of European impressions could not have served
+  whatever a visitor agreed to. Not fixable in our own code.
 
-- **Google requires a certified consent management platform to serve ads to EEA
-  and UK visitors.** The gate in this codebase is honest and enforced, but it is
-  not on Google's certified list, so Google may restrict or refuse EEA ad serving
-  whatever a visitor here agrees to. Either adopt a certified CMP, or accept that
-  European traffic may not monetise. This is not fixable in our own code.
-- **AdSense approval is not automatic.** Google reviews the site for substantial
-  original content. A landing page, a pricing page and a set of policies may be
-  refused as thin. There are no ad slots placed anywhere yet either: the script
-  loads, but nothing calls `adsbygoogle.push`, so no ad renders until you add
-  units.
-- **Worth a second thought on a B2B product.** These ads are contextual, which on
-  a page about marketing software means competitors. It puts other people's
-  adverts next to your own pricing table, in front of a buyer who is deciding.
-  Your call entirely, but it is the kind of decision that is easier to make
-  before launch than after.
+Removing it had to undo the disclosures that adding it required, in the same
+commit. The Cookie Policy and the Privacy Policy both declared that we share
+personal information for cross-context behavioural advertising under the CPRA;
+both now say we do not, because we do not. Google AdSense came off the
+sub-processor list, the Advertising category went back to empty, and it is
+hardcoded off in every jurisdiction rather than following the opt-out default —
+defaulting a permission on for something that does not exist would pre-authorise
+whatever got added next. `CONSENT_VERSION` went to 4, which invalidates every
+stored answer: a stored `advertising: true` is a live authorisation and should
+not outlive the thing it authorised.
+
+The free report's own AdSense readiness section stays — that is a feature for
+customers who do publish, and it now predicts this refusal rather than missing
+it. See `lib/adsenseReady.js`.
+
+If advertising is ever reconsidered, the order is the one `lib/consent.js`
+describes: inventory entry and policy pages first, in the commit that adds the
+script, never after.
