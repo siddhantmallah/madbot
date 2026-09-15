@@ -70,8 +70,12 @@ test("case is folded and surrounding whitespace trimmed", () => {
   assert.equal(normaliseEmail("\tMallah+Trial@Gmail.com\n"), "mallah@gmail.com");
 });
 
-test("googlemail.com is treated as dot-insensitive", () => {
-  assert.equal(normaliseEmail("m.a.llah@googlemail.com"), "mallah@googlemail.com");
+test("googlemail.com is dot-insensitive, and canonicalises to gmail.com", () => {
+  // This expected "mallah@googlemail.com" and contradicted the test directly
+  // below it, which asserts the two domains must produce one key. The code was
+  // right and this was the stale half — it went unnoticed because run-all.mjs
+  // did not run this file at all.
+  assert.equal(normaliseEmail("m.a.llah@googlemail.com"), "mallah@gmail.com");
 });
 
 test("googlemail.com and gmail.com are the same inbox and must normalise to the same address", () => {
