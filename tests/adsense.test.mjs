@@ -206,6 +206,55 @@ await test("a thin page is reported as the reason applications get refused", () 
   eq(single.severity, "critical", "single-page severity");
 });
 
+// The case this section got wrong in the field. getmadbot.com was refused for
+// "low value content" holding thirteen pages, nine of them legal notices —
+// eighty-seven percent of its text — while this check reported it a healthy
+// site with plenty of surface. Counting pages is not the test; counting pages
+// somebody would read is.
+const GETMADBOT_PATHS = [
+  "/", "/pricing", "/about", "/contact", "/legal", "/legal/terms", "/legal/privacy",
+  "/legal/cookies", "/legal/refunds", "/legal/acceptable-use", "/legal/dpa",
+  "/legal/subprocessors", "/legal/security",
+];
+
+await test("a site that is mostly legal pages is refused, not congratulated", () => {
+  const r = run({ paths: GETMADBOT_PATHS, distinctPages: 10, sitemapUrls: 13 });
+  const thin = r.findings.find((x) => /pages? a reader would come for/i.test(x.title));
+  truthy(thin, "the reader-page finding exists");
+  eq(thin.severity, "critical", "severity");
+  truthy(/Only 2 /.test(thin.title), `counted the readable pages, got "${thin.title}"`);
+
+  const shape = r.findings.find((x) => /most of this site is boilerplate/i.test(x.title));
+  truthy(shape, "the boilerplate finding exists");
+  eq(shape.severity, "critical", "severity");
+  truthy(/publisher-content/i.test(shape.detail), "quotes the rule it is applying");
+
+  eq(r.stats.contentPages, 2, "stats.contentPages");
+  eq(r.stats.boilerplatePages, 11, "stats.boilerplatePages");
+  return `score ${r.score}, ${r.counts.critical} blocking`;
+});
+
+await test("a real publisher is not penalised by the same check", () => {
+  // Thirty articles behind the same five policy pages.
+  const paths = ["/", ...Array.from({ length: 30 }, (_, i) => `/guides/thing-${i}`), "/legal/terms", "/legal/privacy", "/about", "/contact", "/legal/cookies"];
+  const r = run({ paths, sitemapUrls: paths.length });
+  truthy(!r.findings.some((x) => /most of this site is boilerplate/i.test(x.title)), "no boilerplate finding");
+  const good = r.findings.find((x) => /pages? a reader would come for/i.test(x.title));
+  eq(good.severity, "good", "severity");
+  eq(r.stats.contentPages, 31, "content pages");
+});
+
+await test("without a path list the check falls back to the count and claims no split", () => {
+  // A sitemapindex gives us page counts but not page URLs. Inventing a split
+  // from that would be worse than not drawing one.
+  const r = run({ paths: [], distinctPages: 20, sitemapUrls: 20 });
+  eq(r.stats.contentPages, null, "no content count claimed");
+  eq(r.stats.boilerplatePages, null, "no boilerplate count claimed");
+  truthy(!r.findings.some((x) => /most of this site is boilerplate/i.test(x.title)), "ratio check abstains");
+  const pages = r.findings.find((x) => /pages? a reader would come for/i.test(x.title));
+  eq(pages.severity, "good", "falls back to the raw count");
+});
+
 await test("the thresholds the copy quotes are the ones the verdict used", () => {
   const T = ADSENSE_THRESHOLDS;
   const justUnder = run({ wordCount: T.wordsThin - 1 });

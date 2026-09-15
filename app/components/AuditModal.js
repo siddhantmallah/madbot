@@ -409,7 +409,10 @@ function AdsenseSection({ index, report }) {
           ["ads.txt", s.adsTxt.exists ? `${s.adsTxt.records} record${s.adsTxt.records === 1 ? "" : "s"}` : "absent"],
           ["Google authorised", s.adsTxt.googlePubIds.length ? "yes" : "no"],
           ["Consent platform", s.consent.length ? s.consent[0] : "none"],
-          ["Pages found", s.pageCount || "1"],
+          // The split, not the total: the total is what let a site of legal
+          // pages read as having plenty of surface to sell.
+          ["Reader pages", s.contentPages === null ? s.pageCount || "1" : s.contentPages],
+          ["Policy / app pages", s.boilerplatePages === null ? "—" : s.boilerplatePages],
           ["Words per ad", s.wordsPerSlot === null ? "—" : s.wordsPerSlot],
         ].map(([label, val]) => (
           <div key={label} style={{ background: "var(--color-bg)", padding: "11px 14px" }}>

@@ -210,6 +210,46 @@ await test("adsense signals distinguish the loader, the slots and verification",
   eq(H.adsenseSignals("<p>nothing</p>").loader, false, "clean page");
 });
 
+// ---------------------------------------------------------------------------
+// classifyPaths — what an ad network counts as a page.
+// ---------------------------------------------------------------------------
+await test("legal, trust and app pages are separated from what a reader came for", () => {
+  // getmadbot.com's real sitemap, which AdSense refused for low value content
+  // while the readiness check called it thirteen healthy pages.
+  const c = H.classifyPaths([
+    "/", "/pricing", "/about", "/contact", "/legal", "/legal/terms", "/legal/privacy",
+    "/legal/cookies", "/legal/refunds", "/legal/acceptable-use", "/legal/dpa",
+    "/legal/subprocessors", "/legal/security", "/login",
+  ]);
+  eq(c.content.length, 2, "reader pages");
+  eq(c.policy.length, 11, "policy and trust pages");
+  eq(c.functional.length, 1, "app pages");
+  truthy(c.content.includes("/") && c.content.includes("/pricing"), "the right two");
+});
+
+await test("a policy prefix only counts as the first segment", () => {
+  // /legal/dpa is a notice; /blog/legal-tech-in-2026 is an article.
+  eq(H.classifyPaths(["/legal/dpa"]).policy.length, 1, "prefix");
+  eq(H.classifyPaths(["/blog/legal-tech-in-2026"]).content.length, 1, "not a prefix");
+  eq(H.classifyPaths(["/blog/privacy-first-analytics"]).content.length, 1, "article about privacy");
+});
+
+await test("the homepage counts as a page a reader came for", () => {
+  eq(H.classifyPaths(["/"]).content.length, 1, "root");
+  eq(H.classifyPaths(["https://x.test/"]).content.length, 1, "absolute root");
+});
+
+await test("paths are deduped and trailing slashes normalised", () => {
+  const c = H.classifyPaths(["/guide", "/guide/", "https://x.test/guide", "/guide.html"]);
+  // /guide.html is a distinct URL, so it stays; the other three are one page.
+  eq(c.content.length, 2, "deduped");
+});
+
+await test("an empty path list classifies nothing rather than guessing", () => {
+  const c = H.classifyPaths([]);
+  eq(c.content.length + c.policy.length + c.functional.length, 0, "nothing invented");
+});
+
 await test("text-to-HTML ratio is a percentage of the delivered bytes", () => {
   const ratio = H.textToHtmlRatio("<html><body><p>hello world</p></body></html>");
   if (ratio <= 0 || ratio > 100) throw new Error(`ratio out of range: ${ratio}`);
