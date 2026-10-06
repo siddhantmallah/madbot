@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import "./globals.css";
 import { AuthProvider } from "./providers/AuthProvider";
 import CookieConsent from "./components/CookieConsent";
@@ -116,14 +117,20 @@ const WEBSITE = {
   inLanguage: "en",
 };
 
-export default function RootLayout({ children }) {
+export default async function RootLayout({ children }) {
+  // The nonce proxy.js put in this request's Content-Security-Policy. Reading
+  // it also makes every page render on request, which nonces require: a page
+  // built ahead of time has no request and so no nonce, and the policy would
+  // refuse every inline script in it.
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
+
   return (
     <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
       <head>
         {/* Stamps the saved theme onto <html> before the first paint. Anything
             that runs after hydration is too late — the visitor would see a
             flash of the wrong theme first. */}
-        <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: themeBootScript }} />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify([ORGANISATION, WEBSITE]) }}
