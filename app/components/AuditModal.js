@@ -295,38 +295,39 @@ function Scanning({ domain, adsense }) {
     ...(adsense ? ["Reading ads.txt and the AdSense policy pages"] : []),
     "Working out what it all costs you",
   ];
-  const [i, setI] = useState(0);
-  useEffect(() => {
-    const id = setInterval(() => setI((v) => Math.min(v + 1, steps.length - 1)), 900);
-    return () => clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // What the audit checks, listed without progress ticks. The ticks used to
+  // advance on a 900 ms timer while the real work was one request the browser
+  // can't see inside, so they reported progress nobody had measured.
   return (
     <div style={{ padding: "72px 40px 80px", textAlign: "center" }}>
       <div style={{ width: 52, height: 52, margin: "0 auto 26px", borderRadius: "50%", border: "3px solid rgba(255,106,26,.25)", borderTopColor: "var(--color-accent)", animation: "sweep 1s linear infinite" }} />
       <div className="mono" style={{ marginBottom: 10 }}>Live read</div>
       <h3 style={{ margin: "0 0 22px", fontSize: "clamp(24px, 3vw, 32px)", lineHeight: 1.1 }}>Reading {domain}…</h3>
-      <div style={{ display: "flex", flexDirection: "column", gap: 7, maxWidth: 360, margin: "0 auto", textAlign: "left" }}>
-        {steps.map((s, idx) => (
-          <div key={s} className="mono" style={{ display: "flex", gap: 10, color: idx < i ? "var(--fg-45)" : idx === i ? "var(--fg)" : "var(--fg-22)", transition: "color .3s", textTransform: "none", letterSpacing: ".02em", fontSize: 12 }}>
-            <span style={{ flex: "none", width: 14 }}>{idx < i ? "✓" : idx === i ? "→" : ""}</span>
-            <span>{s}</span>
-          </div>
-        ))}
+      <div className="mono" style={{ marginBottom: 10, color: "var(--fg-60)", textTransform: "none", letterSpacing: ".02em", fontSize: 12 }}>
+        What&apos;s being checked
       </div>
+      <ul style={{ display: "flex", flexDirection: "column", gap: 7, maxWidth: 360, margin: "0 auto", padding: 0, listStyle: "none", textAlign: "left" }}>
+        {steps.map((s) => (
+          <li key={s} className="mono" style={{ display: "flex", gap: 10, color: "var(--fg-80)", textTransform: "none", letterSpacing: ".02em", fontSize: 12 }}>
+            <span aria-hidden="true" style={{ flex: "none", width: 14 }}>·</span>
+            <span>{s}</span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
 
 /**
- * `actionLabel` exists because the default one is a promise.
+ * The label in front of a finding's fix.
  *
- * "MADBOT would →" is true of the SEO findings: writing the missing page and
- * marking up the schema is the product. It is not true of "install a certified
- * consent platform" or "publish an ads.txt" — those are the owner's to do, and
- * labelling them as ours would be selling work that does not happen.
+ * This used to default to "MADBOT would →" on every SEO, security and
+ * performance finding. MADBOT writes new pages as pull requests; it never
+ * edits a page that already exists, a server header, robots.txt or an
+ * analytics install. Every fix text in lib/audit.js is an instruction to the
+ * site's owner, so that is how it is labelled.
  */
-function Finding({ f, index, actionLabel = "MADBOT would →" }) {
+function Finding({ f, index, actionLabel = "How to fix →" }) {
   const t = TONE[f.severity] || TONE.good;
   return (
     <div style={{ display: "grid", gridTemplateColumns: "auto minmax(0,1fr)", gap: "0 16px", padding: "16px 18px", borderRadius: 6, background: "var(--color-surface)", border: "1px solid var(--color-divider)" }}>
@@ -477,15 +478,15 @@ function Gate({ url }) {
     >
       <div className="card elev-lg" style={{ maxWidth: 470, padding: 30, gap: 14, textAlign: "center", border: "1px solid var(--color-accent-400)", borderRadius: 6 }}>
         <div className="mono">That&apos;s the diagnosis</div>
-        <h3 style={{ margin: 0, fontSize: 28, lineHeight: 1.1 }}>Want it fixed?</h3>
+        <h3 style={{ margin: 0, fontSize: 28, lineHeight: 1.1 }}>Want the work done?</h3>
         <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.6, color: "var(--fg-80)" }}>
-          Every SEO tool will hand you a list like the one behind this panel. MADBOT is the one that then goes and does
-          the work — writes the missing pages, marks up the schema, lists you where buyers look — and shows you the
-          receipt for each one.
+          Every SEO tool will hand you a list like the one behind this panel. MADBOT then does the slow part — writes
+          the missing pages with their schema, prepares your directory listings, finds the companies who need you — and
+          shows you the receipt for each one.
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 8, textAlign: "left", fontSize: 13.5, color: "var(--fg-80)", padding: "4px 0" }}>
           <div>→ A full plan, ordered by what it&apos;s worth</div>
-          <div>→ The work carried out at the autonomy level you set</div>
+          <div>→ The pages, listings and outreach drafted for your approval</div>
           <div>→ Everything logged; nothing published without your say</div>
         </div>
         <Link className="btn btn-primary" href={`/login${qs}`} style={{ minHeight: 50, fontSize: 15.5, color: "var(--on-accent)" }}>
@@ -771,10 +772,10 @@ export default function AuditModal({ url, adsense = false, onClose }) {
                   <span className="mono">What happens next</span>
                   <h3 style={{ margin: 0, fontSize: "clamp(22px, 2.6vw, 30px)", lineHeight: 1.08 }}>Anyone can tell you this. Almost nobody fixes it.</h3>
                   <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.6, color: "var(--fg-80)", maxWidth: "62em" }}>
-                    This report took seconds and cost nothing. The reason a report like it usually changes nothing is that the
-                    next step — writing the pages that are missing, marking up the schema, listing you where buyers look — is
-                    weeks of work nobody has time for. That&apos;s the part MADBOT does, at whatever level of autonomy
-                    you&apos;re comfortable giving it, with every action logged and nothing published without your say.
+                    This report took seconds and cost nothing. The fixes above are quick for whoever runs your site. The
+                    slower work is what comes after — writing the pages that are missing, with their schema, preparing your
+                    directory listings, finding the companies who need you. That&apos;s the part MADBOT does, with every
+                    action logged and nothing published without your say.
                   </p>
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap", paddingTop: 4 }}>
                     <Link className="btn btn-primary" href={`/login?mode=signup&next=pricing&url=${encodeURIComponent(url)}`} style={{ color: "var(--on-accent)", minHeight: 48 }}>

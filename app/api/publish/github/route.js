@@ -3,6 +3,14 @@ import { authorize } from "../../../../lib/licenseServer";
 import { FEATURES } from "../../../../lib/plans";
 import { adminAvailable, adminDb } from "../../../../lib/firebaseAdmin";
 import { publishArticle } from "../../../../lib/publishGithub";
+import { fields, LIMITS, rateLimit, readJson, z } from "../../../../lib/apiGuard";
+import { SITE_ID } from "../../../../lib/siteLimits";
+
+const Body = z.object({
+  idToken: fields.idToken,
+  siteId: fields.siteId,
+  contentId: z.string({ error: "Missing content id." }).regex(SITE_ID, "Missing content id."),
+});
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,31 +28,26 @@ export const maxDuration = 60;
 export async function POST(request) {
   if (!adminAvailable()) return NextResponse.json({ ok: false, error: "No service account configured." }, { status: 503 });
 
-  let body;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ ok: false, error: "Invalid request." }, { status: 400 });
-  }
-
-  const { idToken, siteId, contentId } = body || {};
+  const body = await readJson(request, Body);
+  if (!body.ok) return body.response;
+  const { idToken, siteId, contentId } = body.data;
 
   // Identity alone was not enough here. Opening a pull request against a
   // customer's repository is the publishing step, and publishing is what the
   // Content feature sells, so any signed-in account on any plan could do it.
-  const auth = await authorize(idToken, FEATURES.CONTENT);
+  const auth = await authorize(idToken, FEATURES.CONTENT, { permission: "publish" });
   if (!auth.ok) {
     return NextResponse.json(
       { ok: false, error: auth.error, upgradeTo: auth.upgradeTo || null, upgradeName: auth.upgradeName || null },
       { status: auth.status }
     );
   }
-  const uid = auth.uid;
-  if (!uid) return NextResponse.json({ ok: false, error: "Not signed in." }, { status: 401 });
-  if (!siteId || !contentId) return NextResponse.json({ ok: false, error: "Missing site or content id." }, { status: 400 });
+  const orgId = auth.orgId;
+  const limited = await rateLimit({ scope: "publish.github", key: auth.uid, rules: LIMITS.fetch });
+  if (!limited.ok) return limited.response;
 
   const db = adminDb();
-  const siteRef = db.collection("users").doc(uid).collection("sites").doc(siteId);
+  const siteRef = db.collection("users").doc(orgId).collection("sites").doc(siteId);
   const [integrationSnap, contentSnap] = await Promise.all([
     siteRef.collection("integrations").doc("github").get(),
     siteRef.collection("content").doc(contentId).get(),

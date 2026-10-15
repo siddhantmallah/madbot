@@ -28,7 +28,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 
 // These reach the dev server on http://localhost:3000. Run last, so when they
 // fail because it is not running, the rest of the report is already on screen.
-const NEEDS_DEV_SERVER = new Set(["api.test.mjs", "ssrf.test.mjs"]);
+const NEEDS_DEV_SERVER = new Set(["api.test.mjs", "ssrf.test.mjs", "adminGuard.test.mjs", "seo.test.mjs"]);
 
 const found = fs
   .readdirSync(here)

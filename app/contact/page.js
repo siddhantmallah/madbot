@@ -1,5 +1,3 @@
-"use client";
-
 import Link from "next/link";
 import { MadbotMark } from "../components/Brand";
 import ThemeToggle from "../components/ThemeToggle";

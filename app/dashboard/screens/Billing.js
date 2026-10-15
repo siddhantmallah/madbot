@@ -99,7 +99,7 @@ export default function Billing({ usage, billing = [], siteCount, metered, regio
       {metered ? (
         <section className="card elev-sm" style={{ padding: 20, gap: 13 }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 9, flexWrap: "wrap" }}>
-            <h4 style={{ margin: 0 }}>This month on this site</h4>
+            <h4 style={{ margin: 0 }}>This month on your account</h4>
             <span className="text-muted" style={{ fontSize: 12, marginLeft: "auto" }}>{metered.period}</span>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
@@ -108,7 +108,8 @@ export default function Billing({ usage, billing = [], siteCount, metered, regio
               { label: "Lead credits", used: metered.leadCredits || 0, allowance: plan.leadCredits },
               { label: "Content pieces", used: metered.contentPieces || 0, allowance: plan.contentPieces },
               { label: "Social posts", used: metered.socialPosts || 0, allowance: plan.socialPosts || 0 },
-              { label: "Outreach emails", used: metered.emails || 0, allowance: plan.emails },
+              // No "Outreach emails" row: MADBOT never sends outreach, so that
+              // meter could only ever read zero.
             ].map((row) => {
               const d = describeUsage({ used: row.used, allowance: row.allowance });
               return (
@@ -142,7 +143,8 @@ export default function Billing({ usage, billing = [], siteCount, metered, regio
                   </span>
                   {d.exhausted && row.allowance ? (
                     <span style={{ fontSize: 11.5, color: "var(--color-accent-800)" }}>
-                      Used up. MADBOT has paused this kind of work until next month, or top up to carry on.
+                      Used up. MADBOT has paused this kind of work until next month, or move to a larger plan to
+                      carry on.
                     </span>
                   ) : null}
                 </div>

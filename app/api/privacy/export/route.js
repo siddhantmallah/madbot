@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
-import { verifiedUid } from "../../../../lib/licenseServer";
 import { adminAuth, adminAvailable, adminDb } from "../../../../lib/firebaseAdmin";
+import { membershipsOf } from "../../../../lib/orgs";
+import { failure, fields, LIMITS, rateLimit, readJson, requireUser, z } from "../../../../lib/apiGuard";
+
+const Body = z.object({ idToken: fields.idToken });
 import { COMPANY } from "../../../../lib/company";
 
 export const runtime = "nodejs";
@@ -53,20 +56,24 @@ async function readCollection(ref) {
  * it is a real export rather than a summary: if a field is in Firestore under
  * this user, it is in this file, apart from the credentials noted above.
  *
- * A GET so it can be a plain link the browser downloads. The id token travels
- * as a query parameter for that reason, which is a deliberate trade: the token
- * is short-lived, the request is over HTTPS, and the alternative is a POST that
- * cannot produce a file download without extra client machinery. It is never
- * logged by this route.
+ * A POST, with the token in the body. This was a GET with the token in the
+ * query string so the browser could download it as a plain link, and that put
+ * a live credential into browser history and the hosting provider's request
+ * logs. The dashboard now saves the response as a file itself.
  */
-export async function GET(request) {
+export async function POST(request) {
   if (!adminAvailable()) {
     return NextResponse.json({ ok: false, error: "No service account configured." }, { status: 503 });
   }
 
-  const idToken = new URL(request.url).searchParams.get("idToken");
-  const uid = await verifiedUid(idToken);
-  if (!uid) return NextResponse.json({ ok: false, error: "Not signed in." }, { status: 401 });
+  const body = await readJson(request, Body);
+  if (!body.ok) return body.response;
+  const who = await requireUser(body.data.idToken);
+  if (!who.ok) return who.response;
+  const { uid } = who.user;
+
+  const limited = await rateLimit({ scope: "privacy.export", key: uid, rules: LIMITS.account });
+  if (!limited.ok) return limited.response;
 
   const db = adminDb();
   const userRef = db.collection("users").doc(uid);
@@ -74,25 +81,45 @@ export async function GET(request) {
   try {
     const [account, userSnap] = await Promise.all([adminAuth().getUser(uid), userRef.get()]);
 
-    const sites = [];
-    const siteDocs = await userRef.collection("sites").get();
-    for (const siteDoc of siteDocs.docs) {
-      const site = { id: siteDoc.id, ...plain(siteDoc.data()) };
-      for (const name of SITE_SUBCOLLECTIONS) {
-        // eslint-disable-next-line no-await-in-loop
-        site[name] = await readCollection(siteDoc.ref.collection(name));
+    async function readSites(rootRef) {
+      const sites = [];
+      const siteDocs = await rootRef.collection("sites").get();
+      for (const siteDoc of siteDocs.docs) {
+        const site = { id: siteDoc.id, ...plain(siteDoc.data()) };
+        for (const name of SITE_SUBCOLLECTIONS) {
+          // eslint-disable-next-line no-await-in-loop
+          site[name] = await readCollection(siteDoc.ref.collection(name));
+        }
+        site._withheld = REDACTED_SITE_SUBCOLLECTIONS.map((n) => ({
+          collection: n,
+          reason: "Holds access tokens for services you connected. Withheld so a downloaded file is not a credential.",
+        }));
+        sites.push(site);
       }
-      site._withheld = REDACTED_SITE_SUBCOLLECTIONS.map((n) => ({
-        collection: n,
-        reason: "Holds access tokens for services you connected. Withheld so a downloaded file is not a credential.",
-      }));
-      sites.push(site);
+      return sites;
     }
 
-    const [billing, billingEvents] = await Promise.all([
-      readCollection(userRef.collection("billing")),
-      readCollection(userRef.collection("billingEvents")),
-    ]);
+    // Every organisation this account belongs to, and in full the ones it
+    // owns. An organisation someone else owns is theirs to export; this file
+    // says which ones and in what role.
+    const memberships = await membershipsOf(db, uid);
+    const orgDocs = await Promise.all(memberships.map((m) => db.collection("orgs").doc(m.id).get()));
+    const owned = orgDocs.filter((o) => o.exists && o.data().ownerUid === uid);
+    // An account that hasn't signed in since organisations arrived has none
+    // yet; its own data root is still its workspace.
+    const roots = owned.length ? owned.map((o) => ({ id: o.id, name: o.data().name, licence: plain(o.data().subscription || null) })) : [{ id: uid, name: null, licence: null }];
+    const organisations = [];
+    for (const root of roots) {
+      const rootRef = db.collection("users").doc(root.id);
+      // eslint-disable-next-line no-await-in-loop
+      const [sites, billing, billingEvents, usage] = await Promise.all([
+        readSites(rootRef),
+        readCollection(rootRef.collection("billing")),
+        readCollection(rootRef.collection("billingEvents")),
+        readCollection(rootRef.collection("usage")),
+      ]);
+      organisations.push({ ...root, billing, billingEvents, usage, sites });
+    }
 
     const payload = {
       exportedAt: new Date().toISOString(),
@@ -103,7 +130,7 @@ export async function GET(request) {
           "Everything MADBOT holds that relates to this account. Personal data about other people that you asked MADBOT to research sits inside the sites below, under 'leads'. For that data you are the controller and MADBOT is the processor.",
         notIncluded: [
           "Access tokens for services you connected (GitHub, Google, LinkedIn, X, Meta).",
-          "The one-way hash recording that this email address has used a free trial. It cannot be reversed to an address and is kept to stop repeat trials, which is a fraud-prevention purpose under legitimate interests.",
+          "The one-way hashes recording that this email address, and if it is on your own domain that domain, have used a free trial. They cannot be reversed to an address and are kept to stop repeat trials, which is a fraud-prevention purpose under legitimate interests.",
           "Suppression records for addresses that bounced or complained. Deleting those would mean contacting somebody again who asked not to be.",
         ],
       },
@@ -117,9 +144,10 @@ export async function GET(request) {
         signInMethods: (account.providerData || []).map((p) => p.providerId),
       },
       profile: userSnap.exists ? plain(userSnap.data()) : null,
-      billing,
-      billingEvents,
-      sites,
+      memberships: memberships.map((m) => ({ organisation: m.id, name: m.name, role: m.roleId })),
+      // The organisations this account owns, each with its sites, licence,
+      // billing history and usage.
+      organisations,
     };
 
     const stamp = new Date().toISOString().slice(0, 10);
@@ -132,6 +160,6 @@ export async function GET(request) {
       },
     });
   } catch (err) {
-    return NextResponse.json({ ok: false, error: String(err?.message || err) }, { status: 500 });
+    return failure("privacy.export", err, "The export couldn't be put together just now. Try again in a minute.");
   }
 }

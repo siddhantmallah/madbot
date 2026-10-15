@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { MODELS } from "../../../lib/aiModels";
+import { secretMatches } from "../../../lib/apiGuard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -31,9 +32,7 @@ export async function GET(request) {
   // needs it on every load and it costs nothing; only the bypass is gated, on
   // the same secret the cron uses.
   const wantsFresh = new URL(request.url).searchParams.get("fresh") === "1";
-  const secret = process.env.CRON_SECRET;
-  const authorised =
-    !!secret && (request.headers.get("authorization") || "") === `Bearer ${secret}`;
+  const authorised = secretMatches(request.headers.get("authorization"), process.env.CRON_SECRET);
   const force = wantsFresh && authorised;
 
   if (!process.env.ANTHROPIC_API_KEY) {
@@ -74,8 +73,11 @@ export async function GET(request) {
         : {
             state: "unreachable",
             ready: false,
-            message: `Couldn't reach Anthropic: ${String(err?.message || err).slice(0, 140)}`,
+            // This answer is public, so the provider's own error text stays in
+            // the logs rather than on every visitor's screen.
+            message: "Couldn't reach Anthropic just now. This usually clears on its own.",
           };
+    if (payload.state === "unreachable") console.error("[ai-status]", err?.message || err);
     payload.status = status;
   }
 

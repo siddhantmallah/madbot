@@ -5,7 +5,6 @@ import { useState } from "react";
 import { MadbotMark } from "../components/Brand";
 import ThemeToggle from "../components/ThemeToggle";
 import { PLANS, PLAN_ORDER, REGIONS, formatPrice, priceFor, highlightsFor } from "../../lib/plans";
-import { TOPUPS } from "../../lib/credits";
 import { useRegion } from "../../lib/useRegion";
 
 export default function PricingPage() {
@@ -91,11 +90,9 @@ export default function PricingPage() {
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                   <h2 style={{ margin: 0, fontSize: 21 }}>{p.name}</h2>
-                  {p.featured ? (
-                    <span className="tag" style={{ fontSize: 10, background: "var(--color-accent)", color: "var(--on-accent)" }}>
-                      ★ Most popular
-                    </span>
-                  ) : null}
+                  {/* "Most popular" was here, with no customers to make it true.
+                      TODO(Siddhant): bring a badge back once signups show which
+                      plan really is. */}
                 </div>
 
                 <div style={{ display: "flex", alignItems: "baseline", gap: 5, flexWrap: "wrap" }}>
@@ -139,23 +136,16 @@ export default function PricingPage() {
           })}
         </div>
 
-        {/* Top-ups. Hitting a limit mid-month should be a purchase, not a wall. */}
-        <section style={{ marginTop: 44 }}>
+        {/* Top-ups were priced and listed here, under "Buy what you need", with
+            nothing anywhere that could sell or grant one. The prices still live
+            in lib/credits.js (TOPUPS) for the day they can be bought.
+            TODO(Siddhant): restore this section when top-ups have a checkout. */}
+        <section style={{ marginTop: 44, maxWidth: "46em" }}>
           <h2 style={{ margin: "0 0 6px", fontSize: "clamp(21px,4vw,28px)" }}>Need more part-way through a month?</h2>
-          <p className="text-muted" style={{ margin: "0 0 18px", maxWidth: "42em", fontSize: 14.5 }}>
-            Buy what you need without moving plan. Top-ups don&apos;t expire while your plan is active.
+          <p className="text-muted" style={{ margin: 0, fontSize: 14.5, lineHeight: 1.65 }}>
+            Top-ups aren&apos;t on sale yet. Until they are, moving to a larger plan is the way to get more before the
+            month resets.
           </p>
-          <div className="grid-4" style={{ gap: 12 }}>
-            {Object.entries(TOPUPS).map(([id, t]) => (
-              <div key={id} className="card elev-sm" style={{ padding: 16, gap: 4 }}>
-                <span className="card-kicker">{t.label}</span>
-                <span style={{ fontFamily: "var(--font-heading)", fontSize: 22, lineHeight: 1 }}>
-                  {pending ? "—" : formatPrice(t.price[region] ?? t.price.US, region)}
-                  {t.recurring ? <span className="text-muted" style={{ fontSize: 12 }}>/mo</span> : null}
-                </span>
-              </div>
-            ))}
-          </div>
         </section>
 
         <section style={{ marginTop: 44, maxWidth: "46em" }}>
@@ -163,14 +153,15 @@ export default function PricingPage() {
           <p className="text-muted" style={{ margin: 0, fontSize: 14.5, lineHeight: 1.65 }}>
             One piece of work MADBOT does on its own — reading a page, analysing a competitor&apos;s move, writing an
             article, checking whether an AI assistant names you. Bigger jobs use more than one, because they cost more
-            to run. Your Billing screen shows what&apos;s been used and on what, so nothing is a mystery at the end of
-            the month.
+            to run. Every allowance belongs to your account and is shared across the sites your plan covers. Your
+            Billing screen shows how much of each you&apos;ve used this month.
           </p>
         </section>
 
         <p className="text-muted" style={{ marginTop: 36, fontSize: 12.5 }}>
-          Card checkout isn&apos;t live yet — starting a plan gets you a 14-day trial and we&apos;ll be in touch with
-          payment details. Prices exclude any tax that applies where you are.
+          Card checkout isn&apos;t live yet — starting a plan gets you a 14-day trial, if your address and your
+          organisation haven&apos;t had one already, and we&apos;ll be in touch with payment details. Prices exclude
+          any tax that applies where you are.
         </p>
       </main>
     </div>

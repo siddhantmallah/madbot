@@ -4,6 +4,20 @@ import { authorize } from "../../../../lib/licenseServer";
 import { FEATURES } from "../../../../lib/plans";
 import { reserve, record } from "../../../../lib/costControl";
 import { NETWORK_ORDER, readiness } from "../../../../lib/social";
+import { failure, fields, LIMITS, rateLimit, readJson, siteContext, z } from "../../../../lib/apiGuard";
+
+const Body = z.object({
+  idToken: fields.idToken,
+  siteId: fields.siteId,
+  site: siteContext,
+  // An article is the longest thing anyone hands this; 60k characters is a
+  // long one, and the prompt is paid for by the character.
+  source: fields.text(60_000, "The source material").nullish(),
+  link: fields.url.nullish(),
+  networkIds: z.array(z.string().max(40)).max(10).nullish(),
+  angleIndex: z.number().int().min(0).max(20).nullish(),
+  audience: fields.text(500, "The audience").nullish(),
+});
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -35,16 +49,9 @@ export async function POST(request) {
     );
   }
 
-  let body;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ ok: false, error: "Invalid request." }, { status: 400 });
-  }
-
-  const { idToken, siteId, site, source, link, networkIds, angleIndex = null, audience = null } = body || {};
-  if (!idToken) return NextResponse.json({ ok: false, error: "Not signed in." }, { status: 401 });
-  if (!siteId) return NextResponse.json({ ok: false, error: "No site given." }, { status: 400 });
+  const body = await readJson(request, Body, { maxBytes: 160 * 1024 });
+  if (!body.ok) return body.response;
+  const { idToken, siteId, site, source, link, networkIds, angleIndex = null, audience = null } = body.data;
   if (!source || String(source).trim().length < 40) {
     return NextResponse.json(
       { ok: false, error: "Not enough source material. Give it an article, a page, or a paragraph about what happened." },
@@ -62,12 +69,14 @@ export async function POST(request) {
       { status: auth.status }
     );
   }
+  const limited = await rateLimit({ scope: "ai.social", key: auth.uid, rules: LIMITS.ai });
+  if (!limited.ok) return limited.response;
 
   // One post per network held up front. A run that drafts four and publishes one
   // still consumed four drafts' worth of model time, and holding only what is
   // eventually published would meter the wrong thing.
   const gate = await reserve({
-    uid: auth.uid,
+    orgId: auth.orgId,
     siteId,
     subscription: auth.subscription,
     action: "SOCIAL_SET",
@@ -77,7 +86,7 @@ export async function POST(request) {
   if (!gate.ok) {
     return NextResponse.json(
       { ok: false, error: gate.reason, code: gate.code, used: gate.used ?? null, allowance: gate.allowance ?? null },
-      { status: 429 }
+      { status: gate.status || 429 }
     );
   }
 
@@ -136,6 +145,6 @@ export async function POST(request) {
     await record(gate.hold, { failed: true });
     if (err?.code === "refused") return NextResponse.json({ ok: false, error: err.message });
     if (err?.code === "empty") return NextResponse.json({ ok: false, error: "The model returned nothing usable. Try again." });
-    return NextResponse.json({ ok: false, error: `Drafting failed: ${String(err?.message || err).slice(0, 200)}` }, { status: 200 });
+    return failure("social.draft", err, "Drafting failed. Nothing was charged; try again.", 200);
   }
 }

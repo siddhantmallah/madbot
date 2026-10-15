@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { verifiedUid } from "../../../lib/licenseServer";
 import { safeFetch } from "../../../lib/urlGuard";
+import { LIMITS, rateLimit } from "../../../lib/apiGuard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -44,7 +45,10 @@ export async function GET(request) {
   if (!uid) return NextResponse.json({ ok: false, error: "Not signed in." }, { status: 401 });
 
   const target = searchParams.get("url");
-  if (!target) return NextResponse.json({ ok: false, error: "No url." }, { status: 400 });
+  if (!target || target.length > 2048) return NextResponse.json({ ok: false, error: "No url." }, { status: 400 });
+
+  const limited = await rateLimit({ scope: "fetch.favicon", key: uid, rules: LIMITS.fetch });
+  if (!limited.ok) return limited.response;
 
   try {
     const out = await safeFetch(target, { timeoutMs: 6000, capBytes: CAP_BYTES, binary: true });

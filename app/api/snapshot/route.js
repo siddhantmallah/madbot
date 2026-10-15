@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { runSnapshot } from "../../../lib/audit";
 import { authorize } from "../../../lib/licenseServer";
 import { FEATURES } from "../../../lib/plans";
+import { LIMITS, rateLimit } from "../../../lib/apiGuard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,9 +33,15 @@ export async function GET(request) {
       { status: auth.status }
     );
   }
+  const url = searchParams.get("url");
+  if (!url || url.length > 2048) {
+    return NextResponse.json({ ok: false, error: "That doesn't look like a valid address." }, { status: 400 });
+  }
+  const limited = await rateLimit({ scope: "fetch.snapshot", key: auth.uid, rules: LIMITS.fetch });
+  if (!limited.ok) return limited.response;
 
   try {
-    const snap = await runSnapshot(searchParams.get("url"));
+    const snap = await runSnapshot(url);
     return NextResponse.json({ ok: true, snapshot: snap });
   } catch (err) {
     const msg = String(err?.message || "");

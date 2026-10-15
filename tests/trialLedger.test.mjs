@@ -235,3 +235,40 @@ test("the Firestore-backed helpers exist but need a database", () => {
     assert.equal(typeof ledger[fn], "function", `${fn} is missing`);
   }
 });
+
+// ---------------------------------------------------------------------------
+// One trial per custom domain per 30 days (decided 2026-10-14).
+// ---------------------------------------------------------------------------
+
+test("public mail services have no domain key, so the domain limit never applies to them", () => {
+  for (const email of ["a@gmail.com", "a@outlook.com", "a@hotmail.co.uk", "a@yahoo.co.in", "a@icloud.com", "a@proton.me"]) {
+    assert.equal(ledger.domainLedgerKey(email), null, email);
+  }
+});
+
+test("addresses on one custom domain share a domain key, and other domains don't", () => {
+  const a = ledger.domainLedgerKey("a1@acme.io");
+  assert.ok(a, "custom domain has a key");
+  assert.equal(ledger.domainLedgerKey("A2+x@ACME.io"), a, "same domain, different address");
+  assert.notEqual(ledger.domainLedgerKey("a1@acme.com"), a, "different domain");
+  assert.notEqual(a, ledger.ledgerKey("a1@acme.io"), "domain key is not the address key");
+});
+
+test("disposable mail services count as one domain, so they share one trial", () => {
+  assert.ok(ledger.domainLedgerKey("x@mailinator.com"));
+});
+
+test("a trial on the domain within 30 days blocks another account, not the same one", () => {
+  const now = Date.parse("2026-10-14T12:00:00Z");
+  const recent = { lastTrialAt: "2026-10-01T12:00:00Z", lastTrialUid: "first" };
+  assert.equal(ledger.domainTrialTaken(recent, "second", now), true, "another account");
+  assert.equal(ledger.domainTrialTaken(recent, "first", now), false, "the account that took it");
+});
+
+test("the domain becomes eligible again after the window", () => {
+  const now = Date.parse("2026-10-14T12:00:00Z");
+  const old = { lastTrialAt: "2026-09-13T12:00:00Z", lastTrialUid: "first" };
+  assert.equal(ledger.domainTrialTaken(old, "second", now), false);
+  assert.equal(ledger.domainTrialTaken(null, "second", now), false, "no record");
+  assert.equal(ledger.domainTrialTaken({ lastTrialAt: { toMillis: () => now - 1000 }, lastTrialUid: "first" }, "second", now), true, "Firestore Timestamp");
+});

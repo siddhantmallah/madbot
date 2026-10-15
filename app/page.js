@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePageReveal } from "./components/useReveal";
-import AuditModal from "./components/AuditModal";
 import SiteFooter from "./components/SiteFooter";
 import ThemeToggle from "./components/ThemeToggle";
 import { MadbotMark } from "./components/Brand";
@@ -18,12 +17,16 @@ import { SITE_URL } from "../lib/company";
 // prerenders and the scene arrives after.
 const HeroScene = dynamic(() => import("./components/HeroScene"), { ssr: false });
 
+// The free report is ~800 lines and nobody needs it until they ask for one.
+// Fetched when the modal first opens, not with the homepage.
+const AuditModal = dynamic(() => import("./components/AuditModal"), { ssr: false });
+
 // Illustrative examples of the kind of work the engine does — deliberately
 // phrased as capability, not as a live feed of things happening right now.
 const TICKER_LINES = [
   "Finds the pages you should have and don't",
   "Marks up your schema so answer engines can cite you",
-  "Writes and ships the pages, then tracks what moved",
+  "Writes the pages and opens the pull request",
   "Spots the companies who have your problem this week",
   "Holds every publish for your approval",
 ];
@@ -35,7 +38,7 @@ const MARQUEE = [
   "Finds the pages you should have and don't",
   "Marks up schema so answer engines can cite you",
   "Writes the page, opens the pull request, you merge",
-  "Lists you in the directories buyers check",
+  "Writes your directory listings, ready to paste in",
   "Spots the companies who have your problem this week",
   "Nothing sent, nothing published, without you",
   "Every action logged, with the reason it was taken",
@@ -44,11 +47,11 @@ const MARQUEE = [
 const FAQS = [
   {
     q: "Will it publish things to my site without asking?",
-    a: "Only if you turn the dial that far. At Watch it changes nothing; at Let it rip it publishes but never spends; at Full send it spends inside your budget. Nothing reaches your site or your audience without you: articles arrive as a pull request you merge, social posts wait for approval on screen, and outreach is never sent by MADBOT.",
+    a: "No, at any setting. Nothing reaches your site or your audience without you: articles arrive as a pull request you merge, social posts wait for approval on screen, and outreach is never sent by MADBOT. The autonomy dial decides what MADBOT starts on its own; today the one thing it releases is a weekly AI-visibility re-check, from Let it rip upwards, on sites where you've switched that on.",
   },
   {
     q: "How is this different from an SEO tool?",
-    a: "An SEO tool hands you a list of problems and a monthly bill. MADBOT does the work — writes the pages, marks up the schema, lists you in the directories buyers check, finds the companies who need you — and then shows you what changed and why.",
+    a: "An SEO tool hands you a list of problems and a monthly bill. MADBOT does the work — writes the pages, marks up the schema, writes your directory listings, finds the companies who need you — and then shows you what changed and why.",
   },
   {
     q: "What does it need from me to get started?",
@@ -72,11 +75,16 @@ const FAQS = [
 // about the product, where the dashboard's own copy has the product talking to
 // you. One object feeds both the dial's centre and the list beside it, so they
 // can never say two different things about the same setting.
+//
+// Written to what lib/scheduler.js does, which is the only code the dial
+// gates: from 48 up it releases the weekly paid AI-visibility re-check on sites
+// that opted in. It used to say the upper bands published and spent "inside
+// your budget" on their own. Nothing does that, and there is no budget setting.
 const ROPE_COPY = {
   "Watch only": "It looks, it reports, it changes nothing.",
-  Suggest: "A plan on your desk each morning. You press the buttons.",
-  "Let it rip": "It publishes, distributes and prospects on its own — and asks before spending a cent.",
-  "Full send": "It spends too, inside a budget you set, and hands you the receipts.",
+  Suggest: "It keeps the plan up to date. You press the buttons.",
+  "Let it rip": "It also re-runs your AI-visibility check every week on its own. Anything public still waits for you.",
+  "Full send": "The same as Let it rip today. Nothing publishes or spends without you at any setting.",
 };
 
 const BAND_TAG_STYLE = [
@@ -167,7 +175,7 @@ function landingSchema(faqs) {
       url: SITE_URL,
       publisher: { "@id": `${SITE_URL}/#organization` },
       description:
-        "Connect a website once. MADBOT audits it, writes the pages, lists you where buyers look and finds the companies who need you, at the level of autonomy you choose.",
+        "Connect a website once. MADBOT audits it, writes the pages and your directory listings and finds the companies who need you, with every public step held for your approval.",
       // Real numbers from lib/plans.js. Quoted in USD because schema takes one
       // currency and USD is the international list; /pricing shows the local
       // price for each region we sell in.
@@ -259,7 +267,7 @@ export default function LandingPage() {
               dimmed, so the section never renders as an empty dark box. */}
           <HeroScene className="hero-scene">
             <img
-              src="/opportunity-graph.png"
+              src="/opportunity-graph.webp"
               alt=""
               aria-hidden="true"
               width={1600}
@@ -292,7 +300,7 @@ export default function LandingPage() {
             {/* "Earns the links" is gone from this line: nothing in the product
                 builds backlinks. Listing you in directories is what it does. */}
             <p className="reveal" style={{ margin: "30px 0 34px", fontSize: "clamp(16px,1.55vw,20px)", lineHeight: 1.55, maxWidth: "32em", color: "var(--fg-80)" }}>
-              MADBOT reads your site, finds the openings, writes the pages, lists you where buyers look, spots the
+              MADBOT reads your site, finds the openings, writes the pages and your directory listings, spots the
               companies who need you — and shows you exactly what it did. You keep a dial and a veto.
             </p>
             <form className="reveal" onSubmit={handleStartSubmit} style={{ display: "flex", gap: 10, maxWidth: 560, marginBottom: 14, flexWrap: "wrap" }}>
@@ -387,10 +395,10 @@ export default function LandingPage() {
         <section id="how" aria-labelledby="how-h" className="pad-responsive" style={{ maxWidth: 1180, margin: "0 auto", padding: "84px 28px 24px" }}>
           <div className="section-index"><span className="mono">01 — How it works</span></div>
           <h2 id="how-h" style={{ margin: "0 0 12px", fontSize: "clamp(24px,8.1vw,44px)", maxWidth: "16em" }}>
-            Four things happen, over and over, without you
+            Four things happen, over and over
           </h2>
           <p style={{ margin: "0 0 44px", fontSize: 17, maxWidth: "34em", color: "var(--fg-60)" }}>
-            This is the whole loop. It never stops, and it gets better at your business every week it runs.
+            This is the whole loop. The reading and checking run on a schedule; anything that goes public waits for you.
           </p>
           <ol
             data-reveal
@@ -398,10 +406,10 @@ export default function LandingPage() {
             className="grid-4" style={{ listStyle: "none", margin: 0, padding: 0, gap: 22 }}
           >
             {[
-              { n: "1", bg: "var(--color-accent)", fg: "var(--on-accent)", ring: false, glow: "rgba(255,106,26,.35)", title: "Reads your site", body: "Products, buyers, rivals, technical debt, and the 83 openings you didn't know were there. One URL, no tags." },
+              { n: "1", bg: "var(--color-accent)", fg: "var(--on-accent)", ring: false, glow: "rgba(255,106,26,.35)", title: "Reads your site", body: "Products, buyers, rivals, technical debt, and the openings you didn't know were there. One URL, no tags." },
               { n: "2", bg: "var(--color-accent-2-500)", fg: "var(--on-accent)", ring: false, glow: "rgba(168,85,247,.35)", title: "Picks its battles", body: "Every opportunity gets an expected value, a difficulty and a confidence score. Cheap wins first, moonshots last." },
-              { n: "3", bg: "transparent", fg: "var(--color-accent)", ring: "var(--color-accent)", title: "Does the work", body: "Writes, publishes, fixes, submits, lists, pitches and finds buyers — inside the rules you wrote in plain English." },
-              { n: "4", bg: "transparent", fg: "var(--color-accent-2-700)", ring: "var(--color-accent-2-500)", title: "Shows the receipts", body: "One Friday digest, one honest baseline it never re-bases, and every action on the record with the reason it was taken." },
+              { n: "3", bg: "transparent", fg: "var(--color-accent)", ring: "var(--color-accent)", title: "Does the work", body: "Writes articles, social posts, listings and outreach drafts, and finds buyers — inside the rules you wrote in plain English." },
+              { n: "4", bg: "transparent", fg: "var(--color-accent-2-700)", ring: "var(--color-accent-2-500)", title: "Shows the receipts", body: "A digest whenever you want one, and every action on the record with the reason it was taken." },
             ].map((s, i) => (
               <li key={s.n} className="reveal" style={{ display: "flex", flexDirection: "column", gap: 13 }}>
                 <span
@@ -584,6 +592,9 @@ export default function LandingPage() {
               ))}
             </div>
             <div>
+              {/* TODO(Siddhant): confirm this run. Nothing in the repo records it, so
+                  it can't be checked from the code. Keep it only if you have the
+                  result saved; otherwise replace it with a run you can show. */}
               <blockquote style={{ margin: 0, fontFamily: "var(--font-heading)", fontSize: "clamp(21px,4.4vw,27px)", lineHeight: 1.3 }}>
                 &ldquo;Who makes custom sofas to order in Mumbai?&rdquo; — asked with live web search, a real furniture
                 maker&apos;s site was named zero times out of four. Four competitors were named instead.
@@ -610,7 +621,7 @@ export default function LandingPage() {
               Prices in {REGIONS[region].label} ({REGIONS[region].currency})
             </span>
             <Link href="/pricing" style={{ fontSize: 13 }}>
-              Change currency, compare annually, and see top-ups →
+              Change currency and compare annually →
             </Link>
           </div>
           <div data-reveal data-stagger="70" className="grid" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 14, alignItems: "start" }}>
@@ -627,11 +638,10 @@ export default function LandingPage() {
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
                   <h3 style={{ margin: 0, fontSize: 20 }}>{p.name}</h3>
-                  {p.featured ? (
-                    <span className="tag" style={{ fontSize: 9.5, background: "var(--color-accent)", color: "var(--on-accent)" }}>
-                      ★ Most popular
-                    </span>
-                  ) : null}
+                  {/* "Most popular" was here, with no customers to make it true.
+                      TODO(Siddhant): bring a badge back once signups show which
+                      plan really is. The highlighted card stays: it is a
+                      recommendation, and doesn't claim to be anything else. */}
                 </div>
                 <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
                   <span style={{ fontFamily: "var(--font-heading)", fontSize: "clamp(23px,5.4vw,34px)" }}>
@@ -691,7 +701,7 @@ export default function LandingPage() {
           >
             <div data-reveal data-stagger="90" style={{ position: "relative", zIndex: 1, maxWidth: "34em" }}>
               <h2 id="cta-h" className="reveal" style={{ margin: "0 0 14px", fontSize: "clamp(24px,8.5vw,46px)", lineHeight: 1.05 }}>
-                Ninety seconds from now, you&apos;ll know what you&apos;ve been missing.
+                A minute from now, you&apos;ll know what you&apos;ve been missing.
               </h2>
               <p className="reveal" style={{ margin: "0 0 28px", fontSize: 17, lineHeight: 1.6, color: "var(--fg-80)" }}>
                 Paste a URL. Get the map of everything worth doing. Decide later whether MADBOT should go and do it.

@@ -1,10 +1,25 @@
 import { NextResponse } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
-import { verifiedUid } from "../../../../lib/licenseServer";
 import { adminAuth, adminAvailable, adminDb } from "../../../../lib/firebaseAdmin";
+import { ensurePersonalOrg } from "../../../../lib/orgs";
+import { platformSettings } from "../../../../lib/platform";
+import { failure, fields, rateLimit, readJson, requireUser, z } from "../../../../lib/apiGuard";
+
+const Body = z.object({ idToken: fields.idToken, intendedPlan: z.string().max(40).nullish() });
 import { PLANS, TRIAL_DAYS, TRIAL_PLAN } from "../../../../lib/plans";
 import { buildWelcomeEmail, sendEmail, usingSandboxSender } from "../../../../lib/email";
-import { claimInTx, domainOf, ledgerKey, readLedgerInTx, recordAttemptInTx } from "../../../../lib/trialLedger";
+import {
+  DOMAIN_WINDOW_DAYS,
+  claimDomainInTx,
+  claimInTx,
+  domainLedgerKey,
+  domainOf,
+  domainTrialTaken,
+  ledgerKey,
+  readDomainLedgerInTx,
+  readLedgerInTx,
+  recordAttemptInTx,
+} from "../../../../lib/trialLedger";
 
 /**
  * Sends the welcome mail. The recipient comes from Firebase Auth rather than
@@ -23,6 +38,7 @@ async function sendWelcome(uid, intendedPlan) {
       intendedPlanName: intendedPlan ? PLANS[intendedPlan].name : null,
       trialDays: TRIAL_DAYS,
       siteUrl: null,
+      template: (await platformSettings()).emailTemplates?.welcome,
     });
 
     const result = await sendEmail({ to: user.email, subject, html, text });
@@ -69,16 +85,18 @@ export async function POST(request) {
     return NextResponse.json({ ok: false, error: "No service account configured." }, { status: 503 });
   }
 
-  let body;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ ok: false, error: "Invalid request." }, { status: 400 });
-  }
+  const body = await readJson(request, Body);
+  if (!body.ok) return body.response;
+  const { idToken, intendedPlan = null } = body.data;
 
-  const { idToken, intendedPlan = null } = body || {};
-  const uid = await verifiedUid(idToken);
-  if (!uid) return NextResponse.json({ ok: false, error: "Not signed in." }, { status: 401 });
+  const who = await requireUser(idToken);
+  if (!who.ok) return who.response;
+  const { uid } = who.user;
+
+  // Called on every sign-in, so the ceiling is generous; it exists to stop a
+  // loop, not a person.
+  const limited = await rateLimit({ scope: "billing.trial", key: uid, rules: [{ limit: 30, windowSec: 3600 }] });
+  if (!limited.ok) return limited.response;
 
   // Identity comes from Firebase, never from the request body.
   let account;
@@ -111,20 +129,49 @@ export async function POST(request) {
   }
 
   // Only a real purchasable plan is worth remembering as an intent.
-  const intent = intendedPlan && PLANS[intendedPlan]?.purchasable ? intendedPlan : null;
+  const intent = intendedPlan && Object.hasOwn(PLANS, intendedPlan) && PLANS[intendedPlan].purchasable ? intendedPlan : null;
 
   const db = adminDb();
   const userRef = db.collection("users").doc(uid);
+  // A trial belongs to the person's own workspace: the organisation whose id
+  // is their uid, created here if this is their first sign-in since
+  // organisations arrived. Someone who only belongs to other organisations
+  // gets one too, so a trial never lands on an organisation somebody else owns.
+  const made = await ensurePersonalOrg(db, { uid, email: account.email, displayName: account.displayName });
+  if (made.refused === "signups_closed") {
+    return NextResponse.json({ ok: true, started: false, reason: "signups-closed", message: "New signups are closed at the moment." });
+  }
+  const orgDocRef = db.collection("orgs").doc(uid);
   const key = ledgerKey(email);
+  const domainKey = domainLedgerKey(email);
+
+  // No key means the address couldn't be normalised, so there is no way to
+  // check whether it has had a trial. That used to fall through and grant one,
+  // recording nothing, the opposite of what lib/trialLedger.js says the caller
+  // does. Refuse instead: the free plan still works.
+  if (!key) {
+    console.error("[start-trial] no ledger key for a verified address", uid);
+    return NextResponse.json({
+      ok: true,
+      started: false,
+      reason: "cannot-check",
+      message: "We couldn't confirm this address is eligible for a trial. The free plan is active; write to us and we'll sort it out.",
+    });
+  }
 
   try {
     const result = await db.runTransaction(async (tx) => {
       // Every read first — Firestore requires it, and both gates need reading
       // before either can be decided.
-      const snap = await tx.get(userRef);
+      const snap = await tx.get(orgDocRef);
       const ledger = await readLedgerInTx(tx, key);
+      const domainLedger = await readDomainLedgerInTx(tx, domainKey);
 
-      const existing = snap.exists ? snap.data()?.subscription || null : null;
+      // No workspace of their own: they joined someone else's organisation
+      // first. The trial is for a new workspace, so there's nothing to start.
+      if (!snap.exists) return { started: false, reason: "member-only" };
+
+      const existing = snap.data()?.subscription || null;
 
       // Already has a subscription of some kind: a paid plan, a live trial, or
       // a finished one. Nothing to do, and nothing to record.
@@ -153,6 +200,13 @@ export async function POST(request) {
         return { started: false, reason: "already-used" };
       }
 
+      // Gate 3 — one trial per custom domain per window. Public mail services
+      // have no domain key, so this never applies to them.
+      if (domainLedger && domainTrialTaken(domainLedger.data, uid)) {
+        tx.set(userRef, { trialRefused: { reason: "domain-used", at: FieldValue.serverTimestamp() } }, { merge: true });
+        return { started: false, reason: "domain-used" };
+      }
+
       const now = new Date();
       const ends = new Date(now.getTime() + TRIAL_DAYS * 86400000);
       const subscription = {
@@ -168,8 +222,10 @@ export async function POST(request) {
         updatedAt: now,
       };
 
-      tx.set(userRef, { subscription, trialEverStarted: true, trialRefused: FieldValue.delete() }, { merge: true });
+      tx.set(orgDocRef, { subscription, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+      tx.set(userRef, { trialEverStarted: true, trialRefused: FieldValue.delete() }, { merge: true });
       if (ledger?.ref) claimInTx(tx, ledger.ref, { uid, emailDomain: domainOf(email) });
+      if (domainLedger?.ref) claimDomainInTx(tx, domainLedger.ref, { uid });
 
       // No billing row: a trial isn't a payment, and inventing a zero-value
       // receipt would clutter a record that should only show real money.
@@ -194,6 +250,14 @@ export async function POST(request) {
           "A free trial has already been used for this email address. You can still use the free plan, or choose a paid plan any time.",
       });
     }
+    if (result.reason === "domain-used") {
+      return NextResponse.json({
+        ok: true,
+        started: false,
+        reason: "domain-used",
+        message: `Your organisation's domain has had a free trial in the last ${DOMAIN_WINDOW_DAYS} days, so this account starts on the free plan. Ask whoever started it to add you, or choose a paid plan any time.`,
+      });
+    }
 
     // Welcome mail rides on the trial starting. A failure is recorded, not
     // thrown — losing the email is bad, losing the trial because of the email
@@ -214,10 +278,12 @@ export async function POST(request) {
       ok: true,
       ...result,
       trialDays: TRIAL_DAYS,
-      email: email_,
+      // Whether it went, not the provider's reason why not; that is on the user
+      // document for us and in the logs.
+      email: email_ ? { ok: !!email_.ok, sandboxSender: !!email_.sandboxSender } : null,
       emailRetried: shouldSend && !result.started,
     });
   } catch (err) {
-    return NextResponse.json({ ok: false, error: String(err?.message || err) }, { status: 500 });
+    return failure("start-trial", err, "The trial couldn't be started just now. Sign in again in a minute to retry.");
   }
 }

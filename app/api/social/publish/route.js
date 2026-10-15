@@ -1,5 +1,13 @@
 import { NextResponse } from "next/server";
-import { verifiedUid, authorize } from "../../../../lib/licenseServer";
+import { authorize } from "../../../../lib/licenseServer";
+import { fields, LIMITS, rateLimit, readJson, z } from "../../../../lib/apiGuard";
+import { SITE_ID } from "../../../../lib/siteLimits";
+
+const Body = z.object({
+  idToken: fields.idToken,
+  siteId: fields.siteId,
+  postId: z.string({ error: "No post given." }).regex(SITE_ID, "No post given."),
+});
 import { adminAvailable, adminDb } from "../../../../lib/firebaseAdmin";
 import { FEATURES } from "../../../../lib/plans";
 import { publishTo, providerFor } from "../../../../lib/publishSocial";
@@ -21,26 +29,20 @@ export async function POST(request) {
     return NextResponse.json({ ok: false, error: "No service account configured." }, { status: 503 });
   }
 
-  let body;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ ok: false, error: "Invalid request." }, { status: 400 });
-  }
+  const body = await readJson(request, Body);
+  if (!body.ok) return body.response;
+  const { idToken, siteId, postId } = body.data;
 
-  const { idToken, siteId, postId } = body || {};
-  if (!siteId || !postId) return NextResponse.json({ ok: false, error: "No post given." }, { status: 400 });
-
-  const uid = await verifiedUid(idToken);
-  if (!uid) return NextResponse.json({ ok: false, error: "Not signed in." }, { status: 401 });
-
-  const auth = await authorize(idToken, FEATURES.SOCIAL);
+  const auth = await authorize(idToken, FEATURES.SOCIAL, { permission: "publish" });
   if (!auth.ok) {
     return NextResponse.json({ ok: false, error: auth.error, upgradeTo: auth.upgradeTo || null }, { status: auth.status });
   }
+  const orgId = auth.orgId;
+  const limited = await rateLimit({ scope: "publish.social", key: auth.uid, rules: LIMITS.fetch });
+  if (!limited.ok) return limited.response;
 
   const db = adminDb();
-  const postRef = db.collection("users").doc(uid).collection("sites").doc(siteId).collection("social").doc(postId);
+  const postRef = db.collection("users").doc(orgId).collection("sites").doc(siteId).collection("social").doc(postId);
   const snap = await postRef.get();
   if (!snap.exists) return NextResponse.json({ ok: false, error: "Post not found." }, { status: 404 });
 
@@ -63,7 +65,7 @@ export async function POST(request) {
 
   const intSnap = await db
     .collection("users")
-    .doc(uid)
+    .doc(orgId)
     .collection("sites")
     .doc(siteId)
     .collection("integrations")
@@ -110,7 +112,7 @@ export async function POST(request) {
 
   await db
     .collection("users")
-    .doc(uid)
+    .doc(orgId)
     .collection("sites")
     .doc(siteId)
     .collection("activity")

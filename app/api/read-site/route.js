@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
-import { assertPublicHost, safeFetch } from "../../../lib/urlGuard";
+import { assertPublicHost, describeFetchFailure, safeFetch } from "../../../lib/urlGuard";
+import { extractIcon, metaContent, titleOf } from "../../../lib/htmlParse";
+import { clientIp, LIMITS, rateLimit } from "../../../lib/apiGuard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,37 +14,22 @@ function normalizeUrl(input) {
   return new URL(raw);
 }
 
-const NAMED_ENTITIES = {
-  amp: "&",
-  lt: "<",
-  gt: ">",
-  quot: '"',
-  apos: "'",
-  nbsp: " ",
-  mdash: "—",
-  ndash: "–",
-  hellip: "…",
-  rsquo: "’",
-  lsquo: "‘",
-  rdquo: "”",
-  ldquo: "“",
-};
-
-function decodeEntities(str) {
-  return str
-    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
-    .replace(/&#(\d+);/g, (_, dec) => String.fromCodePoint(parseInt(dec, 10)))
-    .replace(/&([a-z]+);/gi, (m, name) => NAMED_ENTITIES[name.toLowerCase()] ?? m);
-}
-
-function extract(html, re) {
-  const m = html.match(re);
-  return m ? decodeEntities(m[1].replace(/\s+/g, " ").trim()) : "";
-}
-
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const raw = searchParams.get("url");
+  if (raw && raw.length > 2048) {
+    return NextResponse.json({ ok: false, error: "Enter a valid website address." }, { status: 400 });
+  }
+
+  // Public and unauthenticated, and it fetches whatever it is given. It had no
+  // limit of any kind.
+  const limited = await rateLimit({
+    scope: "public.readSite",
+    key: clientIp(request),
+    rules: LIMITS.publicFetch,
+    message: "Too many requests just now — give it a minute.",
+  });
+  if (!limited.ok) return limited.response;
 
   let target;
   try {
@@ -85,26 +72,20 @@ export async function GET(request) {
     if (msg === "port") return NextResponse.json({ ok: false, error: "Only standard web ports can be read." }, { status: 400 });
     if (msg === "unreachable") return NextResponse.json({ ok: false, error: "That address isn't publicly reachable." }, { status: 400 });
     if (msg === "too_many_redirects") return NextResponse.json({ ok: false, error: "That address redirects too many times." }, { status: 400 });
-    return NextResponse.json({ ok: false, error: "Couldn't read that site in time." });
+    // The rest are the target's own failures, so 200 {ok:false}, but each
+    // says what actually happened. Every one used to read "couldn't read that
+    // site in time", including a site whose certificate chain is broken,
+    // which no amount of waiting fixes.
+    return NextResponse.json({ ok: false, error: describeFetchFailure(err) });
   }
 
   try {
-    const title = extract(html, /<title[^>]*>([^<]*)<\/title>/i);
-    const description =
-      extract(html, /<meta[^>]+name=["']description["'][^>]*content=["']([^"']*)["']/i) ||
-      extract(html, /<meta[^>]+content=["']([^"']*)["'][^>]+name=["']description["']/i);
-
-    // Prefer a <link rel="icon"> the page declares; fall back to /favicon.ico.
-    const iconHref =
-      extract(html, /<link[^>]+rel=["'](?:shortcut )?icon["'][^>]*href=["']([^"']+)["']/i) ||
-      extract(html, /<link[^>]+href=["']([^"']+)["'][^>]*rel=["'](?:shortcut )?icon["']/i) ||
-      extract(html, /<link[^>]+rel=["']apple-touch-icon["'][^>]*href=["']([^"']+)["']/i);
-    let faviconUrl = null;
-    try {
-      faviconUrl = new URL(iconHref || "/favicon.ico", finalUrl).toString();
-    } catch {
-      faviconUrl = null;
-    }
+    // The shared extractors, not local regexes: this endpoint is public and the
+    // page is whatever the caller points it at. The patterns that used to live
+    // here took over a minute on 60 KB of hostile markup.
+    const title = titleOf(html);
+    const description = metaContent(html, "description");
+    const faviconUrl = extractIcon(html, finalUrl);
 
     return NextResponse.json({
       ok: true,

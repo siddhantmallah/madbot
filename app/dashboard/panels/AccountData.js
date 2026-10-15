@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useAuth } from "../../providers/AuthProvider";
 
@@ -15,16 +16,20 @@ const CONFIRM_PHRASE = "DELETE MY ACCOUNT";
  * of them is better served by a button that works now. It also means the
  * Privacy Policy can point at something real instead of promising a process.
  *
- * Export is a link rather than a fetch so the browser handles the download
- * itself; the route sets Content-Disposition.
+ * Export is a POST whose response is saved as a file. It used to be a link
+ * with the ID token in the query string, which put a live credential into
+ * browser history and the hosting provider's request logs, and sent anyone
+ * whose export failed to a page of raw JSON.
  */
 export default function AccountData() {
   const { user, logOut } = useAuth();
+  const router = useRouter();
   const [exporting, setExporting] = useState(false);
   const [confirm, setConfirm] = useState("");
   const [armed, setArmed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [reauth, setReauth] = useState(false);
   const [done, setDone] = useState(null);
 
   async function handleExport() {
@@ -32,13 +37,35 @@ export default function AccountData() {
     setExporting(true);
     try {
       const idToken = await user.getIdToken();
-      // A plain navigation, so the file lands in Downloads rather than in
-      // memory. The token is short-lived and the request is over HTTPS.
-      window.location.href = `/api/privacy/export?idToken=${encodeURIComponent(idToken)}`;
+      const res = await fetch("/api/privacy/export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || "Couldn't prepare the export. Try again.");
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `madbot-data-export-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
     } catch {
-      setError("Couldn't start the export. Try again.");
+      setError("Couldn't prepare the export. Try again.");
+    } finally {
+      setExporting(false);
     }
-    setTimeout(() => setExporting(false), 2500);
+  }
+
+  async function signInAgain() {
+    await logOut().catch(() => {});
+    router.replace("/login");
   }
 
   async function handleDelete() {
@@ -53,7 +80,14 @@ export default function AccountData() {
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
-        setError(data.error || "The account could not be deleted.");
+        // Deleting needs a fresh sign-in, so a token lifted from an open laptop
+        // can't erase the account. Say so and offer the way through.
+        setReauth(data.code === "reauth_required");
+        setError(
+          data.code === "reauth_required"
+            ? "Deleting your account needs a fresh sign-in. Sign in again, then come back here within ten minutes."
+            : data.error || "The account could not be deleted."
+        );
         setBusy(false);
         return;
       }
@@ -127,8 +161,13 @@ export default function AccountData() {
               style={{ minHeight: 44 }}
             />
           </label>
-          {error ? <p style={{ margin: 0, fontSize: 13, color: "var(--color-accent-800)" }}>{error}</p> : null}
+          {error ? <p role="alert" style={{ margin: 0, fontSize: 13, color: "var(--color-accent-800)" }}>{error}</p> : null}
           <div style={{ display: "flex", gap: 9, flexWrap: "wrap" }}>
+            {reauth ? (
+              <button className="btn btn-secondary" type="button" onClick={signInAgain}>
+                Sign in again
+              </button>
+            ) : null}
             <button
               className="btn btn-primary"
               type="button"
@@ -145,7 +184,7 @@ export default function AccountData() {
         </div>
       ) : null}
 
-      {error && !armed ? <p style={{ margin: 0, fontSize: 13, color: "var(--color-accent)" }}>{error}</p> : null}
+      {error && !armed ? <p role="alert" style={{ margin: 0, fontSize: 13, color: "var(--color-accent)" }}>{error}</p> : null}
     </section>
   );
 }

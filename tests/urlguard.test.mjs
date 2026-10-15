@@ -4,7 +4,7 @@
 //   node --no-warnings --import ./tests/_register.mjs tests/urlguard.test.mjs
 import http from "node:http";
 import { suite, test, skipped, ok, bad, eq, truthy, report, rejects } from "./_harness.mjs";
-import { normalizeUrl, assertPublicHost, assertSafeUrl, safeFetch } from "../lib/urlGuard.js";
+import { normalizeUrl, assertPublicHost, assertSafeUrl, safeFetch, describeFetchFailure } from "../lib/urlGuard.js";
 
 suite("lib/urlGuard.js");
 
@@ -239,5 +239,15 @@ skipped(
     "redirect fix and cannot be verified without a controllable authoritative nameserver. Recorded " +
     "as a skip rather than a pass so it stays visible."
 );
+
+await test("a target's own failure is described as what happened, not as a timeout", () => {
+  const fetchFailed = (code, message = "") => Object.assign(new TypeError("fetch failed"), { cause: Object.assign(new Error(message), { code }) });
+  eq(describeFetchFailure(fetchFailed("UNABLE_TO_VERIFY_LEAF_SIGNATURE", "unable to verify the first certificate")), "That site's security certificate couldn't be verified.", "incomplete chain");
+  eq(describeFetchFailure(fetchFailed("CERT_HAS_EXPIRED")), "That site's security certificate couldn't be verified.", "expired");
+  eq(describeFetchFailure(Object.assign(new Error("aborted"), { name: "AbortError" })), "That site didn't answer in time.", "our timeout");
+  eq(describeFetchFailure(fetchFailed("UND_ERR_CONNECT_TIMEOUT")), "That site didn't answer in time.", "connect timeout");
+  eq(describeFetchFailure(fetchFailed("ECONNREFUSED")), "Couldn't connect to that site.", "refused");
+  eq(describeFetchFailure(null), "Couldn't connect to that site.", "nothing to go on");
+});
 
 report();

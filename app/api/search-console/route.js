@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { authorize } from "../../../lib/licenseServer";
 import { FEATURES } from "../../../lib/plans";
+import { fields, LIMITS, rateLimit, readJson, z } from "../../../lib/apiGuard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -53,21 +54,24 @@ function summarize(rows) {
   };
 }
 
-export async function POST(request) {
-  let body;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ ok: false, error: "Invalid request." }, { status: 400 });
-  }
+const Body = z.object({
+  idToken: fields.idToken,
+  // The customer's Google OAuth token, held in their browser session.
+  token: z.string().max(4096).nullish(),
+  action: z.enum(["sites", "summary"], { error: "Unknown action." }),
+  siteUrl: fields.url.nullish(),
+});
 
-  const { idToken, token, action, siteUrl } = body || {};
+export async function POST(request) {
+  const body = await readJson(request, Body);
+  if (!body.ok) return body.response;
+  const { idToken, token, action, siteUrl } = body.data;
 
   // Search Console is sold from Starter upwards and was enforced nowhere: not
   // on the client, not here. The Google token the caller supplies limits which
   // data Google will return, so this was never a data leak, but it did mean a
   // free account got a paid feature and used our server to proxy it.
-  const auth = await authorize(idToken, FEATURES.SEARCH_CONSOLE);
+  const auth = await authorize(idToken, FEATURES.SEARCH_CONSOLE, { permission: "sites.read" });
   if (!auth.ok) {
     return NextResponse.json(
       { ok: false, error: auth.error, upgradeTo: auth.upgradeTo || null, upgradeName: auth.upgradeName || null },
@@ -76,6 +80,9 @@ export async function POST(request) {
   }
 
   if (!token) return NextResponse.json({ ok: false, error: "Not connected to Search Console." }, { status: 401 });
+
+  const limited = await rateLimit({ scope: "searchConsole", key: auth.uid, rules: LIMITS.fetch });
+  if (!limited.ok) return limited.response;
 
   try {
     if (action === "sites") {

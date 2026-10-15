@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createSite, addActivity } from "../../lib/sites";
 import { baseActivitySeed, hostnameOf, shortSiteName } from "../../lib/seed";
 import { MadbotMark, SiteIcon } from "../components/Brand";
+import { bandInfo } from "../../lib/autonomyDial";
 
 const STEP_BORDER = (active) => (active ? "var(--color-accent)" : "var(--color-divider)");
 
@@ -154,10 +155,13 @@ export default function OnboardingModal({ uid, canSkip, initialUrl, onClose, onF
                 <h4 style={{ margin: 0 }}>Here&apos;s what I&apos;ll start looking for</h4>
               </div>
               <div className="grid-4" style={{ gap: 12 }}>
+                {/* Each of these is something the product measures. "Keywords you
+                    should own" and "places that link to rivals" were here; nothing
+                    finds either. */}
                 {[
-                  "Keywords you should own and don't",
+                  "Pages you should have and don't",
                   "Technical issues costing you rank",
-                  "Places that link to rivals, not you",
+                  "Where AI assistants name rivals, not you",
                   "Companies who fit your ideal customer",
                 ].map((t) => (
                   <div key={t} style={{ background: "var(--color-bg)", borderRadius: 22, padding: 14, fontSize: 12.5, lineHeight: 1.5 }} className="text-muted">
@@ -183,12 +187,14 @@ export default function OnboardingModal({ uid, canSkip, initialUrl, onClose, onF
               <p className="text-muted" style={{ margin: 0, fontSize: 14.5 }}>You can change this at any moment, and it&apos;s the only setting that really matters.</p>
             </div>
             <div className="grid-4" style={{ gap: 12, width: "100%" }}>
-              {[
-                { v: 10, label: "Watch", desc: "I look, I report, I touch nothing." },
-                { v: 40, label: "Suggest", desc: "A plan every morning. You press the buttons." },
-                { v: 62, label: "Let it rip", desc: "I publish and prospect alone. I ask before spending.", badge: "most people" },
-                { v: 92, label: "Full send", desc: "I spend too, inside your budget. You get receipts." },
-              ].map((o) => (
+              {/* The descriptions come from the dial itself (lib/autonomyDial.js),
+                  so this step can't promise what the dial doesn't do. It used to
+                  say the upper bands published and spent on their own, and badged
+                  one "most people" with no users to count. */}
+              {[10, 40, 62, 92].map((v) => {
+                const b = bandInfo(v);
+                return { v, label: b.short, desc: b.desc };
+              }).map((o) => (
                 <button
                   key={o.v}
                   onClick={() => setAut(o.v)}
@@ -196,14 +202,14 @@ export default function OnboardingModal({ uid, canSkip, initialUrl, onClose, onF
                 >
                   <div style={{ fontFamily: "var(--font-heading)", fontSize: 18, marginBottom: 4 }}>{o.label}</div>
                   <div className="text-muted" style={{ fontSize: 12, lineHeight: 1.45 }}>{o.desc}</div>
-                  {o.badge ? <span className="tag tag-accent" style={{ fontSize: 10, marginTop: 8 }}>{o.badge}</span> : null}
                 </button>
               ))}
             </div>
             <div className="card" style={{ width: "100%", padding: "16px 20px", gap: 6, background: "var(--color-accent-2-100)" }}>
               <div style={{ fontSize: 13, color: "var(--color-accent-2-900)" }}>
-                <strong>Whatever you pick:</strong> I never make a claim you haven&apos;t approved, never email the
-                same person twice in 30 days, and nothing reaches your site or your audience without you approving it first.
+                <strong>Whatever you pick:</strong> I never make a claim you haven&apos;t approved, I never email a
+                prospect myself — you send outreach from your own mail — and nothing reaches your site or your audience
+                without you approving it first.
               </div>
             </div>
             <button className="btn btn-primary" onClick={() => setStep(3)} style={{ minHeight: 50, paddingInline: 30 }}>I&apos;m ready</button>
@@ -218,7 +224,7 @@ export default function OnboardingModal({ uid, canSkip, initialUrl, onClose, onF
             <p className="text-muted" style={{ margin: 0, fontSize: 15, maxWidth: 460 }}>
               {started
                 ? "Setting up your dashboard now…"
-                : "I'll read the whole site — every page, not just the homepage — and use that to work out who you sell to, what's worth writing, and the companies worth reaching out to."}
+                : "I'll read up to 20 pages of the site, not just the homepage, and use that to work out who you sell to, what's worth writing, and the companies worth reaching out to."}
             </p>
             <button
               onClick={startEngine}

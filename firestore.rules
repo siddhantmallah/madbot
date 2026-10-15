@@ -2,8 +2,61 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
     function isOwner(uid) {
-      return request.auth != null && request.auth.uid == uid;
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    // --- Organisations (lib/orgs.js) ---------------------------------------
+    //
+    // An organisation's work lives at users/{orgId}/sites/..., where it always
+    // lived: every existing account became an organisation whose id is its
+    // uid. Access to it is membership plus a permission from the member's
+    // role, read from roles/{roleId}. Being the uid in the path grants nothing
+    // on its own any more, so an account that handed its organisation to
+    // someone else can't keep reaching into it.
+    function memberPath(orgId) {
+      return /databases/$(database)/documents/orgs/$(orgId)/members/$(request.auth.uid);
+    }
+
+    function isMember(orgId) {
+      return signedIn() && exists(memberPath(orgId));
+    }
+
+    function can(orgId, permission) {
+      return isMember(orgId)
+        && permission in get(/databases/$(database)/documents/roles/$(get(memberPath(orgId)).data.roleId)).data.permissions;
+    }
+
+    // A suspended organisation can still be looked at by its members; nothing
+    // in it can be changed until it is reinstated.
+    function active(orgId) {
+      return get(/databases/$(database)/documents/orgs/$(orgId)).data.status == 'active';
+    }
+
+    function canWrite(orgId, permission) {
+      return can(orgId, permission) && active(orgId);
+    }
+
+    // Statuses that mean somebody decided. Only a role with approvals.decide
+    // may set one, so a role that only runs the work can't approve its own.
+    function decidedStatuses() {
+      return ['approved', 'scheduled', 'published', 'yes', 'no', 'declined', 'rejected'];
+    }
+
+    function decides(orgId) {
+      return can(orgId, 'approvals.decide');
+    }
+
+    function setsDecision() {
+      return request.resource.data.get('status', '') in decidedStatuses();
+    }
+
+    function changesStatus() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasAny(['status']);
     }
 
     // The only fields on a user document the browser owns. Everything else on
@@ -13,7 +66,17 @@ service cloud.firestore {
       return ['email', 'displayName', 'createdAt', 'updatedAt'];
     }
 
+    // Signups can be closed from /admin (platform/settings.signupOpen). An
+    // account can still be created in Firebase Auth directly, but it gets no
+    // profile here and the server gives it no organisation.
+    function signupOpen() {
+      return !exists(/databases/$(database)/documents/platform/settings)
+        || get(/databases/$(database)/documents/platform/settings).data.get('signupOpen', true) == true;
+    }
+
     match /users/{uid} {
+      // The profile is the person's own. orgIds and activeOrgId on it are
+      // server-written.
       allow read: if isOwner(uid);
 
       // An allowlist, not a denylist.
@@ -29,18 +92,21 @@ service cloud.firestore {
       //
       // A denylist also only ever blocked the exact string: 'Subscription' and
       // 'subscriptions' wrote fine. With an allowlist, a new server-managed
-      // field is protected the moment it is written rather than the next time
-      // somebody remembers to come back here.
+      // field (orgIds, activeOrgId) is protected the moment it is written
+      // rather than the next time somebody remembers to come back here.
       allow create: if isOwner(uid)
+        && signupOpen()
         && request.resource.data.keys().hasOnly(clientProfileFields());
       allow update: if isOwner(uid)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(clientProfileFields());
       allow delete: if false;
 
-      // Billing history is readable by the customer and written only by the
-      // server, so a receipt can't be forged or edited after the fact.
+      // From here down, {uid} is an organisation's data root.
+
+      // Billing history: readable by roles that see billing, written only by
+      // the server, so a receipt can't be forged or edited after the fact.
       match /billing/{entryId} {
-        allow read: if isOwner(uid);
+        allow read: if can(uid, 'billing.read');
         allow write: if false;
       }
 
@@ -49,71 +115,130 @@ service cloud.firestore {
         allow read, write: if false;
       }
 
+      // The organisation's usage, which is what the plan's allowance is
+      // measured against (lib/costControl.js). Members can see it; only the
+      // server writes it: a client that could write it could reset what it
+      // has spent.
+      match /usage/{period} {
+        allow read: if can(uid, 'sites.read');
+        allow write: if false;
+      }
+
       match /sites/{siteId} {
-        allow read, create, update, delete: if isOwner(uid);
+        allow read: if can(uid, 'sites.read');
+        allow create, delete: if canWrite(uid, 'sites.manage');
+        // Settings changes need sites.manage; a job's results are written to
+        // the site document by whoever ran it, which needs work.run.
+        allow update: if canWrite(uid, 'sites.manage') || canWrite(uid, 'work.run');
 
         match /activity/{activityId} {
-          allow read, create, update, delete: if isOwner(uid);
+          allow read: if can(uid, 'sites.read');
+          allow create, update, delete: if canWrite(uid, 'work.run');
         }
 
+        // Decisions waiting on a person. Writing the item is work; deciding it
+        // is approvals.decide, whether by creating it decided or by changing
+        // its status.
         match /approvals/{approvalId} {
-          allow read, create, update, delete: if isOwner(uid);
+          allow read: if can(uid, 'sites.read');
+          allow create: if canWrite(uid, 'work.run') && (!setsDecision() || decides(uid));
+          allow update: if canWrite(uid, 'work.run') && (!changesStatus() || decides(uid));
+          allow delete: if canWrite(uid, 'work.run');
         }
 
         match /leads/{leadId} {
-          allow read, create, update, delete: if isOwner(uid);
+          allow read: if can(uid, 'sites.read');
+          allow create, update, delete: if canWrite(uid, 'work.run');
         }
 
         match /content/{contentId} {
-          allow read, create, update, delete: if isOwner(uid);
+          allow read: if can(uid, 'sites.read');
+          allow create, update, delete: if canWrite(uid, 'work.run');
         }
 
         match /competitors/{competitorId} {
-          allow read, create, update, delete: if isOwner(uid);
+          allow read: if can(uid, 'sites.read');
+          allow create, update, delete: if canWrite(uid, 'work.run');
         }
 
         match /jobs/{jobId} {
-          allow read, create, update, delete: if isOwner(uid);
+          allow read: if can(uid, 'sites.read');
+          allow create, update, delete: if canWrite(uid, 'work.run');
         }
 
         match /pages/{pageId} {
-          allow read, create, update, delete: if isOwner(uid);
+          allow read: if can(uid, 'sites.read');
+          allow create, update, delete: if canWrite(uid, 'work.run');
         }
 
-        // Drafted and published social posts. The customer owns these and edits
-        // them freely — but note what this does NOT grant: the ability to
-        // publish one. Publishing goes through /api/social/publish, which
-        // re-reads the post server-side and refuses anything not carrying an
-        // approval. A client flipping status to "approved" here therefore
-        // changes what its own dashboard shows and nothing else.
+        // Drafted and published social posts. Drafting is work; approving one
+        // is approvals.decide. Publishing goes through /api/social/publish,
+        // which re-reads the post and refuses anything not approved, and which
+        // itself needs the publish permission.
         match /social/{postId} {
-          allow read, create, update, delete: if isOwner(uid);
+          allow read: if can(uid, 'sites.read');
+          allow create: if canWrite(uid, 'work.run') && (!setsDecision() || decides(uid));
+          allow update: if canWrite(uid, 'work.run') && (!changesStatus() || !setsDecision() || decides(uid));
+          allow delete: if canWrite(uid, 'work.run');
         }
 
         // Directory listing copy and submission state. Nothing here is a
         // credential and nothing here is published by MADBOT — a person pastes
-        // the copy into someone else's form — so the customer has it outright.
+        // the copy into someone else's form.
         match /listings/{listingId} {
-          allow read, create, update, delete: if isOwner(uid);
+          allow read: if can(uid, 'sites.read');
+          allow create, update, delete: if canWrite(uid, 'work.run');
         }
 
-        // Metered usage. The customer can see what they've spent; only the
-        // server writes it. A client that could edit its own usage counters
-        // could grant itself unlimited paid work, which is the entire point
-        // of metering.
+        // Metered usage per site. Members can see it; only the server writes
+        // it. A client that could edit its own usage counters could grant
+        // itself unlimited paid work, which is the entire point of metering.
         match /usage/{period} {
-          allow read: if isOwner(uid);
+          allow read: if can(uid, 'sites.read');
           allow write: if false;
         }
 
-        // GitHub connection. Server-only in both directions — the token is a
-        // real credential, and unlike a plan or a usage counter there is no
-        // safe partial view of it to hand the client. The repo name and
-        // connection status the UI needs come back from the API route instead.
+        // GitHub and social connections. Server-only in both directions — the
+        // token is a real credential, and there is no safe partial view of it
+        // to hand the client. The status the UI needs comes from the API.
         match /integrations/{provider} {
           allow read, write: if false;
         }
       }
+    }
+
+    // The organisation itself: name, owner, status, licence, flags. Members
+    // read it (the dashboard shows the plan); only the server writes it.
+    match /orgs/{orgId} {
+      allow read: if isMember(orgId);
+      allow write: if false;
+
+      // Who is in it. Anyone may read their own membership; seeing the rest
+      // needs members.read. Changes go through the server, which checks
+      // seats and roles.
+      match /members/{memberUid} {
+        allow read: if isOwner(memberUid) || can(orgId, 'members.read');
+        allow write: if false;
+      }
+
+      // Invitations carry a hashed token. Server-only both ways.
+      match /invites/{inviteId} {
+        allow read, write: if false;
+      }
+
+      // Every change to the licence, before and after.
+      match /licenseHistory/{entryId} {
+        allow read: if can(orgId, 'billing.read');
+        allow write: if false;
+      }
+    }
+
+    // Role definitions, built-in and custom. Readable by anyone signed in —
+    // they are names and permission keys, and the dashboard needs them to
+    // show what a role can do. Written only by the server.
+    match /roles/{roleId} {
+      allow read: if signedIn();
+      allow write: if false;
     }
 
     // One free trial per person, keyed on a hash of the normalised email
@@ -126,6 +251,12 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // One trial per custom email domain per 30 days (lib/trialLedger.js),
+    // keyed on a hash of the domain. Server-only for the same reasons.
+    match /trialDomains/{domainHash} {
+      allow read, write: if false;
+    }
+
     // Delivery state and the suppression list. Server-only in both directions:
     // a client that could delete a suppression could resume mailing an address
     // that complained, and one that could read the list could enumerate every
@@ -134,6 +265,35 @@ service cloud.firestore {
       allow read, write: if false;
     }
     match /suppressions/{emailKey} {
+      allow read, write: if false;
+    }
+
+    // Rate-limit counters (lib/apiGuard.js). Keys are hashes, so no address or
+    // uid sits here in the clear. Server-only: a client that could delete its
+    // own counter would have no limit.
+    match /rateLimits/{bucket} {
+      allow read, write: if false;
+    }
+
+    // Everything the admin console keeps: platform settings and flags, who
+    // the admins are and their encrypted second factors, the audit log, system
+    // run records and the error log. All server-only, read and written only
+    // through /api/admin, which checks the admin session and permission.
+    // The audit log is append-only in practice because nothing but the server
+    // can write it and the server never updates or deletes a row.
+    match /platform/{docId} {
+      allow read, write: if false;
+    }
+    match /platformAdmins/{adminUid} {
+      allow read, write: if false;
+    }
+    match /adminAudit/{entryId} {
+      allow read, write: if false;
+    }
+    match /systemRuns/{runId} {
+      allow read, write: if false;
+    }
+    match /errorLog/{entryId} {
       allow read, write: if false;
     }
 

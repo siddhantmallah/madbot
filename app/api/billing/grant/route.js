@@ -2,7 +2,26 @@ import { NextResponse } from "next/server";
 import { verifiedUid } from "../../../../lib/licenseServer";
 import { applyBillingEvent, isAdmin } from "../../../../lib/billingAdmin";
 import { adminAuth, adminAvailable, adminDb } from "../../../../lib/firebaseAdmin";
-import { PLANS } from "../../../../lib/plans";
+import { PLANS, REGIONS } from "../../../../lib/plans";
+import { z } from "../../../../lib/apiGuard";
+
+// `plan` is checked against PLANS' own keys. A bare PLANS[plan] lookup accepted
+// "constructor" and stored a plan with no features, which then threw inside
+// every scheduler tick.
+const PLAN_IDS = Object.keys(PLANS);
+const CURRENCIES = [...new Set(Object.values(REGIONS).map((r) => r.currency))];
+
+const Body = z.object({
+  idToken: z.string(),
+  email: z.email().max(320).optional(),
+  uid: z.string().regex(/^[A-Za-z0-9_-]{1,128}$/).optional(),
+  plan: z.enum(PLAN_IDS).optional(),
+  type: z.enum(["activate", "renew", "cancel", "expire", "refund"]).default("activate"),
+  months: z.number().int().min(1).max(36).default(1),
+  amountMinor: z.number().int().min(0).max(1e10).nullish().default(null),
+  currency: z.enum(CURRENCIES).default("USD"),
+  note: z.string().max(500).nullish().default(null),
+});
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,23 +42,33 @@ export async function POST(request) {
     return NextResponse.json({ ok: false, error: "No service account configured." }, { status: 503 });
   }
 
-  let body;
+  // The admin check comes before the schema, so a non-admin gets the same
+  // vague 404 whatever they send rather than learning the body's shape from
+  // validation errors.
+  let raw;
   try {
-    body = await request.json();
+    raw = await request.json();
   } catch {
     return NextResponse.json({ ok: false, error: "Invalid request." }, { status: 400 });
   }
-
-  const { idToken, email, uid: targetUidRaw, plan, months = 1, amountMinor = null, currency = "USD", note = null, type = "activate" } = body || {};
-
-  const actorUid = await verifiedUid(idToken);
+  const actorUid = await verifiedUid(raw?.idToken);
   if (!actorUid) return NextResponse.json({ ok: false, error: "Not signed in." }, { status: 401 });
   if (!isAdmin(actorUid)) {
     // Deliberately vague: a non-admin doesn't need to learn this endpoint works.
     return NextResponse.json({ ok: false, error: "Not found." }, { status: 404 });
   }
 
-  if (!PLANS[plan] && ["activate", "renew"].includes(type)) {
+  const parsed = Body.safeParse(raw);
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    return NextResponse.json(
+      { ok: false, error: `Invalid ${issue?.path?.join(".") || "request"}: ${issue?.message}` },
+      { status: 400 }
+    );
+  }
+  const { email, uid: targetUidRaw, plan, months, amountMinor, currency, note, type } = parsed.data;
+
+  if (!plan && ["activate", "renew"].includes(type)) {
     return NextResponse.json(
       { ok: false, error: `Unknown plan. One of: ${Object.keys(PLANS).join(", ")}` },
       { status: 400 }
@@ -70,7 +99,7 @@ export async function POST(request) {
       type,
       plan,
       provider: "manual",
-      months: Number(months) || 1,
+      months,
       amountMinor,
       currency,
       note,
@@ -85,6 +114,9 @@ export async function POST(request) {
       subscription: snap.data()?.subscription || null,
     });
   } catch (err) {
+    // Admin-only, so the detail is useful rather than a leak, but it is still
+    // logged so a failed grant leaves a trace beyond one person's terminal.
+    console.error("[billing.grant]", err?.stack || err);
     return NextResponse.json({ ok: false, error: String(err?.message || err) }, { status: 400 });
   }
 }

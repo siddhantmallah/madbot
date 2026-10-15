@@ -4,7 +4,7 @@ import { pageMeta } from "../../lib/seo";
 // component cannot export metadata. See lib/seo.js.
 export const metadata = pageMeta({
   title: "Pricing — pay for the work, not the seats",
-  description: "Every MADBOT plan includes the whole engine; what changes is how much of it runs each month. Priced in rupees, dollars, euros, pounds, dirhams and Singapore dollars.",
+  description: "Every MADBOT plan includes the whole engine; plans differ in how much of it runs each month. Priced in INR, USD, EUR, GBP, AED and SGD.",
   path: "/pricing",
 });
 

@@ -1,9 +1,8 @@
-"use client";
-
 import Link from "next/link";
 import LegalPage, { LegalSection, Callout, DefTable } from "../../components/LegalPage";
 import { COMPANY, emailFor } from "../../../lib/company";
 import { CONTACT_EMAIL } from "../../../lib/contact";
+import { updatedOn } from "../../../lib/legalDates";
 
 /**
  * The sub-processor list.
@@ -63,7 +62,7 @@ const ROWS = [
   ],
   [
     "Resend",
-    "Transactional email, the welcome message, weekly digests, and the delivery events behind bounce and complaint handling.",
+    "Transactional email, the welcome message, the digests you ask for, and the delivery events behind bounce and complaint handling.",
     "United States and the European Union",
     "Always",
   ],
@@ -92,7 +91,7 @@ export default function SubprocessorsPage() {
     <LegalPage
       title="Sub-processors"
       kicker="Legal"
-      updated="6 September 2026"
+      updated={updatedOn("/legal/subprocessors")}
       effective="6 September 2026"
       toc={TOC}
       intro={

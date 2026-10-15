@@ -178,6 +178,48 @@ function add(c) {
   cases.push({ id: ++seq, ...c });
 }
 
+// --- The world every case runs in ------------------------------------------
+// Access to an organisation's work is membership plus a permission from the
+// member's role (firestore.rules, lib/orgs.js). So before any case runs the
+// emulator holds these organisations, members and roles:
+//
+//   orgs/userA   active; userA owner, userV viewer, userM member, userW a
+//                custom role that runs work but can't decide approvals
+//   orgs/userB   active; userB owner
+//   orgs/userS   suspended; userS owner
+//   orgs/userX   active, but owned by userY: userX handed their old personal
+//                workspace over, so their uid in the path must grant nothing
+//
+// The role permissions are read from lib/rbac.js itself, so these cases test
+// the rules against the roles the server really writes.
+let BASELINE = {};
+async function buildBaseline() {
+  const src = fs.readFileSync(path.join(ROOT, "lib", "rbac.js"), "utf8");
+  const rbac = await import(`data:text/javascript,${encodeURIComponent(src)}`);
+  const roles = Object.fromEntries(
+    Object.values(rbac.BUILT_IN_ROLES)
+      .filter((r) => r.scope === "org")
+      .map((r) => [`${D}/roles/${r.id}`, { scope: r.scope, name: r.name, permissions: r.permissions, builtIn: true }])
+  );
+  roles[`${D}/roles/custom_worker`] = { scope: "org", name: "Worker", permissions: ["sites.read", "work.run"] };
+  const org = (owner, status = "active") => ({ name: `${owner} org`, ownerUid: owner, status, memberCount: 1 });
+  const member = (roleId) => ({ roleId });
+  BASELINE = {
+    ...roles,
+    [`${D}/orgs/userA`]: { ...org("userA"), memberCount: 4 },
+    [`${D}/orgs/userA/members/userA`]: member("org_owner"),
+    [`${D}/orgs/userA/members/userV`]: member("org_viewer"),
+    [`${D}/orgs/userA/members/userM`]: member("org_member"),
+    [`${D}/orgs/userA/members/userW`]: member("custom_worker"),
+    [`${D}/orgs/userB`]: org("userB"),
+    [`${D}/orgs/userB/members/userB`]: member("org_owner"),
+    [`${D}/orgs/userS`]: org("userS", "suspended"),
+    [`${D}/orgs/userS/members/userS`]: member("org_owner"),
+    [`${D}/orgs/userX`]: org("userY"),
+    [`${D}/orgs/userX/members/userY`]: member("org_owner"),
+  };
+}
+
 const P = {
   userDoc: (u) => `${D}/users/${u}`,
   userCol: () => `${D}/users`,
@@ -374,6 +416,15 @@ const serverOnly = [
     ownerWrite: "DENY",
   },
   {
+    // The account-wide ledger the allowance is measured against. Billing reads
+    // it; a client that could write it could reset what the account has spent.
+    label: "account usage ledger",
+    doc: (u) => `${D}/users/${u}/usage/2026-10`,
+    col: (u) => `${D}/users/${u}/usage`,
+    ownerRead: "ALLOW",
+    ownerWrite: "DENY",
+  },
+  {
     label: "billing history",
     doc: (u) => `${D}/users/${u}/billing/e1`,
     col: (u) => `${D}/users/${u}/billing`,
@@ -436,8 +487,11 @@ for (const t of serverOnly) {
 // 3c. Top-level server-only collections. Nobody gets these, ever.
 const topLevelServerOnly = [
   { label: "trialLedger", doc: `${D}/trialLedger/f00dbabe`, col: `${D}/trialLedger` },
+  { label: "trialDomains", doc: `${D}/trialDomains/d00dbabe`, col: `${D}/trialDomains` },
   { label: "mail", doc: `${D}/mail/msg1`, col: `${D}/mail` },
   { label: "suppressions", doc: `${D}/suppressions/complainer-at-example-com`, col: `${D}/suppressions` },
+  // A client that could delete its own counter would have no rate limit.
+  { label: "rateLimits", doc: `${D}/rateLimits/0123abcd`, col: `${D}/rateLimits` },
 ];
 for (const t of topLevelServerOnly) {
   for (const method of METHODS) {
@@ -631,13 +685,10 @@ for (const method of METHODS) {
 
 // 5e. The social "approved" flip, from all three sides.
 //
-// The ALLOW here is correct, not a hole. `status` on a social post is display
-// state for the customer's own dashboard. Publishing does not read it as
-// permission: /api/social/publish re-reads the post server-side with the admin
-// SDK and refuses anything not carrying a real approval record, so a client
-// that flips this field changes what its own screen says and nothing else.
-// The two DENY cases are the ones that would matter — writing this field on
-// somebody else's post, or without being signed in at all.
+// The ALLOW here is correct: userA owns orgs/userA, and the owner role holds
+// approvals.decide. Group 6 checks that a role without it is refused. The two
+// DENY cases are the ones that would matter across organisations — writing
+// this field on somebody else's post, or without being signed in at all.
 add({
   group: "added",
   label: "userA flips own social post status to approved (deliberate ALLOW — publish re-checks server-side)",
@@ -667,6 +718,129 @@ add({
   existing: { status: "draft", body: "hello" },
   data: { status: "approved", body: "hello" },
   expect: "DENY",
+});
+
+// --- Group 6: organisations and roles --------------------------------------
+// Membership plus a role's permission, against the baseline world above.
+const SITE = `${D}/users/userA/sites/s1`;
+const roleCase = (label, uid, pathTo, method, expect, extra = {}) =>
+  add({ group: "roles", label, uid, path: pathTo, method, existing: { field: "before" }, data: { field: "after" }, expect, ...extra });
+
+// A viewer sees everything and changes nothing.
+roleCase("viewer reads the organisation's site", "userV", SITE, "get", "ALLOW");
+roleCase("viewer lists the organisation's sites", "userV", `${D}/users/userA/sites`, "list", "ALLOW");
+roleCase("viewer reads the organisation's leads", "userV", `${SITE}/leads/x1`, "get", "ALLOW");
+roleCase("viewer reads billing history (billing.read)", "userV", `${D}/users/userA/billing/e1`, "get", "ALLOW");
+roleCase("viewer changes a site's settings", "userV", SITE, "update", "DENY");
+roleCase("viewer writes a lead", "userV", `${SITE}/leads/x1`, "create", "DENY");
+roleCase("viewer creates a site", "userV", `${D}/users/userA/sites/s2`, "create", "DENY");
+
+// A member does the work and decides approvals, but doesn't manage sites or see billing.
+roleCase("member updates a site (work.run writes job results)", "userM", SITE, "update", "ALLOW");
+roleCase("member writes content", "userM", `${SITE}/content/x1`, "create", "ALLOW");
+roleCase("member creates a site (needs sites.manage)", "userM", `${D}/users/userA/sites/s2`, "create", "DENY");
+roleCase("member deletes a site (needs sites.manage)", "userM", SITE, "delete", "DENY");
+roleCase("member reads billing history (no billing.read)", "userM", `${D}/users/userA/billing/e1`, "get", "DENY");
+roleCase("member approves an approval", "userM", `${SITE}/approvals/x1`, "update", "ALLOW", {
+  existing: { status: "pending", title: "t" },
+  data: { status: "yes", title: "t" },
+});
+
+// A role that runs work but can't decide may write drafts, never approve them.
+roleCase("worker edits an approval's text, leaving its status", "userW", `${SITE}/approvals/x1`, "update", "ALLOW", {
+  existing: { status: "pending", body: "a" },
+  data: { status: "pending", body: "b" },
+});
+roleCase("worker approves an approval (no approvals.decide)", "userW", `${SITE}/approvals/x1`, "update", "DENY", {
+  existing: { status: "pending", body: "a" },
+  data: { status: "yes", body: "a" },
+});
+roleCase("worker creates an approval already decided", "userW", `${SITE}/approvals/x2`, "create", "DENY", {
+  data: { status: "yes", body: "a" },
+});
+roleCase("worker creates a pending approval", "userW", `${SITE}/approvals/x2`, "create", "ALLOW", {
+  data: { status: "pending", body: "a" },
+});
+roleCase("worker marks a social post approved", "userW", `${SITE}/social/p1`, "update", "DENY", {
+  existing: { status: "drafted", text: "a" },
+  data: { status: "approved", text: "a" },
+});
+roleCase("worker creates a social post already approved", "userW", `${SITE}/social/p2`, "create", "DENY", {
+  data: { status: "approved", text: "a" },
+});
+roleCase("worker drafts a social post", "userW", `${SITE}/social/p2`, "create", "ALLOW", {
+  data: { status: "drafted", text: "a" },
+});
+roleCase("worker reads another member's membership (no members.read)", "userW", `${D}/orgs/userA/members/userV`, "get", "DENY");
+roleCase("worker reads their own membership", "userW", `${D}/orgs/userA/members/userW`, "get", "ALLOW");
+
+// A suspended organisation is visible to its members and frozen.
+roleCase("suspended org: owner reads its site", "userS", `${D}/users/userS/sites/s1`, "get", "ALLOW");
+roleCase("suspended org: owner changes its site", "userS", `${D}/users/userS/sites/s1`, "update", "DENY");
+roleCase("suspended org: owner writes a lead", "userS", `${D}/users/userS/sites/s1/leads/x1`, "create", "DENY");
+
+// The uid in the path grants nothing on its own any more.
+roleCase("former owner reads the workspace they handed over", "userX", `${D}/users/userX/sites/s1`, "get", "DENY");
+roleCase("former owner writes into it", "userX", `${D}/users/userX/sites/s1/content/x1`, "create", "DENY");
+roleCase("new owner reads the handed-over workspace", "userY", `${D}/users/userX/sites/s1`, "get", "ALLOW");
+
+// The organisation and its records.
+roleCase("member reads their organisation", "userM", `${D}/orgs/userA`, "get", "ALLOW", { existing: { name: "userA org", ownerUid: "userA", status: "active", memberCount: 4 } });
+roleCase("outsider reads an organisation", "userB", `${D}/orgs/userA`, "get", "DENY", { existing: { name: "userA org", ownerUid: "userA", status: "active", memberCount: 4 } });
+roleCase("owner writes their organisation's licence", "userA", `${D}/orgs/userA`, "update", "DENY", {
+  existing: { name: "userA org", ownerUid: "userA", status: "active", memberCount: 4 },
+  data: { name: "userA org", ownerUid: "userA", status: "active", memberCount: 4, subscription: { plan: "agency", status: "active" } },
+});
+roleCase("owner adds a member directly", "userA", `${D}/orgs/userA/members/userZ`, "create", "DENY", { data: { roleId: "org_owner" } });
+roleCase("member promotes themselves", "userM", `${D}/orgs/userA/members/userM`, "update", "DENY", {
+  existing: { roleId: "org_member" },
+  data: { roleId: "org_owner" },
+});
+roleCase("owner reads invitations (hashed tokens)", "userA", `${D}/orgs/userA/invites/i1`, "get", "DENY");
+roleCase("owner reads licence history", "userA", `${D}/orgs/userA/licenseHistory/h1`, "get", "ALLOW");
+roleCase("member reads licence history (no billing.read)", "userM", `${D}/orgs/userA/licenseHistory/h1`, "get", "DENY");
+
+// Roles are readable, never writable, from the browser.
+roleCase("signed-in reads a role", "userA", `${D}/roles/org_member`, "get", "ALLOW", { existing: { scope: "org", name: "Member", permissions: ["sites.read"] } });
+roleCase("unauthenticated reads a role", null, `${D}/roles/org_member`, "get", "DENY", { existing: { scope: "org", name: "Member", permissions: ["sites.read"] } });
+roleCase("owner rewrites a role's permissions", "userA", `${D}/roles/org_member`, "update", "DENY", {
+  existing: { scope: "org", name: "Member", permissions: ["sites.read"] },
+  data: { scope: "org", name: "Member", permissions: ["sites.read", "billing.read", "members.manage"] },
+});
+
+// Everything the admin console keeps is server-only.
+for (const [label, doc] of [
+  ["platform settings", `${D}/platform/settings`],
+  ["platform flags", `${D}/platform/flags`],
+  ["the admin list", `${D}/platformAdmins/userA`],
+  ["the admin audit log", `${D}/adminAudit/a1`],
+  ["system run records", `${D}/systemRuns/r1`],
+  ["the error log", `${D}/errorLog/e1`],
+]) {
+  roleCase(`signed-in reads ${label}`, "userA", doc, "get", "DENY");
+  roleCase(`signed-in writes ${label}`, "userA", doc, "update", "DENY");
+}
+
+// Signups closed from /admin: a new profile can't be created.
+add({
+  group: "roles",
+  label: "signup while signups are closed",
+  uid: "userN",
+  path: `${D}/users/userN`,
+  method: "create",
+  data: { email: "n@example.com", displayName: "N" },
+  also: [[`${D}/platform/settings`, { signupOpen: false }]],
+  expect: "DENY",
+});
+add({
+  group: "roles",
+  label: "signup while signups are open",
+  uid: "userN",
+  path: `${D}/users/userN`,
+  method: "create",
+  data: { email: "n@example.com", displayName: "N" },
+  also: [[`${D}/platform/settings`, { signupOpen: true }]],
+  expect: "ALLOW",
 });
 
 // ---------------------------------------------------------------------------
@@ -1021,12 +1195,22 @@ async function runEmulatorEngine(log) {
     const bad = await negativeControls(client, log);
     if (bad) return { available: false, reason: bad };
 
+    await buildBaseline();
     await client.pushRules(RULES);
     await client.wipe();
     log("  loaded the repo's firestore.rules into the emulator, cleared its data");
 
+    for (const [docPath, data] of Object.entries(BASELINE)) {
+      const r = await client.adminSet(docPath, data);
+      if (r.status !== 200) return { available: false, reason: `could not seed the baseline at ${docPath}: HTTP ${r.status}` };
+    }
+    log(`  seeded the baseline: ${Object.keys(BASELINE).length} organisation, membership and role documents`);
+
     const results = new Map();
     for (const c of cases) {
+      // Extra documents a case needs in place (a settings doc, say), seeded
+      // before it and removed after, so they can't leak into the next case.
+      for (const [docPath, data] of c.also || []) await client.adminSet(docPath, data);
       const prep = await prepareCase(client, c);
       if (prep.error) {
         results.set(c.id, { verdict: null, note: `not run: ${prep.error}` });
@@ -1039,6 +1223,12 @@ async function runEmulatorEngine(log) {
         results.set(c.id, { verdict: null, note: `not run: request failed (${err.message})` });
       } finally {
         await client.adminDelete(prep.target);
+        for (const [docPath] of c.also || []) {
+          if (BASELINE[docPath]) await client.adminSet(docPath, BASELINE[docPath]);
+          else await client.adminDelete(docPath);
+        }
+        // A case aimed at a baseline document gets it back, untouched.
+        if (BASELINE[prep.target]) await client.adminSet(prep.target, BASELINE[prep.target]);
       }
     }
     return { available: true, results };
@@ -1218,13 +1408,16 @@ async function main() {
   }
   log("");
 
-  const groups = ["ownership", "unauth", "escalation", "default-deny", "added"];
+  // Any group a case uses is reported, listed or not. A case in a group
+  // missing from this list used to run and then vanish from the totals.
+  const groups = [...new Set(["ownership", "unauth", "escalation", "default-deny", "added", "roles", ...cases.map((c) => c.group)])];
   const titles = {
     ownership: "Ownership isolation",
     unauth: "Unauthenticated access",
     escalation: "Privilege escalation",
     "default-deny": "Deny by default",
     added: "Added coverage",
+    roles: "Organisations and roles",
   };
 
   let pass = 0;

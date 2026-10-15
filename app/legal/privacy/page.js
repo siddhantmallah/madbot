@@ -1,10 +1,9 @@
-"use client";
-
 import Link from "next/link";
 import LegalPage, { LegalSection, Callout, DefTable } from "../../components/LegalPage";
 import { COMPANY, emailFor, registeredAddressLine } from "../../../lib/company";
 import { CONTACT_EMAIL } from "../../../lib/contact";
 import { DEFAULT_POLICY } from "../../../lib/dataPolicy";
+import { updatedOn } from "../../../lib/legalDates";
 
 /**
  * The Privacy Policy.
@@ -69,7 +68,7 @@ export default function PrivacyPage() {
     <LegalPage
       title="Privacy Policy"
       kicker="Legal"
-      updated="6 September 2026"
+      updated={updatedOn("/legal/privacy")}
       effective="6 September 2026"
       toc={TOC}
       intro={
@@ -249,8 +248,20 @@ export default function PrivacyPage() {
           &quot;have we seen this one?&quot; without the ledger ever being a
           readable list of everybody who has tried the product. If you later
           delete your account, the hash remains, because deleting it would
-          reopen the loophole it exists to close. Nothing else about you is
-          attached to it.
+          reopen the loophole it exists to close. The only other thing
+          attached to it is the part of your address after the @ (for
+          example, example.com), kept in plain text so that a burst of trials
+          from one throwaway mail service can be spotted without unmasking
+          anybody&apos;s address.
+        </p>
+        <p>
+          One trial per organisation, too. If your address is on your own
+          domain rather than a public mail service such as Gmail or Outlook,
+          only one free trial can start on that domain every 30 days. To check
+          that, we keep a second SHA-256 hash, of the domain alone, with the
+          date of its most recent trial and the account that started it. It
+          is kept for the same reason and on the same terms as the address
+          hash.
         </p>
         <Callout>
           <p style={{ margin: 0 }}>
@@ -450,8 +461,8 @@ export default function PrivacyPage() {
               "Indefinitely. A record that somebody objected has to outlive the data it refers to, or we would contact them again.",
             ],
             [
-              "The trial ledger hash",
-              "Indefinitely. It is a hash, not an address, and deleting it would reopen the abuse it prevents.",
+              "The trial ledger hashes (address and domain)",
+              "Indefinitely. They are hashes, not addresses, and deleting them would reopen the abuse they prevent.",
             ],
             [
               "Email delivery events",

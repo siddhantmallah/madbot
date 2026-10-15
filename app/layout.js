@@ -1,9 +1,26 @@
 import { headers } from "next/headers";
+import { Caprasimo, Figtree } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "./providers/AuthProvider";
 import CookieConsent from "./components/CookieConsent";
 import { themeBootScript } from "./components/ThemeToggle";
 import { COMPANY, SITE_URL } from "../lib/company";
+
+// Self-hosted at build time by next/font: no request to Google from the
+// visitor's browser (so no visitor IP sent there), no render-blocking CSS
+// @import chain, and a size-adjusted fallback so the swap doesn't shift the
+// layout. globals.css reads the two variables.
+const caprasimo = Caprasimo({ weight: "400", subsets: ["latin"], display: "swap", variable: "--font-caprasimo" });
+const figtree = Figtree({ weight: ["400", "600", "700"], subsets: ["latin"], display: "swap", variable: "--font-figtree" });
+
+// The browser chrome follows the page: the dark stage, or the light theme's
+// ground. The same two values as --color-bg in globals.css.
+export const viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#0A0810" },
+    { media: "(prefers-color-scheme: light)", color: "#F6F4F8" },
+  ],
+};
 
 export const metadata = {
   // The www host, because the apex redirects to it. Pointing canonicals and
@@ -15,7 +32,7 @@ export const metadata = {
   alternates: { canonical: "./" },
   title: "MADBOT — autonomous website marketing that runs itself",
   description:
-    "Connect your website once. MADBOT audits it, writes the pages, lists you where buyers look and finds the companies who need you. You keep a dial and a veto.",
+    "Connect your site once. MADBOT audits it, writes the pages and your directory listings, and finds the companies who need you. You keep a dial and a veto.",
   // A favicon sits on browser chrome this app does not control, so unlike the
   // in-app mark it cannot be recoloured by the theme at runtime. It has to ship
   // in both, selected by `media`, or the dark mark vanishes against a dark tab
@@ -50,7 +67,9 @@ export const metadata = {
     title: "MADBOT — autonomous website marketing that runs itself",
     description:
       "Give it a website. It finds the work, does the work, and shows you the receipts.",
-    url: "https://getmadbot.com/",
+    // Resolves against metadataBase, so it is the www host like the canonical.
+    // It was the apex, which redirects.
+    url: "/",
     images: [{ url: "/og.png", width: 1200, height: 630, alt: "MADBOT — autonomous website marketing" }],
   },
   twitter: {
@@ -125,7 +144,7 @@ export default async function RootLayout({ children }) {
   const nonce = (await headers()).get("x-nonce") ?? undefined;
 
   return (
-    <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
+    <html lang="en" className={`${caprasimo.variable} ${figtree.variable}`} data-scroll-behavior="smooth" suppressHydrationWarning>
       <head>
         {/* Stamps the saved theme onto <html> before the first paint. Anything
             that runs after hydration is too late — the visitor would see a

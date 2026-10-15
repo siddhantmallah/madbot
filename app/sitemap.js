@@ -1,4 +1,5 @@
 import { SITE_URL } from "../lib/company";
+import { LEGAL_UPDATED } from "../lib/legalDates";
 
 /**
  * The sitemap, listing every page worth indexing.
@@ -9,8 +10,14 @@ import { SITE_URL } from "../lib/company";
  * to publish is worse than one that is a few days stale. Adding a page here is
  * one line and one decision.
  *
- * /login and /dashboard are absent on purpose. Neither has search value, and
- * robots.txt disallows the dashboard outright.
+ * /login and /dashboard are absent on purpose: neither has search value, and
+ * both are noindex.
+ *
+ * <lastmod> is sent only where there is a real date for it: the legal
+ * documents, from lib/legalDates.js, the same date each page shows. The
+ * marketing pages carry none rather than a made-up one. This used to stamp
+ * every URL with the time of the request, which search engines learn to
+ * ignore for the whole site.
  */
 const PAGES = [
   { path: "/", priority: 1.0, changeFrequency: "weekly" },
@@ -29,10 +36,9 @@ const PAGES = [
 ];
 
 export default function sitemap() {
-  const now = new Date();
   return PAGES.map((p) => ({
     url: `${SITE_URL}${p.path === "/" ? "" : p.path}`,
-    lastModified: now,
+    ...(LEGAL_UPDATED[p.path] ? { lastModified: LEGAL_UPDATED[p.path] } : {}),
     changeFrequency: p.changeFrequency,
     priority: p.priority,
   }));

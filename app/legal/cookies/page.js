@@ -1,9 +1,8 @@
-"use client";
-
 import Link from "next/link";
 import LegalPage, { LegalSection, Callout, DefTable } from "../../components/LegalPage";
 import { COMPANY, emailFor } from "../../../lib/company";
 import { CONTACT_EMAIL } from "../../../lib/contact";
+import { updatedOn } from "../../../lib/legalDates";
 import {
   CATEGORY_ORDER,
   CATEGORIES,
@@ -85,7 +84,7 @@ export default function CookiesPage() {
     <LegalPage
       title="Cookie and Local Storage Policy"
       kicker="Legal"
-      updated="6 September 2026"
+      updated={updatedOn("/legal/cookies")}
       effective="6 September 2026"
       toc={TOC}
       intro={

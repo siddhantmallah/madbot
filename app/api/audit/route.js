@@ -1,38 +1,33 @@
 import { NextResponse } from "next/server";
 import { runAudit } from "../../../lib/audit";
+import { clientIp, LIMITS, rateLimit } from "../../../lib/apiGuard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// Light per-instance throttle. This is a public, unauthenticated endpoint that
-// makes outbound requests, so it needs some brake — but serverless instances
-// are short-lived, so treat this as a speed bump rather than real rate limiting.
-const hits = new Map();
-const WINDOW_MS = 60_000;
-const MAX_PER_WINDOW = 12;
-
-function throttled(ip) {
-  const now = Date.now();
-  const list = (hits.get(ip) || []).filter((t) => now - t < WINDOW_MS);
-  list.push(now);
-  hits.set(ip, list);
-  if (hits.size > 500) {
-    for (const [k, v] of hits) if (v.every((t) => now - t >= WINDOW_MS)) hits.delete(k);
-  }
-  return list.length > MAX_PER_WINDOW;
-}
-
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const raw = searchParams.get("url");
+  // Only the absurd is refused before counting; an empty or malformed address
+  // still counts toward the limit, so it can't be used to probe for free.
+  if (raw && raw.length > 2048) {
+    return NextResponse.json({ ok: false, error: "That doesn't look like a valid website address." }, { status: 400 });
+  }
   // Opt-in, because it costs one more outbound request (ads.txt) and most
   // people asking for a site report are not publishers.
   const adsense = ["1", "true", "yes"].includes(String(searchParams.get("adsense") || "").toLowerCase());
-  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
 
-  if (throttled(ip)) {
-    return NextResponse.json({ ok: false, error: "Too many audits just now — give it a minute." }, { status: 429 });
-  }
+  // Public, unauthenticated, and each call makes five or six outbound
+  // requests to a host the caller picks. Counted in Firestore so the limit
+  // holds across serverless instances; the in-memory throttle this replaces
+  // reset every time a new instance started.
+  const limited = await rateLimit({
+    scope: "public.audit",
+    key: clientIp(request),
+    rules: LIMITS.publicFetch,
+    message: "Too many audits just now — give it a minute.",
+  });
+  if (!limited.ok) return limited.response;
 
   try {
     const result = await runAudit(raw, { adsense });

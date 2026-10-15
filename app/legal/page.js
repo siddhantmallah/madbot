@@ -1,8 +1,8 @@
-"use client";
-
 import Link from "next/link";
 import LegalPage, { Callout } from "../components/LegalPage";
+import ConsentButton from "../components/ConsentButton";
 import { COMPANY } from "../../lib/company";
+import { updatedOn } from "../../lib/legalDates";
 
 // One row per document. Keeping the list here rather than in each page's
 // frontmatter means a policy cannot quietly go missing from the index.
@@ -54,7 +54,7 @@ export default function LegalIndexPage() {
     <LegalPage
       kicker="Legal"
       title="Policies"
-      updated="6 September 2026"
+      updated={updatedOn("/legal")}
       intro={
         <>
           Everything {COMPANY.legalName} publishes about how {COMPANY.product} may be used, what we do with data, and
@@ -101,15 +101,7 @@ export default function LegalIndexPage() {
         Changed your mind about what the site may store? Reopen the consent panel and set it again. Your choice takes
         effect straight away.
       </p>
-      <button
-        type="button"
-        className="btn btn-secondary"
-        onClick={() => {
-          if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("madbot:open-consent"));
-        }}
-      >
-        Manage cookie preferences
-      </button>
+      <ConsentButton />
 
       <p style={{ margin: "34px 0 0", fontSize: 14.5, lineHeight: 1.65, color: "var(--fg-60)" }}>
         Questions about any of these documents go to the legal route on the{" "}

@@ -1,13 +1,27 @@
 import { NextResponse } from "next/server";
-import { verifiedUid } from "../../../../lib/licenseServer";
+import { authorize } from "../../../../lib/licenseServer";
 import { adminAvailable, adminDb } from "../../../../lib/firebaseAdmin";
 import { checkConnection } from "../../../../lib/publishGithub";
+import { fields, LIMITS, rateLimit, readJson, z } from "../../../../lib/apiGuard";
+import { SITE_ID } from "../../../../lib/siteLimits";
+
+const SiteBody = z.object({ idToken: fields.idToken, siteId: fields.siteId });
+
+const ConnectBody = SiteBody.extend({
+  token: z.string({ error: "Both a token and a repository are required." }).min(1, "Both a token and a repository are required.").max(500),
+  repo: z
+    .string({ error: "Both a token and a repository are required." })
+    .min(1, "Both a token and a repository are required.")
+    .max(200)
+    .regex(/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/, "The repository should look like owner/name."),
+  contentPath: fields.text(300, "The content folder").regex(/^[A-Za-z0-9_./-]*$/, "The content folder can only contain letters, numbers, - _ . and /.").nullish(),
+});
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function integrationRef(db, uid, siteId) {
-  return db.collection("users").doc(uid).collection("sites").doc(siteId).collection("integrations").doc("github");
+function integrationRef(db, orgId, siteId) {
+  return db.collection("users").doc(orgId).collection("sites").doc(siteId).collection("integrations").doc("github");
 }
 
 /**
@@ -22,18 +36,18 @@ function integrationRef(db, uid, siteId) {
 export async function POST(request) {
   if (!adminAvailable()) return NextResponse.json({ ok: false, error: "No service account configured." }, { status: 503 });
 
-  let body;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ ok: false, error: "Invalid request." }, { status: 400 });
-  }
+  const body = await readJson(request, ConnectBody);
+  if (!body.ok) return body.response;
+  const { idToken, siteId, token, repo, contentPath } = body.data;
+  // Connecting stores a credential every member's publishing will use, so it
+  // needs the role that manages connections, not just membership.
+  const auth = await authorize(idToken, null, { permission: "integrations.manage" });
+  if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error, code: auth.code }, { status: auth.status });
+  const orgId = auth.orgId;
 
-  const { idToken, siteId, token, repo, contentPath } = body || {};
-  const uid = await verifiedUid(idToken);
-  if (!uid) return NextResponse.json({ ok: false, error: "Not signed in." }, { status: 401 });
-  if (!siteId) return NextResponse.json({ ok: false, error: "No site given." }, { status: 400 });
-  if (!token || !repo) return NextResponse.json({ ok: false, error: "Both a token and a repository are required." }, { status: 400 });
+  // Each attempt calls GitHub with the token it was given.
+  const limited = await rateLimit({ scope: "integrations.github", key: auth.uid, rules: LIMITS.account });
+  if (!limited.ok) return limited.response;
 
   const check = await checkConnection({ token, repo });
   if (!check.ok) return NextResponse.json({ ok: false, error: check.error });
@@ -42,13 +56,12 @@ export async function POST(request) {
   }
 
   const db = adminDb();
-  // Ownership of the site is enforced by reading it through the same uid path
-  // rather than trusting siteId alone — a site under a different account
-  // simply won't be found here.
-  const siteSnap = await db.collection("users").doc(uid).collection("sites").doc(siteId).get();
+  // The site is read through the organisation's own path rather than trusting
+  // siteId alone — a site in a different organisation simply won't be found.
+  const siteSnap = await db.collection("users").doc(orgId).collection("sites").doc(siteId).get();
   if (!siteSnap.exists) return NextResponse.json({ ok: false, error: "Site not found." }, { status: 404 });
 
-  await integrationRef(db, uid, siteId).set({
+  await integrationRef(db, orgId, siteId).set({
     token,
     repo: check.repo,
     defaultBranch: check.defaultBranch,
@@ -64,10 +77,11 @@ export async function GET(request) {
   if (!adminAvailable()) return NextResponse.json({ ok: false, error: "No service account configured." }, { status: 503 });
   const idToken = request.headers.get("x-id-token");
   const siteId = new URL(request.url).searchParams.get("siteId");
-  const uid = await verifiedUid(idToken);
-  if (!uid || !siteId) return NextResponse.json({ ok: false, connected: false });
+  if (!siteId || !SITE_ID.test(siteId)) return NextResponse.json({ ok: false, connected: false }, { status: 400 });
+  const auth = await authorize(idToken, null, { permission: "sites.read" });
+  if (!auth.ok) return NextResponse.json({ ok: false, connected: false });
 
-  const snap = await integrationRef(adminDb(), uid, siteId).get();
+  const snap = await integrationRef(adminDb(), auth.orgId, siteId).get();
   if (!snap.exists) return NextResponse.json({ ok: true, connected: false });
   const d = snap.data();
   return NextResponse.json({ ok: true, connected: true, repo: d.repo, defaultBranch: d.defaultBranch, contentPath: d.contentPath || null });
@@ -75,14 +89,10 @@ export async function GET(request) {
 
 export async function DELETE(request) {
   if (!adminAvailable()) return NextResponse.json({ ok: false, error: "No service account configured." }, { status: 503 });
-  let body;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ ok: false, error: "Invalid request." }, { status: 400 });
-  }
-  const uid = await verifiedUid(body.idToken);
-  if (!uid || !body.siteId) return NextResponse.json({ ok: false, error: "Not signed in." }, { status: 401 });
-  await integrationRef(adminDb(), uid, body.siteId).delete();
+  const body = await readJson(request, SiteBody);
+  if (!body.ok) return body.response;
+  const auth = await authorize(body.data.idToken, null, { permission: "integrations.manage" });
+  if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error, code: auth.code }, { status: auth.status });
+  await integrationRef(adminDb(), auth.orgId, body.data.siteId).delete();
   return NextResponse.json({ ok: true });
 }

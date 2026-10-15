@@ -3,6 +3,18 @@ import { writeArticle } from "../../../lib/contentPipeline";
 import { authorize } from "../../../lib/licenseServer";
 import { FEATURES } from "../../../lib/plans";
 import { reserve, record } from "../../../lib/costControl";
+import { failure, fields, LIMITS, rateLimit, readJson, siteContext, z } from "../../../lib/apiGuard";
+
+const Body = z.object({
+  idToken: fields.idToken,
+  siteId: fields.siteId,
+  item: z.object({
+    title: fields.text(300, "The title").min(1, "Nothing to write."),
+    kind: fields.text(40).nullish(),
+    angle: fields.text(1000, "The angle").nullish(),
+  }),
+  site: siteContext,
+});
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,17 +36,9 @@ export async function POST(request) {
     );
   }
 
-  let body;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ ok: false, error: "Invalid request." }, { status: 400 });
-  }
-
-  const { idToken, item, site, siteId } = body || {};
-  if (!idToken) return NextResponse.json({ ok: false, error: "Not signed in." }, { status: 401 });
-  if (!item?.title) return NextResponse.json({ ok: false, error: "Nothing to write." }, { status: 400 });
-  if (!siteId) return NextResponse.json({ ok: false, error: "No site given." }, { status: 400 });
+  const body = await readJson(request, Body);
+  if (!body.ok) return body.response;
+  const { idToken, item, site, siteId } = body.data;
 
   const auth = await authorize(idToken, FEATURES.CONTENT);
   if (!auth.ok) {
@@ -43,13 +47,15 @@ export async function POST(request) {
       { status: auth.status }
     );
   }
+  const limited = await rateLimit({ scope: "ai.content", key: auth.uid, rules: LIMITS.ai });
+  if (!limited.ok) return limited.response;
 
   // Content pieces are metered per month like everything else paid, on top of
   // the general credit reservation — a 900-word article and a 3,000-word pillar
   // both cost one "content piece" against the plan, but the underlying model
   // spend still passes through the shared credit ledger.
   const gate = await reserve({
-    uid: auth.uid,
+    orgId: auth.orgId,
     siteId,
     subscription: auth.subscription,
     action: "CONTENT_WRITE",
@@ -59,7 +65,7 @@ export async function POST(request) {
   if (!gate.ok) {
     return NextResponse.json(
       { ok: false, error: gate.reason, code: gate.code, used: gate.used ?? null, allowance: gate.allowance ?? null },
-      { status: 429 }
+      { status: gate.status || 429 }
     );
   }
 
@@ -104,6 +110,6 @@ export async function POST(request) {
 
     if (err?.code === "refused") return NextResponse.json({ ok: false, error: err.message });
     if (err?.code === "empty") return NextResponse.json({ ok: false, error: "The model returned nothing usable. Try again." });
-    return NextResponse.json({ ok: false, error: `Writing failed: ${String(err?.message || err).slice(0, 200)}` }, { status: 200 });
+    return failure("generate-content", err, "Writing failed partway through. Nothing was charged; try again.", 200);
   }
 }

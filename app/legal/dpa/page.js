@@ -1,9 +1,8 @@
-"use client";
-
 import Link from "next/link";
 import LegalPage, { LegalSection, Callout, DefTable } from "../../components/LegalPage";
 import { COMPANY, emailFor, registeredAddressLine } from "../../../lib/company";
 import { CONTACT_EMAIL } from "../../../lib/contact";
+import { updatedOn } from "../../../lib/legalDates";
 
 /**
  * The Data Processing Addendum.
@@ -88,7 +87,7 @@ export default function DpaPage() {
     <LegalPage
       title="Data Processing Addendum"
       kicker="Legal"
-      updated="6 September 2026"
+      updated={updatedOn("/legal/dpa")}
       effective="6 September 2026"
       toc={TOC}
       intro={

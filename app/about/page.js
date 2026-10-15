@@ -9,7 +9,7 @@ import { CONTACT_EMAIL } from "../../lib/contact";
 export const metadata = pageMeta({
   title: "About — who builds MADBOT and what it does",
   description:
-    "MADBOT is autonomous website marketing, built by a private limited company in India. What it does, who makes it, how it is built, and what is still missing.",
+    "MADBOT is autonomous website marketing from a private limited company in India: what it does, who makes it, how it is built, what is still missing.",
   path: "/about",
 });
 
@@ -83,7 +83,7 @@ export default function AboutPage() {
           <li>Finds prospective business customers from public company information.</li>
           <li>Drafts outreach that you send yourself, from your own mail client.</li>
           <li>Checks whether AI assistants mention your site when someone asks about your market.</li>
-          <li>Emails you a weekly digest of what happened.</li>
+          <li>Emails you a digest of a site whenever you ask for one.</li>
         </ul>
         <p>
           Everything in that list runs against your own site and your own market. There is no shared pool of results
@@ -119,8 +119,10 @@ export default function AboutPage() {
 
         <h3 style={{ margin: "20px 0 8px", fontSize: 18 }}>An autonomy dial, with things it cannot override</h3>
         <p>
-          A single dial from 0 to 100 sets how much of the work runs on a schedule without being asked. Turn it down
-          and MADBOT proposes; turn it up and it proceeds. Some things always ask, wherever the dial sits.
+          A single dial from 0 to 100 sets how much of the work runs on a schedule without being asked. Today it
+          decides one thing: from 48 up, MADBOT re-runs its paid AI-visibility check every week on its own, on sites
+          where you&apos;ve switched that on. Audits, crawls and competitor checks run on a schedule at every setting,
+          because they only read. Some things always ask, wherever the dial sits.
         </p>
         <Callout>
           <b>Three limits the dial cannot move.</b> Articles only go live through a pull request a person merges.

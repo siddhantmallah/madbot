@@ -1,18 +1,22 @@
 import { NextResponse } from "next/server";
-import { FieldValue } from "firebase-admin/firestore";
+import { FieldPath, FieldValue } from "firebase-admin/firestore";
 import { adminAvailable, adminDb } from "../../../../lib/firebaseAdmin";
 import { DEFAULT_POLICY, retentionFor } from "../../../../lib/dataPolicy";
+import { secretMatches } from "../../../../lib/apiGuard";
+import { recordSystemRun } from "../../../../lib/adminAudit";
+import { sweepExpired } from "../../../../lib/expiry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 const MAX_DELETES = 400;
+const SCAN_PAGE = 1000;
+const MAX_SCANNED = 100_000;
+const TIME_BUDGET_MS = 45_000;
 
 function authorized(request) {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return false;
-  return (request.headers.get("authorization") || "") === `Bearer ${secret}`;
+  return secretMatches(request.headers.get("authorization"), process.env.CRON_SECRET);
 }
 
 /**
@@ -55,8 +59,27 @@ async function handle(request) {
   const kept = [];
 
   // collectionGroup spans every customer's leads — retention is a promise made
-  // to the people in the data, not a per-account setting.
-  const snap = await db.collectionGroup("leads").limit(2000).get();
+  // to the people in the data, not a per-account setting. Paged: this read the
+  // first 2,000 leads and stopped, so once there were more than that, the rest
+  // were never looked at and never deleted, whatever their retention date said.
+  // Each run works through as much as its budget allows; what it deletes or
+  // backfills drops out of the next run's work.
+  const docs = [];
+  let cursor = null;
+  while (docs.length < MAX_SCANNED && Date.now() - now.getTime() < TIME_BUDGET_MS) {
+    let q = db
+      .collectionGroup("leads")
+      .select("provenance", "status", "stage", "createdAt")
+      .orderBy(FieldPath.documentId())
+      .limit(SCAN_PAGE);
+    if (cursor) q = q.startAfter(cursor);
+    // eslint-disable-next-line no-await-in-loop
+    const page = await q.get();
+    docs.push(...page.docs);
+    if (page.size < SCAN_PAGE) break;
+    cursor = page.docs[page.docs.length - 1];
+  }
+  const snap = { size: docs.length, docs };
 
   let batch = db.batch();
   let ops = 0;
@@ -98,6 +121,24 @@ async function handle(request) {
 
   if (ops) await batch.commit();
 
+  // Housekeeping: rate-limit counters, the error log and these run records all
+  // carry expiresAt. Firestore TTL would delete them, but TTL needs billing
+  // and the project is on the free plan (lib/expiry.js). A failure here is
+  // reported, not fatal: the lead retention above has already been done.
+  let expired;
+  try {
+    expired = await sweepExpired(db, { now });
+  } catch (err) {
+    console.error("[cron/retention] expiry sweep", err?.message || err);
+    expired = { error: String(err?.message || err).slice(0, 200) };
+  }
+
+  await recordSystemRun("cron.retention", {
+    ok: !expired.error,
+    startedAt: now.getTime(),
+    summary: { scanned: snap.size, deleted: deleted.length, backfilled: backfilled.length, hitCap: ops >= MAX_DELETES, expired },
+  });
+
   return NextResponse.json({
     ok: true,
     scanned: snap.size,
@@ -107,6 +148,7 @@ async function handle(request) {
     // Reported rather than silent: if the cap was hit there is more to do and
     // the next run should be soon.
     hitCap: ops >= MAX_DELETES,
+    expired,
     policy: { activeDays: DEFAULT_POLICY.retentionDays.active, rejectedDays: DEFAULT_POLICY.retentionDays.rejected },
     examples: { deleted: deleted.slice(0, 5), backfilled: backfilled.slice(0, 5) },
     ranAt: now.toISOString(),

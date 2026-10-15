@@ -5,6 +5,11 @@ out
 *.log
 .DS_Store
 .env*.local
+# Every other env file too: .env and .env.production hold the same secrets and
+# were not covered. The example is the one env file that belongs in git.
+.env
+.env.*
+!.env.local.example
 
 # Firebase service account keys — these hold a private key that grants full
 # admin access to the project. Never commit one.

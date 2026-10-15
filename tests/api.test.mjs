@@ -89,7 +89,9 @@ for (const route of ROUTES) {
     // bad request to us — those legitimately come back 200 {ok:false}. What
     // has to be 4xx is input this route refused: unparseable, non-public, or
     // unresolvable.
-    const upstream = /responded with \d{3}/i;
+    // A broken certificate, a timeout or a refused connection on the target is
+    // the same kind of fact (lib/urlGuard.js describeFetchFailure).
+    const upstream = /responded with \d{3}|certificate couldn't be verified|didn't answer in time|couldn't connect to that site/i;
     const refused = statuses.filter((s) => s.ok === false && !upstream.test(String(s.error)));
     const notFourXx = refused.filter((s) => !(s.status >= 400 && s.status < 500));
     if (notFourXx.length) {

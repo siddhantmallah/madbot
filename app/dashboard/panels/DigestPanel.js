@@ -7,7 +7,7 @@ export default function DigestPanel({ digest, onSend, sending, lastSentTo }) {
       </div>
 
       <div style={{ background: "var(--color-bg)", borderRadius: 18, padding: "13px 15px", display: "flex", flexDirection: "column", gap: 9 }}>
-        <div style={{ fontFamily: "var(--font-heading)", fontSize: 15 }}>This week on {digest.domain}</div>
+        <div style={{ fontFamily: "var(--font-heading)", fontSize: 15 }}>Where {digest.domain} stands</div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
           {digest.lines.map((l) => (

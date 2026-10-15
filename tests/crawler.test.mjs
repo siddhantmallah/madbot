@@ -173,16 +173,29 @@ await test("orphanPages is not just 'every page except the homepage'", async () 
 // ---------------------------------------------------------------------------
 // 5. Sitemap URLs from a remote robots.txt are fetched with no host check.
 // ---------------------------------------------------------------------------
+// This used to grep fetchSitemapUrls() for the string "assertPublicHost" and
+// fail when it wasn't there. The property it was after does hold: every URL
+// the crawler fetches, the first one included, goes through safeFetch, and
+// safeFetch runs assertSafeUrl before it connects (lib/urlGuard.js). So this
+// now tests the behaviour instead of the spelling: both halves of it.
 await test("sitemap URLs taken from robots.txt are re-validated before fetching", async () => {
   const fn = SRC.match(/async function fetchSitemapUrls[\s\S]*?\n}/)?.[0] || "";
-  if (!/assertPublicHost/.test(fn)) {
-    throw new Error(
-      "fetchSitemapUrls() passes `Sitemap:` values from the target's robots.txt (and <loc> values from a sitemap " +
-        "index) straight to safeFetch with no assertPublicHost and no origin check. A site you audit can point its " +
-        "own robots.txt at `Sitemap: http://127.0.0.1:6379/` and have the server fetch it."
-    );
+  truthy(fn, "fetchSitemapUrls found");
+  const fetchCalls = fn.match(/\b\w*[fF]etch\w*\(/g) || [];
+  const unguarded = fetchCalls.filter((c) => c !== "safeFetch(" && c !== "fetchSitemapUrls(");
+  if (unguarded.length) throw new Error(`fetchSitemapUrls fetches with something other than safeFetch: ${unguarded.join(", ")}`);
+
+  const { safeFetch } = await import("../lib/urlGuard.js");
+  for (const target of ["http://127.0.0.1:6379/", "http://169.254.169.254/latest/meta-data/", "http://[::1]/sitemap.xml"]) {
+    let refused = false;
+    try {
+      await safeFetch(target, { timeoutMs: 3000 });
+    } catch {
+      refused = true;
+    }
+    if (!refused) throw new Error(`safeFetch connected to ${target}`);
   }
-  return "validated";
+  return `${fetchCalls.length} fetches, all through safeFetch; private sitemap targets refused`;
 });
 
 report();

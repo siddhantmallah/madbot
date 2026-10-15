@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../providers/AuthProvider";
+import { OrgProvider, useOrg } from "../providers/OrgProvider";
 import {
   subscribeSites,
   subscribeSite,
@@ -44,7 +45,7 @@ import { useRegion } from "../../lib/useRegion";
 import Billing from "./screens/Billing";
 import LockedFeature from "./screens/LockedFeature";
 import { buildSiteInsights, CONTENT_BODY, hostnameOf } from "../../lib/seed";
-import { buildDigest, digestData } from "../../lib/digest";
+import { digestData } from "../../lib/digest";
 import { MadbotMark, SiteIcon } from "../components/Brand";
 import ThemeToggle from "../components/ThemeToggle";
 import SearchConsolePanel from "./panels/SearchConsolePanel";
@@ -104,11 +105,46 @@ function FullScreenLoading() {
   );
 }
 
+/**
+ * When there's no organisation to work in: it's suspended, signups are closed,
+ * or the membership is gone. Says which, offers any other organisation the
+ * person belongs to, and a way out.
+ */
+function OrgProblem({ message, memberships, onSwitch, onSignOut }) {
+  const others = (memberships || []).filter((m) => m.status === "active");
+  return (
+    <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 24, background: "var(--color-bg)", color: "var(--color-text)" }}>
+      <div className="card" style={{ maxWidth: 460, padding: 28, gap: 14 }}>
+        <span className="card-kicker">Organisation</span>
+        <h1 style={{ margin: 0, fontSize: 24 }}>Nothing to open right now</h1>
+        <p role="alert" style={{ margin: 0, lineHeight: 1.6, color: "var(--fg-80)" }}>{message}</p>
+        {others.length ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <span className="mono">Your other organisations</span>
+            {others.map((m) => (
+              <button key={m.id} type="button" className="btn btn-secondary" onClick={() => onSwitch(m.id)}>
+                Open {m.name}
+              </button>
+            ))}
+          </div>
+        ) : null}
+        <button type="button" className="btn btn-ghost" onClick={onSignOut}>
+          Sign out
+        </button>
+      </div>
+    </main>
+  );
+}
+
 function DashboardInner() {
   const router = useRouter();
   const params = useSearchParams();
   const initialUrl = params.get("url") || "";
   const { user, loading, logOut, connectSearchConsole } = useAuth();
+  // The organisation this person is working in. Every path below is the
+  // organisation's (lib/orgs.js), and nothing subscribes until it is known.
+  const orgCtx = useOrg();
+  const orgId = orgCtx.status === "ready" ? orgCtx.org.id : null;
 
   // One region lookup for the whole dashboard, passed to anything that shows
   // a price.
@@ -170,23 +206,23 @@ function DashboardInner() {
   }, [loading, user, router]);
 
   useEffect(() => {
-    if (!user) return undefined;
-    return subscribeSites(user.uid, (list) => {
+    if (!user || !orgId) return undefined;
+    return subscribeSites(orgId, (list) => {
       setSites(list);
       setActiveSiteId((prev) => (prev && list.some((s) => s.id === prev) ? prev : list[0]?.id || null));
     });
-  }, [user]);
+  }, [user, orgId]);
 
   useEffect(() => {
     if (sites !== null && sites.length === 0) setOnboardOpen(true);
   }, [sites]);
 
   useEffect(() => {
-    if (!user || !activeSiteId) {
+    if (!user || !orgId || !activeSiteId) {
       setSite(null);
       return undefined;
     }
-    return subscribeSite(user.uid, activeSiteId, (s) => {
+    return subscribeSite(orgId, activeSiteId, (s) => {
       setSite(s);
       if (s) {
         setAut(s.autonomy);
@@ -197,78 +233,78 @@ function DashboardInner() {
         setDismissedOpportunities(s.dismissedOpportunities || {});
       }
     });
-  }, [user, activeSiteId]);
+  }, [user, orgId, activeSiteId]);
 
   useEffect(() => {
-    if (!user || !activeSiteId) {
+    if (!user || !orgId || !activeSiteId) {
       setActivity([]);
       return undefined;
     }
-    return subscribeActivity(user.uid, activeSiteId, setActivity);
-  }, [user, activeSiteId]);
+    return subscribeActivity(orgId, activeSiteId, setActivity);
+  }, [user, orgId, activeSiteId]);
 
   useEffect(() => {
-    if (!user || !activeSiteId) {
+    if (!user || !orgId || !activeSiteId) {
       setApprovals([]);
       return undefined;
     }
-    return subscribeApprovals(user.uid, activeSiteId, setApprovals);
-  }, [user, activeSiteId]);
+    return subscribeApprovals(orgId, activeSiteId, setApprovals);
+  }, [user, orgId, activeSiteId]);
 
   useEffect(() => {
-    if (!user || !activeSiteId) {
+    if (!user || !orgId || !activeSiteId) {
       setLeads([]);
       return undefined;
     }
-    return subscribeLeads(user.uid, activeSiteId, setLeads);
-  }, [user, activeSiteId]);
+    return subscribeLeads(orgId, activeSiteId, setLeads);
+  }, [user, orgId, activeSiteId]);
 
   useEffect(() => {
-    if (!user || !activeSiteId) {
+    if (!user || !orgId || !activeSiteId) {
       setContent([]);
       return undefined;
     }
-    return subscribeContent(user.uid, activeSiteId, setContent);
-  }, [user, activeSiteId]);
+    return subscribeContent(orgId, activeSiteId, setContent);
+  }, [user, orgId, activeSiteId]);
 
   useEffect(() => {
-    if (!user || !activeSiteId) {
+    if (!user || !orgId || !activeSiteId) {
       setCompetitors([]);
       return undefined;
     }
-    return subscribeCompetitors(user.uid, activeSiteId, setCompetitors);
-  }, [user, activeSiteId]);
+    return subscribeCompetitors(orgId, activeSiteId, setCompetitors);
+  }, [user, orgId, activeSiteId]);
 
   useEffect(() => {
-    if (!user || !activeSiteId) {
+    if (!user || !orgId || !activeSiteId) {
       setJobs([]);
       return undefined;
     }
-    return subscribeJobs(user.uid, activeSiteId, setJobs);
-  }, [user, activeSiteId]);
+    return subscribeJobs(orgId, activeSiteId, setJobs);
+  }, [user, orgId, activeSiteId]);
 
   useEffect(() => {
-    if (!user || !activeSiteId) {
+    if (!user || !orgId || !activeSiteId) {
       setSocialPosts([]);
       return undefined;
     }
-    return subscribeSocialPosts(user.uid, activeSiteId, setSocialPosts);
-  }, [user, activeSiteId]);
+    return subscribeSocialPosts(orgId, activeSiteId, setSocialPosts);
+  }, [user, orgId, activeSiteId]);
 
   useEffect(() => {
-    if (!user || !activeSiteId) {
+    if (!user || !orgId || !activeSiteId) {
       setListings([]);
       return undefined;
     }
-    return subscribeListings(user.uid, activeSiteId, setListings);
-  }, [user, activeSiteId]);
+    return subscribeListings(orgId, activeSiteId, setListings);
+  }, [user, orgId, activeSiteId]);
 
   // Connection state for the social accounts. Not a snapshot listener: the
   // integration documents are server-only in the rules, precisely because they
   // hold live posting credentials, so this reads the safe summary the API
   // returns instead.
   useEffect(() => {
-    if (!user || !activeSiteId) {
+    if (!user || !orgId || !activeSiteId) {
       setSocialNetworks(null);
       return undefined;
     }
@@ -288,7 +324,7 @@ function DashboardInner() {
     return () => {
       cancelled = true;
     };
-  }, [user, activeSiteId]);
+  }, [user, orgId, activeSiteId]);
 
   // Whether the server can draft at all. Asked once — it depends on the
   // deployment, not on the site.
@@ -329,25 +365,28 @@ function DashboardInner() {
   const [billing, setBilling] = useState([]);
 
   useEffect(() => {
-    if (!user) return;
-    const offSub = subscribeSubscription(user.uid, setSubscription);
-    const offBilling = subscribeBilling(user.uid, setBilling);
+    if (!user || !orgId) return;
+    const offSub = subscribeSubscription(orgId, setSubscription);
+    const offBilling = subscribeBilling(orgId, setBilling);
     return () => {
       offSub();
       offBilling();
     };
-  }, [user]);
+  }, [user, orgId]);
 
-  // What this site has actually spent this month, so the allowance isn't a
-  // number that only exists on the pricing page.
+  // What the account has actually spent this month, so the allowance isn't a
+  // number that only exists on the pricing page. Account-wide, because that is
+  // what the allowance is.
   const [usageNow, setUsageNow] = useState(null);
+  // A stable key, so the subscription only restarts when the set of sites does.
+  const siteIdsKey = (sites || []).map((s) => s.id).join(",");
   useEffect(() => {
-    if (!user || !activeSiteId) {
+    if (!user || !orgId) {
       setUsageNow(null);
       return undefined;
     }
-    return subscribeUsage(user.uid, activeSiteId, setUsageNow);
-  }, [user, activeSiteId]);
+    return subscribeUsage(orgId, siteIdsKey ? siteIdsKey.split(",") : [], setUsageNow);
+  }, [user, orgId, siteIdsKey]);
 
   const siteCount = (sites || []).length;
   const usage = useMemo(() => usageSummary(subscription, { siteCount }), [subscription, siteCount]);
@@ -404,7 +443,7 @@ function DashboardInner() {
         setToast(data.error || "Couldn't read the site just now.");
         return;
       }
-      await updateSiteSettings(user.uid, activeSiteId, {
+      await updateSiteSettings(orgId, activeSiteId, {
         audit: {
           score: data.score,
           counts: data.counts,
@@ -415,7 +454,7 @@ function DashboardInner() {
         title: data.title || site.title,
         faviconUrl: data.faviconUrl || site.faviconUrl || null,
       });
-      addActivity(user.uid, activeSiteId, {
+      addActivity(orgId, activeSiteId, {
         k: "seo",
         text: `Re-read ${hostnameOf(site.url)} — score ${data.score}, ${data.counts.critical} critical`,
         why: "You asked for a fresh audit",
@@ -443,51 +482,51 @@ function DashboardInner() {
       setAut(allowed);
       setToast(`${usage.plan.name} stops at "${autonomyLabel(autonomyCap)}". Saved at that level.`);
     }
-    updateSiteSettings(user.uid, activeSiteId, { autonomy: allowed });
+    updateSiteSettings(orgId, activeSiteId, { autonomy: allowed });
   }
   function saveRules(updater) {
     setRules((prev) => {
       const next = typeof updater === "function" ? updater(prev) : updater;
-      if (user && activeSiteId) updateSiteSettings(user.uid, activeSiteId, { rules: next });
+      if (user && activeSiteId) updateSiteSettings(orgId, activeSiteId, { rules: next });
       return next;
     });
   }
   function saveVoice(v) {
     setVoice(v);
-    if (user && activeSiteId) updateSiteSettings(user.uid, activeSiteId, { voice: v });
+    if (user && activeSiteId) updateSiteSettings(orgId, activeSiteId, { voice: v });
   }
   function togglePause() {
     setPaused((p) => {
       const next = !p;
-      if (user && activeSiteId) updateSiteSettings(user.uid, activeSiteId, { paused: next });
+      if (user && activeSiteId) updateSiteSettings(orgId, activeSiteId, { paused: next });
       return next;
     });
   }
   function toggleUndo(id, undone) {
-    if (user && activeSiteId) setActivityUndone(user.uid, activeSiteId, id, undone);
+    if (user && activeSiteId) setActivityUndone(orgId, activeSiteId, id, undone);
   }
   function approve(id) {
     if (!user || !activeSiteId) return;
-    setApprovalStatus(user.uid, activeSiteId, id, "yes");
+    setApprovalStatus(orgId, activeSiteId, id, "yes");
     // An approved draft is now the customer's to send from their own mail app.
     // Reflect that on the lead, so its card stops saying the draft is waiting.
     const a = approvals.find((x) => x.id === id);
-    if (a?.leadId) updateLead(user.uid, activeSiteId, a.leadId, { status: "approved" });
+    if (a?.leadId) updateLead(orgId, activeSiteId, a.leadId, { status: "approved" });
   }
   function decline(id) {
-    if (user && activeSiteId) setApprovalStatus(user.uid, activeSiteId, id, "no");
+    if (user && activeSiteId) setApprovalStatus(orgId, activeSiteId, id, "no");
   }
   function editApproval(id, patch) {
-    if (user && activeSiteId) updateApproval(user.uid, activeSiteId, id, patch);
+    if (user && activeSiteId) updateApproval(orgId, activeSiteId, id, patch);
   }
 
   function takeOpportunity(oppId) {
     if (!user || !activeSiteId) return;
     setTakenOpportunities((prev) => ({ ...prev, [oppId]: true }));
-    updateSiteSettings(user.uid, activeSiteId, { [`takenOpportunities.${oppId}`]: true });
+    updateSiteSettings(orgId, activeSiteId, { [`takenOpportunities.${oppId}`]: true });
     const opp = opportunities?.nodes?.[oppId];
     if (opp) {
-      addActivity(user.uid, activeSiteId, {
+      addActivity(orgId, activeSiteId, {
         k: "seo",
         text: `Queued: ${opp.title}`,
         why: opp.fix || "You told me to go get it",
@@ -498,7 +537,7 @@ function DashboardInner() {
   function dismissOpportunity(oppId) {
     if (!user || !activeSiteId) return;
     setDismissedOpportunities((prev) => ({ ...prev, [oppId]: true }));
-    updateSiteSettings(user.uid, activeSiteId, { [`dismissedOpportunities.${oppId}`]: true });
+    updateSiteSettings(orgId, activeSiteId, { [`dismissedOpportunities.${oppId}`]: true });
   }
 
   // sendLead and saveLeadDraft are gone. sendLead marked a lead "sent" while
@@ -506,17 +545,17 @@ function DashboardInner() {
   // practice. Outreach now goes to Approvals and is sent from there, so there
   // is one path and it actually delivers.
   function declineLead(id) {
-    if (user && activeSiteId) updateLead(user.uid, activeSiteId, id, { status: "declined" });
+    if (user && activeSiteId) updateLead(orgId, activeSiteId, id, { status: "declined" });
   }
 
   // No GitHub repo connected: publishing is honestly just a status flag, and
   // says so. Once a repo is connected, publishGithub takes over below.
   function publishContent(id) {
     if (!user || !activeSiteId) return;
-    updateContentItem(user.uid, activeSiteId, id, { status: "published" });
+    updateContentItem(orgId, activeSiteId, id, { status: "published" });
     const item = content.find((c) => c.id === id);
     if (item) {
-      addActivity(user.uid, activeSiteId, {
+      addActivity(orgId, activeSiteId, {
         k: "content",
         text: `Marked "${item.title}" as published (not live on your site)`,
         why: "You approved this piece",
@@ -533,7 +572,7 @@ function DashboardInner() {
 
   useEffect(() => {
     let alive = true;
-    if (!user || !activeSiteId) {
+    if (!user || !orgId || !activeSiteId) {
       setGithub({ checked: false, connected: false, repo: null });
       return undefined;
     }
@@ -550,7 +589,7 @@ function DashboardInner() {
     return () => {
       alive = false;
     };
-  }, [user, activeSiteId]);
+  }, [user, orgId, activeSiteId]);
 
   async function connectGithub({ token, repo, contentPath }) {
     if (!user || !activeSiteId) return;
@@ -604,7 +643,7 @@ function DashboardInner() {
         return;
       }
       const item = content.find((c) => c.id === id);
-      await addActivity(user.uid, activeSiteId, {
+      await addActivity(orgId, activeSiteId, {
         k: "content",
         text: `Opened a pull request for "${item?.title || "a piece"}"`,
         why: "Publishing is by pull request, so nothing goes live without a review",
@@ -673,7 +712,7 @@ function DashboardInner() {
         setWriteError(data.error || "Couldn't write that piece.");
         return;
       }
-      await updateContentItem(user.uid, activeSiteId, item.id, {
+      await updateContentItem(orgId, activeSiteId, item.id, {
         article: data.article,
         title: data.title || item.title,
         description: data.description || null,
@@ -690,7 +729,7 @@ function DashboardInner() {
         writtenAt: new Date(),
       });
       const flagged = data.factCheck?.unsupportedCount || 0;
-      await addActivity(user.uid, activeSiteId, {
+      await addActivity(orgId, activeSiteId, {
         k: "content",
         text: `Wrote "${data.title || item.title}" — ${data.words} words`,
         why: item.angle ? `Your angle: ${item.angle}` : `Researched, drafted and fact-checked as a ${item.kind} piece`,
@@ -714,7 +753,7 @@ function DashboardInner() {
     setAsking(true);
     try {
       const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-      await addContentItem(user.uid, activeSiteId, {
+      await addContentItem(orgId, activeSiteId, {
         day,
         dayName: dayNames[day],
         title: topic,
@@ -726,7 +765,7 @@ function DashboardInner() {
           : (CONTENT_BODY[kind] || CONTENT_BODY.Support)(insights.name),
         requested: true,
       });
-      await addActivity(user.uid, activeSiteId, {
+      await addActivity(orgId, activeSiteId, {
         k: "content",
         text: `Added "${topic}" to the ${dayNames[day]} plan at your request`,
         why: angle ? `Your angle: ${angle}` : "You asked for it",
@@ -755,7 +794,7 @@ function DashboardInner() {
       return;
     }
     setGsc((s) => ({ ...s, status: "ready", siteUrl: propertyUrl, data }));
-    if (user && activeSiteId) updateSiteSettings(user.uid, activeSiteId, { gscProperty: propertyUrl });
+    if (user && activeSiteId) updateSiteSettings(orgId, activeSiteId, { gscProperty: propertyUrl });
   }
 
   async function handleConnectSearchConsole() {
@@ -797,8 +836,8 @@ function DashboardInner() {
       });
       const data = await res.json();
       if (!data.ok) return { error: data.error };
-      await addCompetitor(user.uid, activeSiteId, { url: data.snapshot.url, snapshot: data.snapshot });
-      addActivity(user.uid, activeSiteId, {
+      await addCompetitor(orgId, activeSiteId, { url: data.snapshot.url, snapshot: data.snapshot });
+      addActivity(orgId, activeSiteId, {
         k: "link",
         text: `Started watching ${hostnameOf(url)} for changes`,
         why: "You added them as a competitor",
@@ -822,13 +861,13 @@ function DashboardInner() {
       const data = await res.json();
       if (!data.ok) return;
       const changes = diffSnapshots(c.snapshot, data.snapshot);
-      await updateCompetitor(user.uid, activeSiteId, c.id, {
+      await updateCompetitor(orgId, activeSiteId, c.id, {
         snapshot: data.snapshot,
         changes,
         lastCheckedAt: new Date(),
       });
       if (changes.length) {
-        addActivity(user.uid, activeSiteId, {
+        addActivity(orgId, activeSiteId, {
           k: "link",
           text: `${hostnameOf(c.url)} changed: ${changes[0].text}`,
           why: "Detected by comparing against the previous snapshot",
@@ -852,12 +891,12 @@ function DashboardInner() {
     setJobBusy(type);
     try {
       const out = await enqueueAndRun(
-        user.uid,
+        orgId,
         targetSiteId,
         { type, params },
         {
           getIdToken: () => user.getIdToken(),
-          onActivity: (entry) => addActivity(user.uid, targetSiteId, entry),
+          onActivity: (entry) => addActivity(orgId, targetSiteId, entry),
         }
       );
       if (out.completed) setToast(out.outcome?.summary || "Run finished.");
@@ -905,7 +944,7 @@ function DashboardInner() {
       const res = await fetch("/api/visibility/questions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idToken, intel: site.intelligence }),
+        body: JSON.stringify({ idToken, siteId: activeSiteId }),
       });
       const data = await res.json();
       if (data.ok) setVisQuestions(data);
@@ -932,10 +971,10 @@ function DashboardInner() {
       const res = await fetch("/api/leads/profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idToken, intel: site.intelligence }),
+        body: JSON.stringify({ idToken, siteId: activeSiteId }),
       });
       const data = await res.json();
-      if (data.ok) await updateSiteSettings(user.uid, activeSiteId, { buyerProfile: data.profile });
+      if (data.ok) await updateSiteSettings(orgId, activeSiteId, { buyerProfile: data.profile });
       else setProfileError(data.error || "Couldn't work out a buyer profile.");
     } catch (err) {
       setProfileError(String(err?.message || err));
@@ -946,13 +985,13 @@ function DashboardInner() {
 
   function saveDataPolicy(next) {
     if (!user || !activeSiteId) return;
-    updateSiteSettings(user.uid, activeSiteId, { dataPolicy: next });
+    updateSiteSettings(orgId, activeSiteId, { dataPolicy: next });
     setToast("Data rules updated.");
   }
 
   function saveProfile(next) {
     if (!user || !activeSiteId) return;
-    updateSiteSettings(user.uid, activeSiteId, { buyerProfile: next });
+    updateSiteSettings(orgId, activeSiteId, { buyerProfile: next });
     setToast(next.needsConfirmation ? "Saved." : "Buyer profile confirmed.");
   }
 
@@ -1015,7 +1054,7 @@ function DashboardInner() {
       // A real subject and body now, not a one-line opener. Approvals renders
       // exactly these fields, and "Approve" opens them in the customer's own
       // mail client.
-      await addApproval(user.uid, activeSiteId, {
+      await addApproval(orgId, activeSiteId, {
         kind: "outreach",
         title: `Outreach to ${lead.co || lead.domain}`,
         subject: data.subject,
@@ -1028,7 +1067,7 @@ function DashboardInner() {
         why: lead.why || null,
         provenance: lead.provenance || null,
       });
-      await updateLead(user.uid, activeSiteId, lead.id, { status: "drafted" });
+      await updateLead(orgId, activeSiteId, lead.id, { status: "drafted" });
       setToast("Draft is waiting in Approvals. Nothing has been sent.");
     } catch (err) {
       setToast(String(err?.message || err));
@@ -1052,7 +1091,7 @@ function DashboardInner() {
   async function toggleAutoVisibility(next) {
     if (!user || !activeSiteId) return;
     try {
-      await updateSiteSettings(user.uid, activeSiteId, { autoVisibility: next });
+      await updateSiteSettings(orgId, activeSiteId, { autoVisibility: next });
       setToast(next ? "MADBOT will re-check this weekly." : "Weekly re-checks turned off.");
     } catch (err) {
       setToast(String(err?.message || err));
@@ -1102,7 +1141,7 @@ function DashboardInner() {
         (data.posts || [])
           .filter((p) => !p.error)
           .map((p) =>
-            addSocialPost(user.uid, activeSiteId, {
+            addSocialPost(orgId, activeSiteId, {
               networkId: p.networkId,
               text: p.text,
               imageBrief: p.imageBrief,
@@ -1121,7 +1160,7 @@ function DashboardInner() {
       // Same shape as every other feed entry — {k, text, why, result}. The first
       // version wrote {kind, title, detail} and rendered as an empty row.
       const drafted = data.posts.filter((p) => !p.error).length;
-      await addActivity(user.uid, activeSiteId, {
+      await addActivity(orgId, activeSiteId, {
         k: "social",
         text: `Drafted ${drafted} social post${drafted === 1 ? "" : "s"}`,
         why: data.chosenAngle?.hook ? `Angle: ${data.chosenAngle.hook}` : "You asked for drafts",
@@ -1140,9 +1179,9 @@ function DashboardInner() {
     }
   }
 
-  const editSocialPost = (postId, patch) => updateSocialPost(user.uid, activeSiteId, postId, patch);
-  const approveSocialPost = (postId) => updateSocialPost(user.uid, activeSiteId, postId, { status: POST_STATUS.APPROVED, approvedAt: new Date() });
-  const declineSocialPost = (postId) => deleteSocialPost(user.uid, activeSiteId, postId);
+  const editSocialPost = (postId, patch) => updateSocialPost(orgId, activeSiteId, postId, patch);
+  const approveSocialPost = (postId) => updateSocialPost(orgId, activeSiteId, postId, { status: POST_STATUS.APPROVED, approvedAt: new Date() });
+  const declineSocialPost = (postId) => deleteSocialPost(orgId, activeSiteId, postId);
 
   async function publishSocialPost(post) {
     if (!user || !activeSiteId) return;
@@ -1241,7 +1280,7 @@ function DashboardInner() {
         setToast(data.error || "Couldn't write that one.");
         return;
       }
-      await saveListing(user.uid, activeSiteId, directoryId, {
+      await saveListing(orgId, activeSiteId, directoryId, {
         copy: data.copy,
         claims: data.claims || [],
         problems: data.problems || [],
@@ -1256,10 +1295,10 @@ function DashboardInner() {
   }
 
   const saveListingCopy = (directoryId, patch) => {
-    saveListing(user.uid, activeSiteId, directoryId, patch);
+    saveListing(orgId, activeSiteId, directoryId, patch);
     setToast("Saved.");
   };
-  const setListingStatus = (directoryId, status) => saveListing(user.uid, activeSiteId, directoryId, { status });
+  const setListingStatus = (directoryId, status) => saveListing(orgId, activeSiteId, directoryId, { status });
 
   async function handleSignOut() {
     setSigningOut(true);
@@ -1272,20 +1311,30 @@ function DashboardInner() {
     if (!user || !site) return;
     setSendingDigest(true);
     try {
-      const { subject, html, text } = buildDigest({
-        site,
-        activity,
-        approvals,
-        leads,
-        content,
-        competitors,
-        search: gsc.status === "ready" ? gsc.data : null,
-      });
+      // The server builds the email from its own records; the only thing it
+      // can't read for itself is Search Console, which sends numbers only.
+      const search =
+        gsc.status === "ready" && gsc.data?.current
+          ? {
+              current: {
+                clicks: gsc.data.current.clicks || 0,
+                impressions: gsc.data.current.impressions || 0,
+                position: gsc.data.current.position ?? null,
+              },
+              previous: gsc.data.previous
+                ? {
+                    clicks: gsc.data.previous.clicks || 0,
+                    impressions: gsc.data.previous.impressions || 0,
+                    position: gsc.data.previous.position ?? null,
+                  }
+                : null,
+            }
+          : null;
       const idToken = await user.getIdToken();
       const res = await fetch("/api/send-digest", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idToken, subject, html, text }),
+        body: JSON.stringify({ idToken, siteId: activeSiteId, search }),
       });
       const data = await res.json();
       if (data.ok) setDigestSentTo(data.to);
@@ -1302,8 +1351,12 @@ function DashboardInner() {
   // "working" only when something is — not a spinner that never stops.
   const runningJobs = jobs.filter((j) => ["running", "verifying", "queued"].includes(j.status)).length;
 
-  if (loading || (user && sites === null)) return <FullScreenLoading />;
+  if (loading) return <FullScreenLoading />;
   if (!user) return null;
+  if (orgCtx.status === "error") {
+    return <OrgProblem message={orgCtx.error} memberships={orgCtx.memberships} onSwitch={orgCtx.switchOrg} onSignOut={handleSignOut} />;
+  }
+  if (!orgId || sites === null) return <FullScreenLoading />;
 
   const displayName = user.displayName || user.email || "you";
 
@@ -1313,6 +1366,36 @@ function DashboardInner() {
         <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "0 6px" }}>
           <MadbotMark size={29} />
           <span style={{ fontFamily: "var(--font-body)", fontWeight: 400, fontSize: 21, letterSpacing: "-.005em", color: "var(--fg)" }}>madbot</span>
+        </div>
+        {/* Which organisation this is, and the role held in it. A switcher only
+            when there is something to switch to. */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 4, padding: "8px 10px", borderRadius: 8, border: "1px solid var(--color-divider)" }}>
+          <span className="mono" style={{ fontSize: 10.5 }}>Organisation · {orgCtx.role?.name}</span>
+          {orgCtx.memberships.length > 1 ? (
+            <label style={{ display: "flex", flexDirection: "column" }}>
+              <span className="sr-only">Switch organisation</span>
+              <select
+                className="input"
+                value={orgId}
+                onChange={(e) => orgCtx.switchOrg(e.target.value)}
+                style={{ minHeight: 34, fontSize: 13.5, paddingBlock: 0 }}
+              >
+                {orgCtx.memberships.map((m) => (
+                  <option key={m.id} value={m.id} disabled={m.status !== "active"}>
+                    {m.name}
+                    {m.status !== "active" ? " (suspended)" : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : (
+            <span style={{ fontSize: 13.5, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{orgCtx.org.name}</span>
+          )}
+          {!orgCtx.can("work.run") ? (
+            <span style={{ fontSize: 11.5, lineHeight: 1.45, color: "var(--fg-60)" }}>
+              View only: your role can see everything here but not change it.
+            </span>
+          ) : null}
         </div>
 
         <div style={{ position: "relative" }}>
@@ -1527,7 +1610,7 @@ function DashboardInner() {
                       competitors={competitors}
                       onAdd={addCompetitorSite}
                       onCheck={checkCompetitor}
-                      onRemove={(id) => removeCompetitor(user.uid, activeSiteId, id)}
+                      onRemove={(id) => removeCompetitor(orgId, activeSiteId, id)}
                       busyId={competitorBusy}
                       adding={addingCompetitor}
                     />
@@ -1775,7 +1858,7 @@ function DashboardInner() {
 
       {onboardOpen && user ? (
         <OnboardingModal
-          uid={user.uid}
+          uid={orgId}
           // Always dismissible. It used to be a wall for anyone with no site
           // yet, which trapped them on the one screen they could not use and
           // out of the one holding their plan and their data controls.
@@ -1798,7 +1881,9 @@ function DashboardInner() {
 export default function DashboardPage() {
   return (
     <Suspense fallback={null}>
-      <DashboardInner />
+      <OrgProvider>
+        <DashboardInner />
+      </OrgProvider>
     </Suspense>
   );
 }

@@ -77,7 +77,8 @@ Cloud console → IAM & Admin → Service Accounts → Keys, then generate a rep
 |---|---|
 | `CRON_SECRET` | Random, 32+ chars: `openssl rand -hex 32`. Vercel automatically sends `Authorization: Bearer <CRON_SECRET>` on cron invocations when the variable is named exactly this. Unset = both cron endpoints refuse everyone. |
 | `TRIAL_LEDGER_PEPPER` | Random, 32+ chars: `openssl rand -hex 32`. Salts the one-way hash that records which email addresses have used a free trial, so the ledger cannot be tested against a guessed address. Optional but wanted in production. **Never rotate it once trials exist** or every past trial is forgotten and everyone gets another one. |
-| `ADMIN_UIDS` | Your Firebase uid(s), comma-separated. Firebase console → Authentication → Users → **User UID**. Needed to grant plans by hand via `/api/billing/grant` — there is no card checkout yet, so with this unset nobody can be put on a paid plan, including you. |
+| `ADMIN_UIDS` | Your Firebase uid(s), comma-separated. Firebase console → Authentication → Users → **User UID**. These accounts are the **owners** of the admin console at `/admin` (nobody can grant or remove owner from inside the console), and can grant plans by hand via `/api/billing/grant` — there is no card checkout yet, so with this unset nobody can be put on a paid plan, including you. |
+| `ADMIN_SECRET_KEY` | Random, 32+ chars: `openssl rand -base64 36`. Encrypts the admin console's authenticator secrets at rest and signs its second-factor cookie. **Unset or shorter than 32 = the console is switched off** (every `/api/admin` route answers 503). Rotating it signs every admin out and makes every admin set up their authenticator again, so set it once. Use a different value from your local `.env.local`. |
 
 ### Email — resend.com
 
@@ -185,11 +186,30 @@ The Search Console connection asks for `https://www.googleapis.com/auth/webmaste
 npm run test:rules && node scripts/deploy-firestore-rules.cjs --publish
 ```
 
-   Run it with no flag first for a dry run that shows which collections gained or lost rules. It prints a rollback command using the previous ruleset id. `npm run test:rules` needs no credentials and no network, and it is the only thing that tells you whether the rules do what you think: 335 cases covering cross-user isolation and every privilege-escalation path.
-3. Indexes: **none required.** Every client query is a single-field `orderBy`; the cron's collection-group reads are unfiltered. If Firestore ever logs a "requires an index" error it will include a one-click link.
+   Run it with no flag first for a dry run that shows which collections gained or lost rules. It prints a rollback command using the previous ruleset id. `npm run test:rules` needs no credentials and no network, and it is the only thing that tells you whether the rules do what you think: 423 cases covering cross-user isolation and every privilege-escalation path.
+
+   **Pending as of 2026-10-15, and this one is not optional.** Phase 3 rewrote the rules around organisations: every read and write under `users/{orgId}/…` now checks the person's membership of `orgs/{orgId}` and their role's permissions, and the dashboard reads the plan from `orgs/{orgId}`. Order matters:
+   1. Deploy the code first. Each account's own organisation is created on its first request to the new code (`/api/orgs/me`, which the dashboard calls before anything else), with the same id as the account, so its sites stay where they are.
+   2. Then publish the rules straight away. Until you do, the Billing screen can't read the plan (the old rules deny `orgs/`) and invited members can't read anything.
+   Publishing the rules *before* the code would lock everyone out: the new rules need the organisation documents that only the new code creates. If that happens, roll back the rules with the command the script prints.
+3. Indexes: **none required.** Every client query is a single-field `orderBy`; the cron's collection-group reads are paged by document id with a field projection, which Firestore serves without a custom index (checked against production with `/api/cron/tick?dryRun=1`). If Firestore ever logs a "requires an index" error it will include a one-click link.
+4. **Expiring records: nothing to set up.** Three collections hold short-lived rows with an `expiresAt` field:
+   - `rateLimits`: request counters, an hour after their window;
+   - `errorLog`: server errors shown under System health, 30 days;
+   - `systemRuns`: each scheduled job's run, 30 days.
+
+   The daily retention cron deletes them once they're past `expiresAt` (`lib/expiry.js`). It deletes at most 5,000 rows a run so it can't use up the free plan's 20,000 writes a day; anything left goes on the next run, and the run's summary under System health says if it stopped early.
+
+   **Why not Firestore TTL policies?** They need billing on the project, and `madbot-256aa` is on the free Spark plan. If you move to Blaze, you can add TTL policies on `expiresAt` for those three collection groups as well; the cron then simply finds nothing left to delete.
+
+   Two things not to do:
+   - Don't exempt `expiresAt` from indexing: the sweep queries it.
+   - **Never** add a TTL policy, or anything else that deletes, for `adminAudit`. The audit log is meant to be permanent, and it has no `expiresAt` for that reason.
 
 ### Service account
 Project settings → Service accounts → Generate new private key → base64 → `FIREBASE_SERVICE_ACCOUNT_B64` (section 1).
+
+Keep the downloaded `.json` key **outside the repository folder**. `.gitignore` covers it, but a key that only `.gitignore` stands between and a commit is one `git add -f` away from being public. Every script here reads `FIREBASE_SERVICE_ACCOUNT_B64` from `.env.local`, so nothing needs the file in the repo.
 
 ## 4. Smoke test after the first deploy
 
@@ -250,6 +270,36 @@ node scripts/prune-orphan-users.cjs --confirm
 It refuses to touch any orphan that holds a subscription record, since that is the
 one signal it might have been a real customer. Deletion is recursive and cannot be
 undone.
+
+`scripts/prune-seeded-data.cjs` removes the fabricated leads, content, activity
+and approvals that the signup seed wrote into real accounts on 22 and 23 August
+2026. The seed is long gone from the code, but the records it wrote are still in
+those accounts until this runs: invented companies on the Leads screen, an
+invented content calendar, claims of work never done in the Activity log, and
+pending decisions about work that never existed. Each matcher needs both the
+seed's text and a structural mark no real record has
+(`tests/seedPrune.test.mjs` proves it against the seed code itself, pulled
+from git). **Not yet run against production as of 2026-10-14.** Dry run first:
+
+```bash
+node scripts/prune-seeded-data.cjs
+```
+
+Then, once you have read the list:
+
+```bash
+node scripts/prune-seeded-data.cjs --confirm
+```
+
+## 6b. The admin console (`/admin`)
+
+1. Set `ADMIN_UIDS` (you) and `ADMIN_SECRET_KEY` in Vercel, redeploy, and publish the rules (section 3).
+2. Open `https://www.getmadbot.com/admin/login` and sign in with the same account as on the dashboard. The console asks you to confirm who you are even if you're already signed in: a sign-in older than five minutes isn't accepted.
+3. The first time, it shows a setup key (and an `otpauth://` link that opens an authenticator app on a phone). In your authenticator app (Google Authenticator, 1Password, Authy…) choose "enter a setup key", paste it, then type the six-digit code. There is no QR code: drawing one would have meant a new dependency. From then on every console sign-in needs a code. Sessions last 8 hours.
+4. To let someone else in: they sign up for a normal MADBOT account first, then Admins → Grant access with their email and a role (Admin, Support or a custom role). They set up their own authenticator on first sign-in.
+5. Lost your authenticator? Another owner can reset it from Admins. If you're the only owner, delete `totpSecret` from your `platformAdmins/{uid}` document in the Firestore console; your next sign-in enrols a new one.
+
+Everything done in the console is in its audit log (Audit log, exportable as CSV). Entries can't be edited or deleted from the console or from any browser.
 
 ## 7. The site's own SEO
 

@@ -20,7 +20,7 @@ export default function AccountNotices() {
   const [message, setMessage] = useState("");
 
   const needsVerification = !!user && !user.emailVerified && !!user.email;
-  const trialRefused = trialStatus?.reason === "already-used";
+  const trialRefused = trialStatus?.reason === "already-used" || trialStatus?.reason === "domain-used";
 
   // Confirmation happens in a different tab, so this one has to ask. Cheap
   // (one Firebase read) and only while there is something to wait for.
@@ -88,8 +88,10 @@ export default function AccountNotices() {
         >
           <b style={{ fontSize: 14.5 }}>No trial on this account</b>
           <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.55, color: "var(--fg-60)" }}>
-            A free trial has already been used for this email address, so this account is on the free plan. Everything
-            that reports is still switched on. <Link href="/pricing" style={{ color: "var(--color-accent)" }}>See the plans</Link> if you
+            {trialStatus?.reason === "domain-used"
+              ? "Your organisation's email domain has already had a free trial this month, so this account is on the free plan."
+              : "A free trial has already been used for this email address, so this account is on the free plan."}{" "}
+            Everything that reports is still switched on. <Link href="/pricing" style={{ color: "var(--color-accent)" }}>See the plans</Link> if you
             want the rest.
           </p>
         </div>

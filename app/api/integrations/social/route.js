@@ -1,17 +1,31 @@
 import { NextResponse } from "next/server";
-import { authorize, verifiedUid } from "../../../../lib/licenseServer";
+import { authorize } from "../../../../lib/licenseServer";
 import { FEATURES } from "../../../../lib/plans";
 import { adminAvailable, adminDb } from "../../../../lib/firebaseAdmin";
 import { checkProvider, PROVIDER_FOR, connectionUsable } from "../../../../lib/publishSocial";
 import { NETWORK_ORDER, readiness } from "../../../../lib/social";
+import { fields, LIMITS, rateLimit, readJson, z } from "../../../../lib/apiGuard";
+import { SITE_ID } from "../../../../lib/siteLimits";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const PROVIDERS = ["linkedin", "x", "meta"];
 
-function integrationRef(db, uid, siteId, provider) {
-  return db.collection("users").doc(uid).collection("sites").doc(siteId).collection("integrations").doc(provider);
+const DisconnectBody = z.object({
+  idToken: fields.idToken,
+  siteId: fields.siteId,
+  provider: z.enum(PROVIDERS, { error: `Unknown provider. One of: ${PROVIDERS.join(", ")}` }),
+});
+
+const ConnectBody = DisconnectBody.extend({
+  token: z.string({ error: "No token given." }).min(1, "No token given.").max(4096),
+  authorUrn: fields.text(200).nullish(),
+  pageId: fields.text(100).nullish(),
+});
+
+function integrationRef(db, orgId, siteId, provider) {
+  return db.collection("users").doc(orgId).collection("sites").doc(siteId).collection("integrations").doc(provider);
 }
 
 /**
@@ -27,38 +41,31 @@ function integrationRef(db, uid, siteId, provider) {
 export async function POST(request) {
   if (!adminAvailable()) return NextResponse.json({ ok: false, error: "No service account configured." }, { status: 503 });
 
-  let body;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ ok: false, error: "Invalid request." }, { status: 400 });
-  }
-
-  const { idToken, siteId, provider, token, authorUrn = null, pageId = null } = body || {};
+  const body = await readJson(request, ConnectBody);
+  if (!body.ok) return body.response;
+  const { idToken, siteId, provider, token, authorUrn = null, pageId = null } = body.data;
 
   // Connecting writes a live posting credential, so it needs the plan that
   // sells posting. Reading and disconnecting deliberately stay on identity
   // alone: somebody who downgrades must still be able to see and remove a
   // connection they made.
-  const auth = await authorize(idToken, FEATURES.SOCIAL);
+  const auth = await authorize(idToken, FEATURES.SOCIAL, { permission: "integrations.manage" });
   if (!auth.ok) {
     return NextResponse.json(
       { ok: false, error: auth.error, upgradeTo: auth.upgradeTo || null, upgradeName: auth.upgradeName || null },
       { status: auth.status }
     );
   }
-  const uid = auth.uid;
-  if (!uid) return NextResponse.json({ ok: false, error: "Not signed in." }, { status: 401 });
-  if (!siteId) return NextResponse.json({ ok: false, error: "No site given." }, { status: 400 });
-  if (!PROVIDERS.includes(provider)) {
-    return NextResponse.json({ ok: false, error: `Unknown provider. One of: ${PROVIDERS.join(", ")}` }, { status: 400 });
-  }
-  if (!token) return NextResponse.json({ ok: false, error: "No token given." }, { status: 400 });
+  const orgId = auth.orgId;
+
+  // Each attempt calls the network with the token it was given.
+  const limited = await rateLimit({ scope: "integrations.social", key: auth.uid, rules: LIMITS.account });
+  if (!limited.ok) return limited.response;
 
   const db = adminDb();
-  // Ownership is enforced by reading the site through this uid's path rather
+  // Ownership is enforced by reading the site through the organisation's path rather
   // than trusting siteId — another account's site simply isn't found here.
-  const siteSnap = await db.collection("users").doc(uid).collection("sites").doc(siteId).get();
+  const siteSnap = await db.collection("users").doc(orgId).collection("sites").doc(siteId).get();
   if (!siteSnap.exists) return NextResponse.json({ ok: false, error: "Site not found." }, { status: 404 });
 
   const check = await checkProvider(provider, { token });
@@ -113,7 +120,7 @@ export async function POST(request) {
     };
   }
 
-  await integrationRef(db, uid, siteId, provider).set(record, { merge: true });
+  await integrationRef(db, orgId, siteId, provider).set(record, { merge: true });
 
   return NextResponse.json({ ok: true, provider, ...summary });
 }
@@ -133,11 +140,12 @@ export async function GET(request) {
 
   const idToken = request.headers.get("x-id-token");
   const siteId = new URL(request.url).searchParams.get("siteId");
-  const uid = await verifiedUid(idToken);
-  if (!uid || !siteId) return NextResponse.json({ ok: false, error: "Not signed in." }, { status: 401 });
+  if (!siteId || !SITE_ID.test(siteId)) return NextResponse.json({ ok: false, error: "No valid site was given." }, { status: 400 });
+  const auth = await authorize(idToken, null, { permission: "sites.read" });
+  if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error, code: auth.code }, { status: auth.status });
 
   const db = adminDb();
-  const snaps = await Promise.all(PROVIDERS.map((p) => integrationRef(db, uid, siteId, p).get()));
+  const snaps = await Promise.all(PROVIDERS.map((p) => integrationRef(db, auth.orgId, siteId, p).get()));
   const stored = Object.fromEntries(PROVIDERS.map((p, i) => [p, snaps[i].exists ? snaps[i].data() : null]));
 
   const ready = readiness(process.env);
@@ -176,17 +184,11 @@ export async function GET(request) {
 export async function DELETE(request) {
   if (!adminAvailable()) return NextResponse.json({ ok: false, error: "No service account configured." }, { status: 503 });
 
-  let body;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ ok: false, error: "Invalid request." }, { status: 400 });
-  }
+  const body = await readJson(request, DisconnectBody);
+  if (!body.ok) return body.response;
+  const auth = await authorize(body.data.idToken, null, { permission: "integrations.manage" });
+  if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error, code: auth.code }, { status: auth.status });
 
-  const uid = await verifiedUid(body.idToken);
-  if (!uid || !body.siteId) return NextResponse.json({ ok: false, error: "Not signed in." }, { status: 401 });
-  if (!PROVIDERS.includes(body.provider)) return NextResponse.json({ ok: false, error: "Unknown provider." }, { status: 400 });
-
-  await integrationRef(adminDb(), uid, body.siteId, body.provider).delete();
+  await integrationRef(adminDb(), auth.orgId, body.data.siteId, body.data.provider).delete();
   return NextResponse.json({ ok: true });
 }

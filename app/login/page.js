@@ -15,7 +15,7 @@ const HeroScene = dynamic(() => import("../components/HeroScene"), { ssr: false 
 const PREVIEW_LINES = [
   "Finds the pages you should have and don't",
   "Marks up schema so answer engines can cite you",
-  "Lists you in the directories buyers check",
+  "Writes your directory listings, ready to paste in",
   "Scores companies who match your ideal customer",
 ];
 
@@ -167,10 +167,13 @@ function LoginInner() {
   // Coming from the free report or a pricing button, the next stop is pricing.
   // Otherwise straight into the dashboard, carrying any site they typed.
   const dashboardDest = incomingUrl ? `/dashboard?url=${encodeURIComponent(incomingUrl)}` : "/dashboard";
+  // An invitation link sends people here first and expects them back. Only
+  // that one path is honoured, so `next` can't be used to send anyone off-site.
+  const backToInvite = next && /^\/invite\?[A-Za-z0-9_=&%.-]+$/.test(next) ? next : null;
   const afterAuth =
     next === "pricing"
       ? `/pricing${incomingUrl ? `?url=${encodeURIComponent(incomingUrl)}` : ""}`
-      : dashboardDest;
+      : backToInvite || dashboardDest;
 
   // An already-signed-in visitor goes straight through, unless they have just
   // signed up and still have an address to confirm.
@@ -296,7 +299,7 @@ function LoginInner() {
       <div className="hero-grid" aria-hidden="true" />
       <HeroScene className="hero-scene">
         <img
-          src="/opportunity-graph.png"
+          src="/opportunity-graph.webp"
           alt=""
           aria-hidden="true"
           width={1600}

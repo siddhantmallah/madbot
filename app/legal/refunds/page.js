@@ -1,9 +1,8 @@
-"use client";
-
 import Link from "next/link";
 import LegalPage, { LegalSection, Callout, DefTable } from "../../components/LegalPage";
 import { COMPANY, emailFor } from "../../../lib/company";
 import { CONTACT_EMAIL } from "../../../lib/contact";
+import { updatedOn } from "../../../lib/legalDates";
 
 const TOC = [
   { id: "how-payment-works", title: "How paying for MADBOT works today" },
@@ -32,7 +31,7 @@ export default function RefundsPage() {
     <LegalPage
       title="Refund, Cancellation and Payment Terms"
       kicker="Legal"
-      updated="6 September 2026"
+      updated={updatedOn("/legal/refunds")}
       effective="6 September 2026"
       intro={
         <>
@@ -135,14 +134,15 @@ export default function RefundsPage() {
 
       <LegalSection id="usage" index={5} title="Allowances and top-ups">
         <p>
-          Plans include a monthly allowance of autonomous actions, lead credits, content pieces, social posts and
-          outreach emails. Allowances run per calendar month and reset at the start of the next one. Unused allowance
-          does not carry over, and we do not pay out for allowance you did not use, on any plan.
+          Plans include a monthly allowance of autonomous actions, lead credits, content pieces and social posts,
+          belonging to your account and shared across every site your plan covers. Allowances run per calendar month
+          and reset at the start of the next one. Unused allowance does not carry over, and we do not pay out for
+          allowance you did not use, on any plan.
         </p>
         <p>
-          If you run out before the reset, you can buy a top-up. A top-up is a one-off purchase and it is refundable
-          only while it is unspent. Once credits have been consumed, real model and data costs have already been
-          incurred on your behalf and we cannot refund them. Where part of a top-up is unspent, we refund that part.
+          Top-ups are not on sale yet. When they are, a top-up will be a one-off purchase, refundable only while it
+          is unspent: once credits have been consumed, real model and data costs have already been incurred on your
+          behalf and we cannot refund them. Where part of a top-up is unspent, we will refund that part.
         </p>
       </LegalSection>
 

@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
-import { verifiedUid } from "../../../../lib/licenseServer";
 import { adminAuth, adminAvailable, adminDb } from "../../../../lib/firebaseAdmin";
+import { membershipsOf, removeMember } from "../../../../lib/orgs";
+import { fields, LIMITS, rateLimit, readJson, requireUser, z } from "../../../../lib/apiGuard";
+
+const RECENT_SIGN_IN_SECONDS = 600;
+
+const Body = z.object({ idToken: fields.idToken, confirm: fields.text(100).nullish() });
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -40,16 +45,20 @@ export async function POST(request) {
     return NextResponse.json({ ok: false, error: "No service account configured." }, { status: 503 });
   }
 
-  let body;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ ok: false, error: "Invalid request." }, { status: 400 });
-  }
+  const body = await readJson(request, Body);
+  if (!body.ok) return body.response;
+  const { idToken, confirm } = body.data;
 
-  const { idToken, confirm } = body || {};
-  const uid = await verifiedUid(idToken);
-  if (!uid) return NextResponse.json({ ok: false, error: "Not signed in." }, { status: 401 });
+  // A sign-in in the last ten minutes, not just a valid token. A token lives
+  // an hour and is refreshed silently for as long as the browser stays signed
+  // in, so on its own it proves somebody had the session, not that the owner
+  // is the one asking for an irreversible deletion now.
+  const who = await requireUser(idToken, { recentSeconds: RECENT_SIGN_IN_SECONDS });
+  if (!who.ok) return who.response;
+  const { uid } = who.user;
+
+  const limited = await rateLimit({ scope: "privacy.delete", key: uid, rules: LIMITS.account });
+  if (!limited.ok) return limited.response;
 
   if (String(confirm || "").trim().toUpperCase() !== CONFIRM_PHRASE) {
     return NextResponse.json(
@@ -60,22 +69,36 @@ export async function POST(request) {
 
   const db = adminDb();
   const userRef = db.collection("users").doc(uid);
-  const deleted = { sites: 0, billing: 0, billingEvents: 0, profile: false, authAccount: false };
+  const deleted = { sites: 0, billing: 0, billingEvents: 0, organisations: 0, memberships: 0, profile: false, authAccount: false };
 
-  try {
+  // An organisation other people still use isn't this person's to erase.
+  // Owning one with other members means handing it over first; everything
+  // else they belong to, they simply leave.
+  const memberships = await membershipsOf(db, uid);
+  const orgDocs = await Promise.all(memberships.map((m) => db.collection("orgs").doc(m.id).get()));
+  const blocking = orgDocs.filter((o) => o.exists && o.data().ownerUid === uid && (o.data().memberCount || 1) > 1);
+  if (blocking.length) {
+    return NextResponse.json(
+      {
+        ok: false,
+        code: "owns_shared_org",
+        error: `You own ${blocking.map((o) => `"${o.data().name}"`).join(", ")}, which other people use. Transfer ownership to one of them first, then delete your account.`,
+      },
+      { status: 409 }
+    );
+  }
+
+  /** Erases one data root's sites, billing and event log. */
+  async function eraseDataRoot(rootRef) {
     // recursiveDelete walks every subcollection, which a plain doc.delete()
     // does not — an orphaned subcollection would leave lead data behind.
-    const siteDocs = await userRef.collection("sites").get();
+    const siteDocs = await rootRef.collection("sites").get();
     for (const siteDoc of siteDocs.docs) {
       // eslint-disable-next-line no-await-in-loop
       await db.recursiveDelete(siteDoc.ref);
       deleted.sites += 1;
     }
-
-    const [billing, billingEvents] = await Promise.all([
-      userRef.collection("billing").get(),
-      userRef.collection("billingEvents").get(),
-    ]);
+    const [billing, billingEvents] = await Promise.all([rootRef.collection("billing").get(), rootRef.collection("billingEvents").get()]);
     // Billing records have an 8-year statutory retention under Indian company
     // law while an account is live and a real payment exists. Nothing here has
     // taken a card payment yet, so there is no book of account to preserve and
@@ -90,8 +113,37 @@ export async function POST(request) {
       await d.ref.delete();
       deleted.billingEvents += 1;
     }
+  }
 
-    await db.recursiveDelete(userRef);
+  try {
+    let ownDataRootSurvives = false;
+    for (const o of orgDocs) {
+      if (!o.exists) continue;
+      if (o.data().ownerUid === uid) {
+        // Theirs alone: the organisation and its work go with them.
+        // eslint-disable-next-line no-await-in-loop
+        await eraseDataRoot(db.collection("users").doc(o.id));
+        // eslint-disable-next-line no-await-in-loop
+        await db.recursiveDelete(o.ref);
+        deleted.organisations += 1;
+      } else {
+        // eslint-disable-next-line no-await-in-loop
+        await removeMember(db, { orgId: o.id, uid });
+        deleted.memberships += 1;
+        // Their old personal workspace, handed to someone else, keeps its
+        // work, which lives under this same user id.
+        if (o.id === uid) ownDataRootSurvives = true;
+      }
+    }
+
+    if (ownDataRootSurvives) {
+      // The profile goes; the subcollections the other owner now relies on
+      // stay (a plain delete doesn't touch them).
+      await userRef.delete();
+    } else {
+      await eraseDataRoot(userRef);
+      await db.recursiveDelete(userRef);
+    }
     deleted.profile = true;
 
     await adminAuth().deleteUser(uid);
@@ -102,8 +154,8 @@ export async function POST(request) {
       deleted,
       retained: [
         {
-          what: "A one-way hash of your email address in the free-trial ledger",
-          why: "Stops one person taking repeated free trials. It cannot be reversed into an address and has no other data attached.",
+          what: "A one-way hash of your email address in the free-trial ledger, with your address's domain, and a hash of that domain if it isn't a public mail service",
+          why: "Stops one person, or one organisation, taking repeated free trials. Neither hash can be reversed into an address.",
           basis: "Legitimate interests, fraud prevention",
         },
         {
@@ -115,8 +167,13 @@ export async function POST(request) {
       note: "Backups held by our hosting and database providers roll off on their own schedule, normally within 30 days.",
     });
   } catch (err) {
+    console.error("[privacy.delete]", err?.stack || err);
     return NextResponse.json(
-      { ok: false, error: String(err?.message || err), partial: deleted },
+      {
+        ok: false,
+        error: "Deletion stopped partway. Your sign-in still works, so you can try again; anything already removed stays removed.",
+        partial: deleted,
+      },
       { status: 500 }
     );
   }

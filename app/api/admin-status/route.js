@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminDb, adminAvailable, adminProjectId } from "../../../lib/firebaseAdmin";
+import { secretMatches } from "../../../lib/apiGuard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,11 +16,8 @@ export const dynamic = "force-dynamic";
  * it is not worth giving away. A bearer token keeps it to one curl line.
  */
 function authorised(request) {
-  const secret = process.env.CRON_SECRET;
   // Unset means nobody, not everybody — the same rule the cron endpoints use.
-  if (!secret) return false;
-  const header = request.headers.get("authorization") || "";
-  return header === `Bearer ${secret}`;
+  return secretMatches(request.headers.get("authorization"), process.env.CRON_SECRET);
 }
 
 export async function GET(request) {

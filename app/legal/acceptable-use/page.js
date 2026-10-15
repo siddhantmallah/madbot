@@ -1,9 +1,8 @@
-"use client";
-
 import Link from "next/link";
 import LegalPage, { LegalSection, Callout } from "../../components/LegalPage";
 import { COMPANY, emailFor } from "../../../lib/company";
 import { CONTACT_EMAIL } from "../../../lib/contact";
+import { updatedOn } from "../../../lib/legalDates";
 
 /**
  * The Acceptable Use Policy.
@@ -48,7 +47,7 @@ export default function AcceptableUsePage() {
     <LegalPage
       title="Acceptable Use Policy"
       kicker="Legal"
-      updated="6 September 2026"
+      updated={updatedOn("/legal/acceptable-use")}
       effective="6 September 2026"
       toc={TOC}
       intro={

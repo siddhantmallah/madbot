@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { FieldValue } from "firebase-admin/firestore";
+import { FieldPath, FieldValue } from "firebase-admin/firestore";
 import { adminDb, adminAvailable } from "../../../../lib/firebaseAdmin";
 import { createJob, runJobAdmin } from "../../../../lib/jobAdmin";
 import { dueWorkFor } from "../../../../lib/scheduler";
@@ -8,6 +8,10 @@ import { visibilityReadiness } from "../../../../lib/aiVisibilityClient";
 import { subscriptionFor } from "../../../../lib/licenseServer";
 import { activePlan, clampAutonomy, featureAccess } from "../../../../lib/entitlements";
 import { record, reserve } from "../../../../lib/costControl";
+import { secretMatches } from "../../../../lib/apiGuard";
+import { recordSystemRun } from "../../../../lib/adminAudit";
+import { sitesInsidePlan } from "../../../../lib/siteLimits";
+import { featureEnabled, platformFlags } from "../../../../lib/platform";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -17,21 +21,20 @@ export const maxDuration = 300;
 // being killed mid-write by the platform timeout.
 const TIME_BUDGET_MS = 240_000;
 const MAX_JOBS_PER_TICK = 3;
-
-function millisOf(ts) {
-  if (!ts) return 0;
-  if (typeof ts.toMillis === "function") return ts.toMillis();
-  if (ts instanceof Date) return ts.getTime();
-  const p = Date.parse(ts);
-  return Number.isNaN(p) ? 0 : p;
-}
+// Sites are read in pages of this many, up to the ceiling. The ceiling is far
+// above today's numbers; reaching it is the signal to move scheduling onto a
+// queue rather than a sweep.
+const SCAN_PAGE = 500;
+const MAX_SITES_SCANNED = 20_000;
+// The longest cadence is a week, so a month overdue is already "as overdue as
+// anything legitimately gets".
+const MAX_OVERDUE_MS = 30 * 24 * 60 * 60 * 1000;
 
 function authorized(request) {
-  const secret = process.env.CRON_SECRET;
   // Without a configured secret this endpoint stays shut rather than open.
-  if (!secret) return false;
-  const header = request.headers.get("authorization") || "";
-  return header === `Bearer ${secret}`;
+  // Compared in constant time, so response timing says nothing about how much
+  // of a guess was right.
+  return secretMatches(request.headers.get("authorization"), process.env.CRON_SECRET);
 }
 
 export async function POST(request) {
@@ -66,8 +69,27 @@ async function handle(request) {
   const skipped = [];
 
   // collectionGroup spans every user's sites — the whole point of the global
-  // scheduler shape.
-  const snap = await db.collectionGroup("sites").limit(200).get();
+  // scheduler shape. Paged, because this used to read the first 200 sites and
+  // stop: every site after that was never scheduled, and one account that
+  // created enough site documents could push everybody else past the window.
+  // Only the fields scheduling reads; the full intelligence, which is most of
+  // a site document's size, is loaded for the few visibility runs that start.
+  const docs = [];
+  let cursor = null;
+  while (docs.length < MAX_SITES_SCANNED && Date.now() - startedAt < TIME_BUDGET_MS / 4) {
+    let q = db
+      .collectionGroup("sites")
+      .select("url", "createdAt", "paused", "autonomy", "autoVisibility", "competitorCount", "schedule", "intelligence.domain")
+      .orderBy(FieldPath.documentId())
+      .limit(SCAN_PAGE);
+    if (cursor) q = q.startAfter(cursor);
+    // eslint-disable-next-line no-await-in-loop
+    const page = await q.get();
+    docs.push(...page.docs);
+    if (page.size < SCAN_PAGE) break;
+    cursor = page.docs[page.docs.length - 1];
+  }
+  const snap = { size: docs.length };
 
   // Grouped by owner, because everything below is a per-account decision: one
   // subscription read, one site limit, one autonomy cap.
@@ -79,7 +101,7 @@ async function handle(request) {
   // the scheduled path is the one that runs unattended, so it is the one where
   // a missing check actually costs money.
   const byOwner = new Map();
-  snap.forEach((docSnap) => {
+  docs.forEach((docSnap) => {
     const site = { id: docSnap.id, ...docSnap.data() };
     const uid = docSnap.ref.parent.parent?.id;
     if (!uid || !site.url) return;
@@ -88,25 +110,31 @@ async function handle(request) {
   });
 
   const candidates = [];
+  const globalFlags = await platformFlags();
   for (const [uid, sites] of byOwner) {
     // eslint-disable-next-line no-await-in-loop
-    const { unavailable, subscription } = await subscriptionFor(uid);
+    // `uid` here is the data root, which is the organisation (lib/orgs.js).
+    const { unavailable, subscription, suspended, flags } = await subscriptionFor(uid);
     if (unavailable) {
       skipped.push({ site: sites[0]?.url || uid, why: "could not read the licence" });
       continue;
     }
+    if (suspended) {
+      skipped.push({ site: sites[0]?.url || uid, why: "organisation suspended" });
+      continue;
+    }
     const plan = activePlan(subscription);
 
-    // Oldest first, so which sites fall inside the plan's limit is stable from
-    // tick to tick rather than depending on Firestore's ordering. Creating
-    // sites past the limit is only blocked in the browser today, so the
-    // scheduler has to decide which ones it is willing to work on.
-    sites.sort((a, b) => millisOf(a.createdAt) - millisOf(b.createdAt));
-    for (const over of sites.slice(plan.maxSites)) {
+    // The same rule reserve() applies to interactive work (lib/siteLimits.js):
+    // the oldest maxSites are inside the plan. Creating sites past the limit is
+    // only blocked in the browser, so the server decides which ones it works on.
+    const covered = sitesInsidePlan(sites, plan);
+    const coveredIds = new Set(covered.map((s) => s.id));
+    for (const over of sites.filter((s) => !coveredIds.has(s.id))) {
       skipped.push({ site: over.url, why: `beyond the ${plan.name} limit of ${plan.maxSites}` });
     }
 
-    for (const site of sites.slice(0, plan.maxSites)) {
+    for (const site of covered) {
       if (site.paused) {
         skipped.push({ site: site.url, why: "paused" });
         continue;
@@ -126,6 +154,11 @@ async function handle(request) {
           skipped.push({ site: site.url, why: `${item.type} is not on ${plan.name}` });
           continue;
         }
+        // A feature switched off in /admin stops its scheduled runs as well.
+        if (feature && !featureEnabled(globalFlags, flags, feature)) {
+          skipped.push({ site: site.url, why: `${item.type} is switched off` });
+          continue;
+        }
         licensed.push(item);
       }
       if (licensed.length) candidates.push({ uid, site, subscription, plan, due: licensed });
@@ -133,8 +166,22 @@ async function handle(request) {
   }
 
   // Most overdue first, so a backlog drains fairly instead of starving sites
-  // that happen to sort late.
-  candidates.sort((a, b) => (b.due[0]?.overdueBy || 0) - (a.due[0]?.overdueBy || 0));
+  // that happen to sort late. How overdue a site is comes from lastRunAt, which
+  // the browser can write, so it is capped: backdating it to 1970 used to put a
+  // site at the front of every tick.
+  const urgency = (c) => Math.min(c.due[0]?.overdueBy || 0, MAX_OVERDUE_MS);
+  candidates.sort((a, b) => urgency(b) - urgency(a));
+
+  // One job per account per tick, so no account can take every slot, however
+  // many sites it has or however it orders them.
+  const seenOwners = new Set();
+  const fair = candidates.filter((c) => {
+    if (seenOwners.has(c.uid)) return false;
+    seenOwners.add(c.uid);
+    return true;
+  });
+  candidates.length = 0;
+  candidates.push(...fair);
 
   if (dryRun) {
     return NextResponse.json({
@@ -170,14 +217,17 @@ async function handle(request) {
         continue;
       }
     } else if (type === JOB_TYPES.AI_VISIBILITY) {
+      // The scan above read only intelligence.domain; the handler needs all of it.
+      const full = await db.collection("users").doc(uid).collection("sites").doc(site.id).get();
+      const intelligence = full.data()?.intelligence || null;
       // The handler derives its own questions from intelligence — no user is
       // around to approve a set on a scheduled run.
       params = {
-        domain: site.intelligence?.domain || null,
-        brandName: site.intelligence?.business?.name || null,
-        intel: site.intelligence || null,
+        domain: intelligence?.domain || null,
+        brandName: intelligence?.business?.name || null,
+        intel: intelligence,
       };
-      if (!visibilityReadiness(site.intelligence).ready) {
+      if (!visibilityReadiness(intelligence).ready) {
         skipped.push({ site: site.url, why: "not enough crawl data for visibility" });
         continue;
       }
@@ -191,7 +241,7 @@ async function handle(request) {
     let hold = null;
     if (meter) {
       const gate = await reserve({
-        uid,
+        orgId: uid,
         siteId: site.id,
         subscription,
         action: meter.action,
@@ -245,6 +295,12 @@ async function handle(request) {
       ran.push({ site: site.url, type, error: String(err?.message || err).slice(0, 200) });
     }
   }
+
+  await recordSystemRun("cron.tick", {
+    ok: ran.every((r) => !r.error),
+    startedAt,
+    summary: { checked: snap.size, due: candidates.length, ran: ran.length, failed: ran.filter((r) => r.error || r.completed === false).length },
+  });
 
   return NextResponse.json({
     ok: true,

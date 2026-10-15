@@ -1,9 +1,8 @@
-"use client";
-
 import Link from "next/link";
 import LegalPage, { LegalSection, Callout } from "../../components/LegalPage";
 import { COMPANY, emailFor } from "../../../lib/company";
 import { CONTACT_EMAIL } from "../../../lib/contact";
+import { updatedOn } from "../../../lib/legalDates";
 
 /**
  * The Security page.
@@ -43,7 +42,7 @@ export default function SecurityPage() {
     <LegalPage
       title="Security"
       kicker="Legal"
-      updated="6 September 2026"
+      updated={updatedOn("/legal/security")}
       effective="6 September 2026"
       toc={TOC}
       intro={
@@ -108,15 +107,19 @@ export default function SecurityPage() {
 
         <h3 style={H3}>Access control in the database</h3>
         <p>
-          Every document is scoped to the account that owns it. A signed-in user can read and write their own records
-          and nothing else. The default at the bottom of the rules denies everything not explicitly allowed, so a
-          collection added later is closed until someone opens it deliberately. Several kinds of record are readable
-          by the owner but writable only by the server:
+          Every document belongs to an organisation, and each account starts with one of its own. A signed-in user
+          can reach an organisation&apos;s records only as a member of it, and only as far as their role allows: a
+          Viewer can read but not change anything, and approving work needs a role that is allowed to decide. The
+          rules check the role on every read and write, and a suspended organisation is read-only. The default at
+          the bottom of the rules denies everything not explicitly allowed, so a collection added later is closed
+          until someone opens it deliberately. Several kinds of record are readable by members but writable only by
+          the server:
         </p>
         <ul>
           <li>
-            <b>Subscriptions.</b> A user can write their own profile but not the subscription field on it. Without
-            that split, anyone signed in could grant themselves the top plan from a browser console.
+            <b>Licences and memberships.</b> The plan an organisation is on, who belongs to it and with which role
+            are all written by the server. Without that split, anyone signed in could grant themselves the top plan,
+            or make themselves an owner, from a browser console.
           </li>
           <li>
             <b>Usage counters.</b> Readable, so you can see what you have spent. Not writable, because an account that
@@ -147,6 +150,17 @@ export default function SecurityPage() {
         <p>
           Publishing works the same way. Approving a social post in the browser changes what your own dashboard shows.
           The publish route re-reads the post on the server and refuses anything without a genuine approval.
+        </p>
+
+        <h3 style={H3}>Our own access</h3>
+        <p>
+          The people who run {COMPANY.product} use an internal console to manage accounts, organisations and
+          licences. Getting in needs a {COMPANY.product} sign-in, a code from an authenticator app every time, and a
+          console role granted to that person. Sessions end after eight hours. Each role is limited to what the job
+          needs; support access, for instance, is read-only. The console shows account and organisation details,
+          usage and the addresses of connected sites, not the content of your work. Every change made from it is
+          written to an audit log, with who made it and what it was before and after. Nothing in the console can
+          edit or delete that log.
         </p>
 
         <h3 style={H3}>Secrets</h3>

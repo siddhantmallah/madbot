@@ -1,9 +1,8 @@
-"use client";
-
 import Link from "next/link";
 import LegalPage, { LegalSection, Callout, DefTable } from "../../components/LegalPage";
 import { COMPANY, emailFor, registeredAddressLine } from "../../../lib/company";
 import { CONTACT_EMAIL } from "../../../lib/contact";
+import { updatedOn } from "../../../lib/legalDates";
 
 const TOC = [
   { id: "who-we-are", title: "Who you are contracting with" },
@@ -39,7 +38,7 @@ export default function TermsPage() {
     <LegalPage
       title="Terms of Service"
       kicker="Legal"
-      updated="6 September 2026"
+      updated={updatedOn("/legal/terms")}
       effective="6 September 2026"
       intro={
         <>
@@ -146,7 +145,7 @@ export default function TermsPage() {
             ["Directory and listing copy", "Prepared for you to use. MADBOT never submits a listing. You paste it in."],
             ["Leads and outreach", "Prospects are found from public company information and scored, and an email is drafted. The draft opens in your own email client and you press send. MADBOT never sends outreach."],
             ["AI visibility checks", "A Claude model with web search looks for whether AI assistants mention your site. Reporting only."],
-            ["Weekly digest", "Emailed to you."],
+            ["Digest", "A summary of a site, emailed to you when you ask for one from the dashboard. Nothing sends it on a schedule."],
           ]}
         />
         <p>
@@ -288,9 +287,11 @@ export default function TermsPage() {
           withholding is yours to pay on top.
         </p>
         <p>
-          Usage is metered. Plans include a monthly allowance of autonomous actions, lead credits, content pieces,
-          social posts and outreach emails. Allowances run per calendar month and reset at the start of each month.{" "}
-          <b>Unused allowance does not roll over.</b> If you need more before the reset, you can buy a top-up.
+          Usage is metered. Plans include a monthly allowance of autonomous actions, lead credits, content pieces and
+          social posts. The allowance belongs to your account and is shared across every site your plan covers; it is
+          not a separate allowance for each site. Allowances run per calendar month and reset at the start of each
+          month. <b>Unused allowance does not roll over.</b> Top-ups are not on sale yet, so if you run out before the
+          reset, that kind of work waits until the reset or until you move to a larger plan.
         </p>
         <p>
           Refunds, cancellation and failed payments are all in our{" "}
