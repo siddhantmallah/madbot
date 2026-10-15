@@ -79,6 +79,7 @@ Cloud console → IAM & Admin → Service Accounts → Keys, then generate a rep
 | `TRIAL_LEDGER_PEPPER` | Random, 32+ chars: `openssl rand -hex 32`. Salts the one-way hash that records which email addresses have used a free trial, so the ledger cannot be tested against a guessed address. Optional but wanted in production. **Never rotate it once trials exist** or every past trial is forgotten and everyone gets another one. |
 | `ADMIN_UIDS` | Your Firebase uid(s), comma-separated. Firebase console → Authentication → Users → **User UID**. These accounts are the **owners** of the admin console at `/admin` (nobody can grant or remove owner from inside the console), and can grant plans by hand via `/api/billing/grant` — there is no card checkout yet, so with this unset nobody can be put on a paid plan, including you. |
 | `ADMIN_SECRET_KEY` | Random, 32+ chars: `openssl rand -base64 36`. Encrypts the admin console's authenticator secrets at rest and signs its second-factor cookie. **Unset or shorter than 32 = the console is switched off** (every `/api/admin` route answers 503). Rotating it signs every admin out and makes every admin set up their authenticator again, so set it once. Use a different value from your local `.env.local`. |
+| `GOOGLE_CLIENT_SECRET` | The client secret of the OAuth **Web client** MADBOT signs in with (Google Cloud → APIs & Services → Credentials, client `340416135340-hrcaa9q3…`). The server uses it to keep a lasting Search Console connection. **Unset = Search Console says it isn't set up.** Also needs `ADMIN_SECRET_KEY`, which encrypts the stored connection. |
 
 ### Email — resend.com
 
@@ -169,6 +170,13 @@ New email and password signups must confirm their address before their free tria
 The Search Console connection asks for `https://www.googleapis.com/auth/webmasters.readonly`.
 1. APIs & Services → **Library** → enable **Google Search Console API**.
 2. APIs & Services → **OAuth consent screen** → add that scope. While the app is in *Testing*, only listed test users can grant it; publish to *Production* for customers (it is a sensitive scope, so Google will ask for verification).
+3. APIs & Services → **Credentials** → the Web client → **Authorized redirect URIs**, add:
+   - `https://www.getmadbot.com/api/search-console/callback`
+   - `http://localhost:3000/api/search-console/callback` (local development)
+
+   Then copy that client's secret into `GOOGLE_CLIENT_SECRET` (Vercel and `.env.local`).
+
+How it works: connecting sends the person to Google and back to the callback. The server swaps Google's code for a refresh token, stores it encrypted at `orgs/{orgId}/integrations/searchConsole` (no client can read it), and mints hour-long access tokens from it. The connection is per workspace and survives refreshes. Each site remembers its own property (`gscProperty`). Disconnect revokes it at Google. If the person revokes access in their Google account, the next request finds out and shows "Connect" again.
 
 ### Firestore
 1. Build → Firestore Database → **Create database** (production mode). Pick the region closest to your Vercel region.

@@ -32,7 +32,7 @@ function Sparkline({ series }) {
   );
 }
 
-export default function SearchConsolePanel({ state, onConnect, onPickProperty, onRefresh, domain }) {
+export default function SearchConsolePanel({ state, onConnect, onPickProperty, onRefresh, onRetry, onChangeProperty, onDisconnect, domain }) {
   const { status, error, properties, siteUrl, data, needsReconnect, enableUrl } = state;
 
   // Not connected yet.
@@ -53,10 +53,10 @@ export default function SearchConsolePanel({ state, onConnect, onPickProperty, o
           </div>
         ) : null}
         <button className="btn btn-primary" onClick={onConnect} disabled={status === "connecting"} style={{ fontSize: 13, alignSelf: "flex-start" }}>
-          {status === "connecting" ? "Waiting for Google…" : "Connect Search Console"}
+          {status === "connecting" ? "Opening Google…" : "Connect Search Console"}
         </button>
         <p style={{ margin: 0, fontSize: 11.5 }} className="text-muted">
-          Read-only access. MADBOT can see your search performance, nothing else.
+          Read-only access. MADBOT can see your search performance, nothing else. Connect once and it stays connected for all your sites; each site uses its own property.
         </p>
       </section>
     );
@@ -132,9 +132,21 @@ export default function SearchConsolePanel({ state, onConnect, onPickProperty, o
               Open Google Cloud
             </a>
           ) : null}
-          <button className="btn btn-secondary" onClick={onConnect} style={{ fontSize: 13, fontWeight: 600 }}>
-            {needsReconnect ? "Reconnect Search Console" : "Try again"}
-          </button>
+          {needsReconnect ? (
+            <button className="btn btn-secondary" onClick={onConnect} style={{ fontSize: 13, fontWeight: 600 }}>
+              Reconnect Search Console
+            </button>
+          ) : (
+            <button className="btn btn-secondary" onClick={onRetry} style={{ fontSize: 13, fontWeight: 600 }}>
+              Try again
+            </button>
+          )}
+          {/* A property this Google account can't read is fixed by picking another. */}
+          {needsReconnect && siteUrl ? (
+            <button className="btn btn-ghost" onClick={onChangeProperty} style={{ fontSize: 13, fontWeight: 600 }}>
+              Choose another property
+            </button>
+          ) : null}
         </div>
       </section>
     );
@@ -199,9 +211,23 @@ export default function SearchConsolePanel({ state, onConnect, onPickProperty, o
         </p>
       )}
 
-      <button className="btn btn-ghost" onClick={onRefresh} style={{ fontSize: 12.5, fontWeight: 600, alignSelf: "flex-start" }}>
-        Refresh
-      </button>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        <button className="btn btn-ghost" onClick={onRefresh} style={{ fontSize: 12.5, fontWeight: 600 }}>
+          Refresh
+        </button>
+        <button className="btn btn-ghost" onClick={onChangeProperty} style={{ fontSize: 12.5, fontWeight: 600 }}>
+          Change property
+        </button>
+        <button
+          className="btn btn-ghost"
+          onClick={() => {
+            if (window.confirm("Disconnect Search Console? This removes MADBOT's access for every site in this workspace.")) onDisconnect();
+          }}
+          style={{ fontSize: 12.5, fontWeight: 600, marginLeft: "auto" }}
+        >
+          Disconnect
+        </button>
+      </div>
     </section>
   );
 }

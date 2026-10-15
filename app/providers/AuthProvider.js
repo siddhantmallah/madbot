@@ -13,7 +13,6 @@ import {
 import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { auth, db, googleProvider, githubProvider } from "../../lib/firebase";
 import { MIN_LENGTH, isAcceptable } from "../../lib/password";
-import { requestGoogleToken } from "../../lib/googleToken";
 
 const AuthContext = createContext(null);
 
@@ -271,15 +270,6 @@ export function AuthProvider({ children }) {
     return signOut(auth);
   }
 
-  // The read-only Search Console scope, from whichever Google account owns the
-  // property: not necessarily the one this person signs in to MADBOT with,
-  // and never by linking or re-authenticating the MADBOT login (that failed
-  // with auth/user-mismatch). See lib/googleToken.js.
-  async function connectSearchConsole() {
-    if (!auth.currentUser) throw new Error("Sign in first.");
-    return requestGoogleToken("https://www.googleapis.com/auth/webmasters.readonly");
-  }
-
   return (
     <AuthContext.Provider
       value={{
@@ -297,7 +287,6 @@ export function AuthProvider({ children }) {
         resetPassword,
         sendVerification,
         refreshUser,
-        connectSearchConsole,
       }}
     >
       {children}

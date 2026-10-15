@@ -20,11 +20,13 @@ export default function OnboardingModal({ uid, canSkip, initialUrl, onClose, onF
   // written. A retry after a half-finished start picks up from here; it used
   // to call createSite again and leave a duplicate site behind.
   const created = useRef({ siteId: null, seeded: false });
+  const [siteCreated, setSiteCreated] = useState(false);
 
-  // Closing is safe at any point except once "Start marketing" is pressed:
-  // from then the site is being written and the dashboard is about to switch
-  // to it, and walking away mid-way would leave it half set up.
-  const canClose = !!canSkip && !started;
+  // Closing is safe until "Start marketing" is pressed. From then the site is
+  // being written, and once it exists closing stays blocked even if the rest
+  // failed: walking away left a site in the list that was never opened or
+  // crawled. The way out is Try again, which reuses the site.
+  const canClose = !!canSkip && !started && !siteCreated;
   const { titleId, dialogProps } = useModalDialog({ onClose, canClose });
 
   const back = () => setStep((s) => Math.max(0, s - 1));
@@ -92,6 +94,7 @@ export default function OnboardingModal({ uid, canSkip, initialUrl, onClose, onF
           faviconUrl: siteInfo?.faviconUrl || null,
           audit: siteInfo?.audit ? { ...siteInfo.audit, ranAt: new Date().toISOString() } : null,
         });
+        setSiteCreated(true);
       }
       const siteId = created.current.siteId;
       if (!created.current.seeded) {
@@ -105,7 +108,8 @@ export default function OnboardingModal({ uid, canSkip, initialUrl, onClose, onF
       }, 900);
     } catch (err) {
       setStarted(false);
-      setReadError(err?.message || "Something went wrong creating your site. Try again.");
+      const reason = err?.message || "Something went wrong creating your site.";
+      setReadError(created.current.siteId ? `Your site is added, but setting it up didn't finish (${reason}). Press Start marketing again to finish.` : `${reason} Try again.`);
     }
   }
 

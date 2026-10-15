@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { authorize } from "../../../lib/licenseServer";
 import { FEATURES } from "../../../lib/plans";
 import { fields, LIMITS, rateLimit, readJson, z } from "../../../lib/apiGuard";
+import { accessTokenFor, authUrl, connectionStatus, disconnect, oauthConfigured, originFor, signState } from "../../../lib/googleOAuth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -57,21 +58,26 @@ function summarize(rows) {
 const Body = z.object({
   idToken: fields.idToken,
   // The customer's Google OAuth token, held in their browser session.
-  token: z.string().max(4096).nullish(),
-  action: z.enum(["sites", "summary"], { error: "Unknown action." }),
+  // The connection lives on the server now (lib/googleOAuth.js); the browser
+  // never holds a Google token.
+  action: z.enum(["status", "connect", "disconnect", "sites", "summary"], { error: "Unknown action." }),
+  siteId: fields.siteId.nullish(),
   siteUrl: fields.url.nullish(),
 });
 
 export async function POST(request) {
   const body = await readJson(request, Body);
   if (!body.ok) return body.response;
-  const { idToken, token, action, siteUrl } = body.data;
+  const { idToken, action, siteUrl, siteId } = body.data;
+  // Connecting and disconnecting change the organisation's integrations;
+  // reading data only needs to see its sites.
+  const managing = action === "connect" || action === "disconnect";
 
   // Search Console is sold from Starter upwards and was enforced nowhere: not
   // on the client, not here. The Google token the caller supplies limits which
   // data Google will return, so this was never a data leak, but it did mean a
   // free account got a paid feature and used our server to proxy it.
-  const auth = await authorize(idToken, FEATURES.SEARCH_CONSOLE, { permission: "sites.read" });
+  const auth = await authorize(idToken, FEATURES.SEARCH_CONSOLE, { permission: managing ? "integrations.manage" : "sites.read" });
   if (!auth.ok) {
     return NextResponse.json(
       { ok: false, error: auth.error, upgradeTo: auth.upgradeTo || null, upgradeName: auth.upgradeName || null },
@@ -79,12 +85,32 @@ export async function POST(request) {
     );
   }
 
-  if (!token) return NextResponse.json({ ok: false, error: "Not connected to Search Console." }, { status: 401 });
-
   const limited = await rateLimit({ scope: "searchConsole", key: auth.uid, rules: LIMITS.fetch });
   if (!limited.ok) return limited.response;
 
+  if (!oauthConfigured()) {
+    return NextResponse.json({
+      ok: false,
+      code: "not_configured",
+      error: "Search Console isn't set up on this server yet: GOOGLE_CLIENT_SECRET is missing. See DEPLOY.md.",
+    });
+  }
+
   try {
+    if (action === "status") {
+      return NextResponse.json({ ok: true, ...(await connectionStatus(auth.orgId)) });
+    }
+    if (action === "connect") {
+      return NextResponse.json({ ok: true, url: authUrl({ origin: originFor(request), state: signState({ orgId: auth.orgId, uid: auth.uid, siteId: siteId || null }) }) });
+    }
+    if (action === "disconnect") {
+      await disconnect(auth.orgId);
+      return NextResponse.json({ ok: true, connected: false });
+    }
+
+    const token = await accessTokenFor(auth.orgId);
+    if (!token) return NextResponse.json({ ok: false, code: "not_connected", needsReconnect: true, error: "Search Console isn't connected." });
+
     if (action === "sites") {
       const data = await gsc("/sites", token);
       const sites = (data.siteEntry || [])

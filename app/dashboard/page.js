@@ -176,11 +176,24 @@ function useKeyedState(key, initial) {
 }
 const GITHUB_UNKNOWN = { checked: false, connected: false, repo: null };
 
+// What to say when Google sends the person back from connecting Search
+// Console (/api/search-console/callback adds ?gsc=…&reason=…).
+const GSC_RETURN = {
+  connected: "Search Console is connected, and stays connected. Each site uses its own property.",
+  declined: "Search Console wasn't connected: access wasn't granted.",
+  expired: "That connection took too long to finish. Try connecting again.",
+  scope: "Search Console access wasn't granted. Connect again and leave its box ticked.",
+  no_refresh: "Google didn't return a lasting connection. Try connecting again.",
+  exchange: "Google didn't complete the connection. Try again.",
+  google: "Google didn't complete the connection. Try again.",
+  not_configured: "Search Console isn't set up on the server yet (GOOGLE_CLIENT_SECRET).",
+};
+
 function DashboardInner() {
   const router = useRouter();
   const params = useSearchParams();
   const initialUrl = params.get("url") || "";
-  const { user, loading, logOut, connectSearchConsole } = useAuth();
+  const { user, loading, logOut } = useAuth();
   // The organisation this person is working in. Every path below is the
   // organisation's (lib/orgs.js), and nothing subscribes until it is known.
   const orgCtx = useOrg();
@@ -192,7 +205,7 @@ function DashboardInner() {
 
   const [screen, setScreen] = useState("growth");
   const [siteOpen, setSiteOpen] = useState(false);
-  const [toast, setToast] = useState(null);
+  const [toast, setToast] = useState(() => GSC_RETURN[params.get("gsc") === "connected" ? "connected" : params.get("reason")] || null);
   const [signingOut, setSigningOut] = useState(false);
 
   const [sites, setSites] = useState(null);
@@ -237,7 +250,6 @@ function DashboardInner() {
   // opportunities and digest, and let Refresh save site A's property onto
   // site B. Read through `gsc` below, which is empty for any other site.
   const [gscState, setGscState] = useState({ siteId: null, status: "idle", error: "", properties: [], siteUrl: null, data: null });
-  const gscTokenRef = useRef(null);
   const GSC_EMPTY = { status: "idle", error: "", properties: [], siteUrl: null, data: null };
   const gsc = gscState.siteId === activeSiteId ? gscState : { ...GSC_EMPTY, siteId: activeSiteId };
   // Updates apply to the active site's state, starting fresh if the stored
@@ -940,7 +952,7 @@ function DashboardInner() {
       const res = await fetch("/api/search-console", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idToken: await user.getIdToken(), token: gscTokenRef.current, action, ...extra }),
+        body: JSON.stringify({ idToken: await user.getIdToken(), action, ...extra }),
       });
       return await res.json().catch(() => ({ ok: false, error: `The server answered ${res.status}.` }));
     } catch {
@@ -959,35 +971,80 @@ function DashboardInner() {
     if (user && activeSiteId) persist(updateSiteSettings(orgId, activeSiteId, { gscProperty: propertyUrl }), "remember the Search Console property");
   }
 
-  async function handleConnectSearchConsole() {
-    setGsc((s) => ({ ...s, status: "connecting", error: "" }));
-    try {
-      gscTokenRef.current = await connectSearchConsole();
-      const listed = await gscCall("sites");
-      if (!listed.ok) {
-        setGsc((s) => ({ ...s, status: "error", error: listed.error, enableUrl: listed.enableUrl || null }));
-        return;
-      }
-      const properties = listed.sites || [];
-      // If one of their verified properties matches this site, skip the picker.
-      const auto =
-        properties.find((p) => p.siteUrl.replace(/^sc-domain:/, "").includes(hostnameOf(site?.url || ""))) || null;
-      if (auto) {
-        setGsc((s) => ({ ...s, properties }));
-        await loadGscSummary(auto.siteUrl);
-      } else {
-        setGsc((s) => ({ ...s, status: "choosing", properties }));
-      }
-    } catch (err) {
-      const code = err?.code || "";
-      const friendly = code.includes("popup-closed")
-        ? "Sign-in window closed before Google finished."
-        : code.includes("popup-blocked")
-        ? "Your browser blocked the popup — allow popups and try again."
-        : err?.message || "Couldn't connect to Google.";
-      setGsc((s) => ({ ...s, status: "idle", error: friendly }));
+  // The property this site uses: the one saved for it, else the verified
+  // property that matches its domain, else the person picks.
+  // With pick, always show the list (to change this site's property).
+  async function choosePropertyForSite({ pick = false } = {}) {
+    setGsc((s) => ({ ...s, status: "loading", error: "" }));
+    const listed = await gscCall("sites");
+    if (!listed.ok) {
+      setGsc((s) => ({ ...s, status: "error", error: listed.error, needsReconnect: !!listed.needsReconnect, enableUrl: listed.enableUrl || null }));
+      return;
+    }
+    const properties = listed.sites || [];
+    // The same host, www or not: "notify.com" must not match "certnotify.com".
+    const bare = (h) => h.replace(/^sc-domain:/, "").replace(/^https?:\/\//, "").replace(/[/:].*$/, "").replace(/^www\./, "").toLowerCase();
+    const host = bare(hostnameOf(site?.url || ""));
+    const auto = pick || !host ? null : properties.find((p) => bare(p.siteUrl) === host) || null;
+    if (auto) {
+      setGsc((s) => ({ ...s, properties }));
+      await loadGscSummary(auto.siteUrl);
+    } else {
+      setGsc((s) => ({ ...s, status: "choosing", properties }));
     }
   }
+
+  // Connecting goes to Google and comes back to the dashboard
+  // (lib/googleOAuth.js). The connection then lasts, for every site.
+  async function handleConnectSearchConsole() {
+    setGsc((s) => ({ ...s, status: "connecting", error: "" }));
+    const data = await gscCall("connect", { siteId: activeSiteId });
+    if (!data.ok || !data.url) {
+      setGsc((s) => ({ ...s, status: "idle", error: data.error || "Couldn't start connecting to Google." }));
+      return;
+    }
+    window.location.assign(data.url);
+  }
+
+  async function disconnectSearchConsole() {
+    const data = await gscCall("disconnect");
+    if (!data.ok) {
+      setToast(data.error || "Couldn't disconnect Search Console.");
+      return;
+    }
+    setGsc(() => ({ status: "idle", error: "", properties: [], siteUrl: null, data: null }));
+    setToast("Search Console disconnected, and MADBOT's access revoked at Google.");
+  }
+
+  // Each site, on its own: if the organisation is connected, load the
+  // property saved for this site (or find one). A refresh or a site switch
+  // used to lose the connection, or show another site's data.
+  const gscAllowed = featureAccess(subscription, FEATURES.SEARCH_CONSOLE).allowed;
+  // Keyed on the site only: saving the property it finds must not reload it.
+  const sitePropertyKey = site ? siteKey : null;
+  const gscLoadedFor = useRef(null);
+  useEffect(() => {
+    if (!sitePropertyKey || !gscAllowed || gscLoadedFor.current === sitePropertyKey) return undefined;
+    gscLoadedFor.current = sitePropertyKey;
+    let alive = true;
+    (async () => {
+      const status = await gscCall("status");
+      if (!alive || !status.ok || !status.connected) return;
+      if (site?.gscProperty) await loadGscSummary(site.gscProperty);
+      else await choosePropertyForSite();
+    })();
+    return () => {
+      alive = false;
+    };
+    // Runs once per site; site and the helpers are read from that render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sitePropertyKey, gscAllowed]);
+
+  // Clean the ?gsc= that Google's return added, once its message is shown.
+  useEffect(() => {
+    if (params.get("gsc")) router.replace("/dashboard");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function addCompetitorSite(url) {
     if (!user || !activeSiteId) return { error: "No site selected." };
@@ -1828,6 +1885,9 @@ function DashboardInner() {
                       onConnect={handleConnectSearchConsole}
                       onPickProperty={loadGscSummary}
                       onRefresh={() => loadGscSummary(gsc.siteUrl)}
+                      onRetry={() => (gsc.siteUrl ? loadGscSummary(gsc.siteUrl) : choosePropertyForSite())}
+                      onChangeProperty={() => choosePropertyForSite({ pick: true })}
+                      onDisconnect={disconnectSearchConsole}
                     />
                   }
                   competitorPanel={
