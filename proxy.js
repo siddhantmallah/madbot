@@ -46,7 +46,7 @@ function contentSecurityPolicy(nonce) {
 
 // Pages a search engine has no business indexing: the product, the console,
 // and the doors into them.
-const PRIVATE_PREFIXES = ["/admin", "/dashboard", "/login", "/invite", "/maintenance"];
+const PRIVATE_PREFIXES = ["/admin", "/dashboard", "/login", "/invite", "/maintenance", "/auth"];
 
 export async function proxy(request) {
   const { pathname } = request.nextUrl;

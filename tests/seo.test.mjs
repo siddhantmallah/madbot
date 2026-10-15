@@ -52,7 +52,7 @@ await test("the sitemap sends lastmod only where there's a real date, and it mat
 suite("private pages are noindex and crawlable");
 
 await test("dashboard, login, console, invitation and maintenance pages say noindex", async () => {
-  for (const path of ["/dashboard", "/login", "/admin/login", "/invite", "/maintenance"]) {
+  for (const path of ["/dashboard", "/login", "/admin/login", "/invite", "/maintenance", "/auth/action"]) {
     const r = await get(path);
     eq(r.status, 200, path);
     truthy(/noindex/.test(meta(r.text, "name", "robots") || ""), `${path} robots meta: ${meta(r.text, "name", "robots")}`);

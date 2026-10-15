@@ -45,7 +45,7 @@ export default function AdminLogin() {
     const data = await res.json().catch(() => ({}));
     if (res.status === 404) throw new Error("This account doesn't have access to the console.");
     if (!res.ok) throw new Error(data.error || "Couldn't start signing in.");
-    if (data.step === "enroll") setEnrolment({ secret: data.secret, otpauth: data.otpauth });
+    if (data.step === "enroll") setEnrolment({ secret: data.secret, otpauth: data.otpauth, qrSvg: data.qrSvg || null });
     setStep(data.step);
   }
 
@@ -166,17 +166,27 @@ export default function AdminLogin() {
         {step === "enroll" && enrolment ? (
           <>
             <p className="adm-note" style={{ fontSize: 14 }}>
-              The console needs a second factor. Add it to an authenticator app (1Password, Google Authenticator, Authy,
-              Microsoft Authenticator) with this setup key, then enter the code it shows.
+              The console needs a second factor. Scan this with an authenticator app (Google Authenticator, Microsoft
+              Authenticator, 1Password, Authy), then enter the six-digit code it shows.
             </p>
+            {enrolment.qrSvg ? (
+              // Our own server drew this SVG from the otpauth URI (qrcode, in
+              // /api/admin/session); nothing in it comes from user input.
+              <div
+                role="img"
+                aria-label="QR code for your authenticator app"
+                style={{ background: "#fff", padding: 10, borderRadius: 8, width: 220, maxWidth: "100%", alignSelf: "center", lineHeight: 0 }}
+                dangerouslySetInnerHTML={{ __html: enrolment.qrSvg }}
+              />
+            ) : null}
             <div className="adm-card" style={{ margin: 0 }}>
-              <span className="mono">Setup key</span>
+              <span className="mono">Can&apos;t scan? Enter this setup key instead</span>
               <code style={{ fontSize: 16, letterSpacing: ".08em", overflowWrap: "anywhere" }}>{enrolment.secret.match(/.{1,4}/g).join(" ")}</code>
               <a href={enrolment.otpauth} style={{ fontSize: 13 }}>
                 Open in an authenticator app on this device
               </a>
             </div>
-            <p className="adm-note">This key is shown once. If you lose the app, another owner can reset it for you.</p>
+            <p className="adm-note">This code and key are shown once, and stop working if you leave this page. Don&apos;t screenshot or share them. If you lose the app, another owner can reset it for you.</p>
           </>
         ) : null}
 

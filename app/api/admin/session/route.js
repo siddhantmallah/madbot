@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import QRCode from "qrcode";
 import { FieldValue } from "firebase-admin/firestore";
 import { adminAuth, adminDb } from "../../../../lib/firebaseAdmin";
 import { fields, rateLimit, readJson, requireUser, z } from "../../../../lib/apiGuard";
@@ -89,7 +90,11 @@ export async function POST(request) {
       },
       { merge: true }
     );
-    return NextResponse.json({ ok: true, step: "enroll", secret, otpauth: otpauthUri({ secret, account: email || uid }) });
+    const otpauth = otpauthUri({ secret, account: email || uid });
+    // The same otpauth URI as a QR code, drawn here so the browser loads no
+    // QR library. Medium error correction: still scans off a dim laptop screen.
+    const qrSvg = await QRCode.toString(otpauth, { type: "svg", errorCorrectionLevel: "M", margin: 1, color: { dark: "#000000", light: "#ffffff" } });
+    return NextResponse.json({ ok: true, step: "enroll", secret, otpauth, qrSvg });
   }
 
   const enrolling = !row.totpSecret;

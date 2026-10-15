@@ -16,7 +16,7 @@ import { useAuth } from "../../providers/AuthProvider";
  */
 export default function AccountNotices() {
   const { user, sendVerification, refreshUser, trialStatus } = useAuth();
-  const [state, setState] = useState("idle"); // idle | sending | sent | error
+  const [state, setState] = useState("idle"); // idle | checking | sending | sent | error
   const [message, setMessage] = useState("");
 
   const needsVerification = !!user && !user.emailVerified && !!user.email;
@@ -31,6 +31,24 @@ export default function AccountNotices() {
   }, [needsVerification, refreshUser]);
 
   if (!needsVerification && !trialRefused) return null;
+
+  // This used to refresh silently, so when the address wasn't confirmed yet
+  // nothing visible happened and the button looked broken. Say the result.
+  async function checkNow() {
+    setState("checking");
+    setMessage("");
+    try {
+      const confirmed = await refreshUser();
+      if (confirmed) return; // the notice disappears with the new user
+      setState("idle");
+      setMessage(
+        `Not confirmed yet. Open the link in the email we sent to ${user.email} (check your spam folder too), then press this again. If you can't find it, send a new one.`
+      );
+    } catch {
+      setState("error");
+      setMessage("Couldn't check just now. Try again in a moment.");
+    }
+  }
 
   async function resend() {
     setState("sending");
@@ -69,8 +87,8 @@ export default function AccountNotices() {
               ) : null}
             </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", flex: "0 0 auto" }}>
-              <button className="btn btn-secondary" type="button" onClick={() => refreshUser()} style={{ fontWeight: 600, minHeight: 38 }}>
-                I&apos;ve confirmed it
+              <button className="btn btn-secondary" type="button" onClick={checkNow} disabled={state === "checking"} style={{ fontWeight: 600, minHeight: 38 }}>
+                {state === "checking" ? "Checking…" : "I've confirmed it"}
               </button>
               <button className="btn btn-primary" type="button" onClick={resend} disabled={state === "sending"} style={{ color: "var(--on-accent)", minHeight: 38 }}>
                 {state === "sending" ? "Sending…" : "Resend"}

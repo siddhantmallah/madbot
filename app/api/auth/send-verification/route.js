@@ -93,10 +93,18 @@ export async function POST(request) {
 
   let link;
   try {
-    link = await auth.generateEmailVerificationLink(account.email, {
+    const firebaseLink = await auth.generateEmailVerificationLink(account.email, {
       url: `${continueOrigin(request)}/dashboard?verified=1`,
       handleCodeInApp: false,
     });
+    // Firebase's link points at madbot-256aa.firebaseapp.com. A mail from
+    // getmadbot.com whose one button leads to another domain is exactly what
+    // spam filters look for, and these were landing in spam. The one-time code
+    // is all that matters, so it goes to our own page (app/auth/action),
+    // which applies it with the Firebase client.
+    const oobCode = new URL(firebaseLink).searchParams.get("oobCode");
+    if (!oobCode) throw new Error("Firebase returned a link without an oobCode.");
+    link = `${continueOrigin(request)}/auth/action?mode=verifyEmail&oobCode=${encodeURIComponent(oobCode)}`;
   } catch (err) {
     return failure("send-verification", err, "Could not create a verification link. Try again in a minute.");
   }
