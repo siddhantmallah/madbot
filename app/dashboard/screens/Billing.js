@@ -49,7 +49,7 @@ export default function Billing({ usage, billing = [], siteCount, metered, regio
       {trialing ? (
         <section
           className="card elev-sm"
-          style={{ padding: 18, gap: 10, borderLeft: "3px solid var(--color-accent)", background: "var(--color-accent-100)" }}
+          style={{ padding: 18, gap: 10, background: "var(--color-accent-100)" }}
         >
           <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
             <h4 style={{ margin: 0 }}>
@@ -84,7 +84,7 @@ export default function Billing({ usage, billing = [], siteCount, metered, regio
       {trialExpired ? (
         <section
           className="card elev-sm"
-          style={{ padding: 18, gap: 8, borderLeft: "3px solid var(--color-accent)" }}
+          style={{ padding: 18, gap: 8 }}
         >
           <h4 style={{ margin: 0 }}>Your trial has ended</h4>
           <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6 }}>

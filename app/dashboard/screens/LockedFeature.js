@@ -17,7 +17,7 @@ export default function LockedFeature({ title, what, access, usage, onSeeBilling
 
       <section
         className="card elev-sm"
-        style={{ padding: 22, gap: 12, maxWidth: 620, borderLeft: "3px solid var(--color-accent)" }}
+        style={{ padding: 22, gap: 12, maxWidth: 620 }}
       >
         <h4 style={{ margin: 0 }}>{trialEnded ? "Your trial has ended" : "Not on your plan"}</h4>
         <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.6 }}>

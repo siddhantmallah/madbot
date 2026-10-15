@@ -528,9 +528,9 @@ function DashboardInner() {
     if (opp) {
       addActivity(orgId, activeSiteId, {
         k: "seo",
-        text: `Queued: ${opp.title}`,
-        why: opp.fix || "You told me to go get it",
-        result: "Queued",
+        text: `Added to your list: ${opp.title}`,
+        why: opp.fix || "You marked it as worth doing",
+        result: "On your list",
       });
     }
   }
@@ -902,6 +902,7 @@ function DashboardInner() {
       if (out.completed) setToast(out.outcome?.summary || "Run finished.");
       else if (out.retrying) setToast("That run hit a problem and is queued to retry.");
       else if (out.failed) setToast(out.error || "That run failed.");
+      return out;
     } catch (err) {
       // Most often an unpublished Firestore rule for the jobs collection.
       const msg = String(err?.message || err);
@@ -1078,14 +1079,15 @@ function DashboardInner() {
 
   async function runVisibilityCheck() {
     if (!site || !visQuestions?.questions?.length) return;
-    await startJob(JOB_TYPES.AI_VISIBILITY, {
+    const out = await startJob(JOB_TYPES.AI_VISIBILITY, {
       domain: site.intelligence?.domain || insights.domain,
       brandName: site.intelligence?.business?.name || null,
       questions: visQuestions.questions,
     });
-    // Drop the approved set so the primary button can't fire a second paid run
-    // on a stray click.
-    setVisQuestions(null);
+    // Drop the approved set only once it has been used, so the button can't
+    // fire a second paid run on a stray click. A failed run keeps them: they
+    // cost credits to draft, and the person shouldn't pay twice.
+    if (out?.completed) setVisQuestions(null);
   }
 
   async function toggleAutoVisibility(next) {
@@ -1268,8 +1270,11 @@ function DashboardInner() {
           site: {
             name: site?.intelligence?.business?.name || site?.title,
             domain: site?.intelligence?.domain || insights?.domain,
-            summary: site?.intelligence?.business?.summary || site?.description,
-            pages: site?.intelligence?.pages || [],
+            // business.description and structure.topPages are what the crawl
+            // stores. This sent business.summary and intelligence.pages, which
+            // don't exist, so the writer only ever saw the meta description.
+            summary: [site?.intelligence?.business?.category, site?.intelligence?.business?.description || site?.description].filter(Boolean).join(". ") || null,
+            pages: site?.intelligence?.structure?.topPages || [],
             voice,
             rules,
           },
@@ -1280,11 +1285,14 @@ function DashboardInner() {
         setToast(data.error || "Couldn't write that one.");
         return;
       }
+      const before = listings.find((l) => l.id === directoryId)?.status;
       await saveListing(orgId, activeSiteId, directoryId, {
         copy: data.copy,
         claims: data.claims || [],
         problems: data.problems || [],
-        status: LISTING_STATUS.DRAFTED,
+        // Rewriting the copy of a listing that is already submitted or live
+        // doesn't un-submit it.
+        status: !before || before === LISTING_STATUS.NOT_STARTED ? LISTING_STATUS.DRAFTED : before,
       });
       setToast(data.ready ? "Written. Check it, then paste it into their form." : "Written, but something is over a limit — see the notes.");
     } catch (err) {
@@ -1294,11 +1302,21 @@ function DashboardInner() {
     }
   }
 
-  const saveListingCopy = (directoryId, patch) => {
-    saveListing(orgId, activeSiteId, directoryId, patch);
-    setToast("Saved.");
+  const saveListingCopy = async (directoryId, patch) => {
+    try {
+      await saveListing(orgId, activeSiteId, directoryId, patch);
+      setToast("Saved.");
+    } catch (err) {
+      setToast(`Couldn't save that: ${err?.message || err}`);
+    }
   };
-  const setListingStatus = (directoryId, status) => saveListing(orgId, activeSiteId, directoryId, { status });
+  const setListingStatus = async (directoryId, status) => {
+    try {
+      await saveListing(orgId, activeSiteId, directoryId, { status });
+    } catch (err) {
+      setToast(`Couldn't change the status: ${err?.message || err}`);
+    }
+  };
 
   async function handleSignOut() {
     setSigningOut(true);

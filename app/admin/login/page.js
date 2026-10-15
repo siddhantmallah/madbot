@@ -102,7 +102,6 @@ export default function AdminLogin() {
   return (
     <main className="adm" style={{ display: "grid", placeItems: "center", padding: 16 }}>
       <div className="adm-dialog" style={{ width: "min(440px, 100%)", gap: 14 }}>
-        <div className="adm-strip" aria-hidden="true" style={{ margin: "-20px -20px 4px", borderRadius: "10px 10px 0 0" }} />
         <span className="mono">Platform console</span>
         <h1 style={{ margin: 0, fontSize: 22 }}>
           {step === "identify" ? "Confirm it's you" : step === "enroll" ? "Set up your authenticator" : "Enter your code"}

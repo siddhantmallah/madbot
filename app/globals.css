@@ -595,7 +595,7 @@ textarea.input{min-height:90px;resize:vertical;border-radius:var(--radius-md)}
    ----------------------------------------------------------------------- */
 .adm{--font-heading: var(--font-body);--font-heading-weight:700;min-height:100vh;background:var(--color-bg);color:var(--fg);font-size:14.5px}
 .adm h1,.adm h2,.adm h3{letter-spacing:-0.011em}
-.adm-strip{height:3px;background:linear-gradient(90deg,var(--color-accent-2-500),var(--color-accent-2-300))}
+
 .adm-shell{display:grid;grid-template-columns:232px minmax(0,1fr);min-height:calc(100vh - 3px)}
 .adm-rail{border-right:1px solid var(--color-divider);padding:16px 10px;display:flex;flex-direction:column;gap:2px;position:sticky;top:0;height:calc(100vh - 3px);overflow:auto;background:var(--color-surface)}
 .adm-rail-id{padding:6px 10px 14px;display:flex;flex-direction:column;gap:2px}
@@ -608,7 +608,7 @@ textarea.input{min-height:90px;resize:vertical;border-radius:var(--radius-md)}
 .adm-sub{margin:4px 0 0;color:var(--fg-80);font-size:14px;line-height:1.5;max-width:60em}
 .adm-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end;font-size:13px;color:var(--fg-80)}
 .adm-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:18px}
-.adm-stat{border:1px solid var(--color-divider);border-top:2px solid var(--color-accent-2-500);border-radius:8px;padding:14px 16px;background:var(--color-surface);display:flex;flex-direction:column;gap:4px}
+.adm-stat{border:1px solid var(--color-divider);border-radius:8px;padding:14px 16px;background:var(--color-surface);display:flex;flex-direction:column;gap:4px}
 .adm-stat b{font-size:26px;font-variant-numeric:tabular-nums;line-height:1.1}
 .adm-stat span{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--fg-80)}
 .adm-card{border:1px solid var(--color-divider);border-radius:8px;padding:16px 18px;background:var(--color-surface);display:flex;flex-direction:column;gap:10px;margin-bottom:16px;min-width:0}

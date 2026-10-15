@@ -88,7 +88,7 @@ export default function Visibility({
       ) : null}
 
       {questions.length ? (
-        <section className="card elev-sm" style={{ padding: 18, gap: 10, borderLeft: "3px solid var(--color-accent)" }}>
+        <section className="card elev-sm" style={{ padding: 18, gap: 10 }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
             <h4 style={{ margin: 0 }}>What MADBOT will ask</h4>
             {plan.category ? (

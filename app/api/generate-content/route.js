@@ -70,9 +70,21 @@ export async function POST(request) {
   }
 
   try {
+    // The angle the customer typed, the format they picked and what the site
+    // says about itself all used to be dropped here, so every piece was a
+    // generic article on the title alone while the card said "Your angle: …".
+    const brief = [
+      item.title,
+      item.kind ? `Format: ${item.kind}.` : null,
+      item.angle ? `The angle the site owner wants, which the piece must take: ${item.angle}` : null,
+    ]
+      .filter(Boolean)
+      .join("\n");
     const result = await writeArticle({
-      topic: item.title,
-      siteContext: `${site?.name || site?.domain || "this site"} (${site?.domain || ""})`,
+      topic: brief,
+      siteContext: [`${site?.name || site?.domain || "this site"} (${site?.domain || ""})`, site?.description ? `What the site says about itself: ${site.description}` : null]
+        .filter(Boolean)
+        .join("\n"),
       siteUrl: site?.domain ? `https://${site.domain}` : "",
       sitePages: site?.pages || [],
       voice: site?.voice === "a" ? "Short, direct sentences. Plain words. No corporate throat-clearing." : "Professional and thorough, never padded or vague.",

@@ -165,7 +165,7 @@ suite("routes — refused before any work starts");
 
 await test("/api/jobs/run refuses a job with no site, which used to run unmetered", async () => {
   const { POST } = await import("../app/api/jobs/run/route.js");
-  const res = await POST(post("/api/jobs/run", { idToken: TOKEN, job: { type: "ai_visibility", params: { questions: ["q"] } } }));
+  const res = await POST(post("/api/jobs/run", { idToken: TOKEN, job: { type: "ai_visibility", params: { questions: [{ id: "q1", question: "q" }] } } }));
   eq(res.status, 400, "status");
   eq((await res.json()).error, "No site given.", "message");
 });
@@ -173,9 +173,21 @@ await test("/api/jobs/run refuses a job with no site, which used to run unmetere
 await test("/api/jobs/run refuses more questions than one run may ask", async () => {
   const { POST } = await import("../app/api/jobs/run/route.js");
   const res = await POST(
-    post("/api/jobs/run", { idToken: TOKEN, job: { type: "ai_visibility", siteId: "abc", params: { questions: Array(9).fill("q") } } })
+    post("/api/jobs/run", { idToken: TOKEN, job: { type: "ai_visibility", siteId: "abc", params: { questions: Array.from({ length: 9 }, (_, i) => ({ id: `q${i}`, question: "q" })) } } })
   );
   eq(res.status, 400, "status");
+});
+
+await test("/api/jobs/run accepts questions in the shape the dashboard sends them", async () => {
+  // { id, question }, as /api/visibility/questions returns them. A list of
+  // strings was the old schema, and it refused every check a customer ran.
+  const { POST } = await import("../app/api/jobs/run/route.js");
+  const ok = await POST(
+    post("/api/jobs/run", { idToken: TOKEN, job: { type: "ai_visibility", siteId: "abc", params: { questions: [{ id: "q1", question: "Who sells compliance software in India?" }] } } })
+  );
+  truthy(ok.status !== 400, `passed validation (got ${ok.status}: ${JSON.stringify(await ok.json()).slice(0, 120)})`);
+  const bare = await POST(post("/api/jobs/run", { idToken: TOKEN, job: { type: "ai_visibility", siteId: "abc", params: { questions: ["a bare string"] } } }));
+  eq(bare.status, 400, "a bare string is not a question");
 });
 
 await test("/api/jobs/run refuses an unknown job type", async () => {

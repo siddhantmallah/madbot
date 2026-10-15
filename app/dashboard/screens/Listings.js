@@ -48,9 +48,16 @@ function CopyField({ directory, field, value, onChange }) {
 
 function DirectoryCard({ directory, listing, onWrite, onSave, onStatus, writing, aiConfigured }) {
   const [open, setOpen] = useState(false);
-  const [copy, setCopy] = useState(listing?.copy || null);
-
-  const current = copy || listing?.copy || null;
+  // Local edits are tied to the copy they were made on. When the stored copy
+  // changes (a Rewrite), the edits are dropped and the new copy shows. This
+  // used to hold the first copy forever: a Rewrite never appeared, and Save
+  // wrote the old copy back over it. Keyed on the content, not the object,
+  // because every snapshot hands back new objects.
+  const stored = listing?.copy || null;
+  const storedKey = JSON.stringify(stored);
+  const [draft, setDraft] = useState({ base: storedKey, copy: stored });
+  const current = draft.base === storedKey ? draft.copy || stored : stored;
+  const setCopy = (next) => setDraft({ base: storedKey, copy: next });
   const status = listing?.status || LISTING_STATUS.NOT_STARTED;
   const style = listingStatusStyle(current && status === LISTING_STATUS.NOT_STARTED ? LISTING_STATUS.DRAFTED : status);
   const problems = useMemo(() => (current ? validateListing(directory.id, current) : []), [current, directory.id]);
@@ -181,7 +188,9 @@ export default function Listings({ listings = [], site, aiConfigured, aiMessage 
 
   const relevant = useMemo(() => {
     const intel = site?.intelligence || {};
-    const text = `${intel.business?.name || ""} ${intel.business?.summary || site?.description || ""}`.toLowerCase();
+    // business.description and .category are what the crawl stores; there
+    // is no business.summary, so this read the meta description alone.
+    const text = `${intel.business?.name || ""} ${intel.business?.category || ""} ${intel.business?.description || site?.description || ""}`.toLowerCase();
     return relevantFor({
       isAI: /\b(ai|llm|machine learning|gpt|model)\b/.test(text),
       isAgency: /\b(agency|consultanc|studio|freelance)\b/.test(text),

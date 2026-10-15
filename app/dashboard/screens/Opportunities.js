@@ -61,8 +61,8 @@ export default function Opportunities({
               {plays.length} thing{plays.length === 1 ? "" : "s"} worth doing for {domain}
             </h2>
             <p className="text-muted" style={{ margin: 0, fontSize: 13.5 }}>
-              Every circle traces back to a real measurement. Bigger and nearer the middle means it scores higher on
-              impact against effort. Click one.
+              Every circle traces back to a real finding. Bigger and nearer the middle means a higher priority (impact
+              against effort). Click one.
               {hidden > 0 ? ` ${hidden} lower-scoring item${hidden === 1 ? "" : "s"} not drawn.` : ""}
             </p>
             {/* Which signals are actually feeding this, so an empty-looking map
@@ -160,7 +160,7 @@ export default function Opportunities({
         <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           <span className="tag tag-accent">{criticals} costing you now</span>
           <span className="text-muted" style={{ fontSize: 12 }}>
-            {Object.keys(taken).length} queued by you · {Object.keys(dismissed).length} dismissed
+            {Object.keys(taken).length} on your list · {Object.keys(dismissed).length} hidden
           </span>
           <button className="btn btn-ghost" onClick={onRerunAudit} disabled={rerunning} style={{ marginLeft: "auto", fontSize: 12.5, fontWeight: 600 }}>
             {rerunning ? "Re-reading…" : "Re-run the audit"}
@@ -184,8 +184,8 @@ export default function Opportunities({
               {SOURCE_LABELS[opp.source] || "Measured"}
             </span>
             {opp.score !== undefined ? (
-              <span className="tag tag-neutral" style={{ fontSize: 10 }} title="Impact against effort, weighted by how certain the measurement is">
-                score {opp.score}
+              <span className="tag tag-neutral" style={{ fontSize: 10 }} title="A priority from fixed weights for impact, effort and certainty, not a measurement">
+                priority {opp.score}
               </span>
             ) : null}
           </div>
@@ -197,15 +197,15 @@ export default function Opportunities({
             </p>
           ) : null}
           <button className="btn btn-primary btn-block" disabled={!!taken[opp.id]} onClick={() => onTake(opp.id)}>
-            {taken[opp.id] ? "Queued — I am on it" : "Go get it"}
+            {taken[opp.id] ? "On your list" : "Add to my list"}
           </button>
           <button className="btn btn-ghost" disabled={!!dismissed[opp.id]} onClick={() => onDismiss(opp.id)} style={{ alignSelf: "center", fontSize: 12.5 }}>
-            {dismissed[opp.id] ? "Noted — won't suggest this again" : "Not for us — and remember why"}
+            {dismissed[opp.id] ? "Hidden — won't be suggested again" : "Not for us"}
           </button>
         </div>
 
         <section style={{ display: "flex", flexDirection: "column", gap: 9 }}>
-          <h5 style={{ margin: 0 }}>What I&apos;d do about it</h5>
+          <h5 style={{ margin: 0 }}>Suggested steps</h5>
           {plan.map((t, i) => (
             <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start", background: "var(--color-surface)", borderRadius: 20, padding: "10px 13px", fontSize: 12.5, lineHeight: 1.5 }}>
               <span style={{ fontFamily: "var(--font-heading)", color: "var(--color-accent)", flex: "none" }}>{i + 1}</span>

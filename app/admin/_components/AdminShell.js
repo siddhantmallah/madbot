@@ -48,7 +48,6 @@ export default function AdminShell({ admin, children }) {
     <AdminContext.Provider value={{ ...admin, can }}>
       <ConfirmProvider>
         <div className="adm">
-          <div className="adm-strip" aria-hidden="true" />
           <div className="adm-shell">
             <nav className="adm-rail" aria-label="Console sections">
               <div className="adm-rail-id">

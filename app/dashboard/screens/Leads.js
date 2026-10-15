@@ -141,7 +141,6 @@ export default function Leads({
         style={{
           padding: 18,
           gap: 11,
-          borderLeft: confirmed ? "3px solid var(--color-accent-2-500)" : "3px solid var(--color-accent)",
           background: confirmed ? undefined : "var(--color-accent-100)",
         }}
       >

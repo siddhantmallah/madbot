@@ -34,9 +34,14 @@ const Body = z.object({
       .object({
         maxPages: z.number().int().min(1).max(20).optional(),
         brandName: fields.text(200).nullish(),
-        // The questions the customer approved. The product generates at most
-        // eight; each is one web-searched model call.
-        questions: z.array(fields.text(300)).max(8, "At most 8 questions per run.").optional(),
+        // The questions the customer approved, as /api/visibility/questions
+        // returned them: { id, question }. The product generates at most
+        // eight; each is one web-searched model call. (This was an array of
+        // strings, which refused every check a customer started.)
+        questions: z
+          .array(z.object({ id: z.string().trim().min(1).max(64), question: fields.text(300) }))
+          .max(8, "At most 8 questions per run.")
+          .optional(),
         max: z.number().int().min(1).max(30).optional(),
         companies: z.array(Company).max(15, "At most 15 companies per run.").optional(),
       })
