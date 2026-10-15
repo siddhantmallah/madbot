@@ -3,6 +3,7 @@ import { adminAvailable, adminDb } from "../../../../lib/firebaseAdmin";
 import { fields, readJson, reply, requireUser, z } from "../../../../lib/apiGuard";
 import { membershipsOf, orgContext, setActiveOrg } from "../../../../lib/orgs";
 import { activePlan } from "../../../../lib/entitlements";
+import { platformSettings } from "../../../../lib/platform";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -41,6 +42,7 @@ export async function POST(request) {
   const ctx = await orgContext(db, who.user);
   const memberships = await membershipsOf(db, who.user.uid);
   if (!ctx.ok) return NextResponse.json({ ok: false, error: ctx.error, code: ctx.code, memberships }, { status: ctx.status });
+  const settings = await platformSettings();
 
   return NextResponse.json({
     ok: true,
