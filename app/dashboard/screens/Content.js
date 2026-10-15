@@ -246,6 +246,9 @@ export default function Content({
   githubError,
   onPublishViaGithub,
   publishingId,
+  suggestions = [],
+  onAcceptSuggestion,
+  onDismissSuggestion,
 }) {
   const [view, setView] = useState("week");
   const [previewId, setPreviewId] = useState(null);
@@ -285,6 +288,8 @@ export default function Content({
         </div>
         <button className="btn btn-secondary" onClick={() => setAskOpen(true)} style={{ fontWeight: 600, fontSize: 13 }}>Ask for a piece</button>
       </div>
+
+      <Suggestions items={suggestions} writingEnabled={writingEnabled} writingId={writingId} onAccept={onAcceptSuggestion} onDismiss={onDismissSuggestion} />
 
       {askOpen ? (
         <AskDialog
@@ -536,5 +541,78 @@ export default function Content({
         <div className="text-muted" style={{ fontSize: 13 }}>Nothing here yet.</div>
       )}
     </section>
+  );
+}
+
+const SOURCE_TAG = { visibility: "AI visibility", search: "Search Console", competitor: "Competitor", thin: "Site crawl" };
+
+/**
+ * Pieces worth writing, each traced to a signal MADBOT measured
+ * (lib/contentSuggestions.js). With no signals there are no suggestions, and
+ * the strip says what would produce some rather than inventing topics.
+ */
+function Suggestions({ items, writingEnabled, writingId, onAccept, onDismiss }) {
+  const [busy, setBusy] = useState(null);
+  if (!onAccept) return null;
+  if (!items.length) {
+    return (
+      <div className="card" style={{ padding: "14px 16px", gap: 4, background: "var(--wash-1)" }}>
+        <b style={{ fontSize: 14 }}>Suggested pieces</b>
+        <p className="text-muted" style={{ margin: 0, fontSize: 13, lineHeight: 1.55 }}>
+          Nothing to suggest yet. Suggestions come from your own data: AI visibility questions you weren&apos;t named in,
+          Search Console queries you rank on page two for, and pages your competitors publish. Run a visibility check,
+          connect Search Console or add a competitor, and they&apos;ll appear here.
+        </p>
+      </div>
+    );
+  }
+  async function act(s, fn) {
+    setBusy(s.id);
+    try {
+      await fn();
+    } finally {
+      setBusy(null);
+    }
+  }
+  return (
+    <div className="card" style={{ padding: "14px 16px", gap: 10 }}>
+      <div>
+        <b style={{ fontSize: 14 }}>Suggested pieces</b>
+        <p className="text-muted" style={{ margin: "2px 0 0", fontSize: 12.5 }}>
+          Each one comes from something MADBOT measured. Writing one uses a content piece from your plan.
+        </p>
+      </div>
+      {items.map((s) => (
+        <div key={s.id} style={{ display: "flex", gap: 12, alignItems: "flex-start", flexWrap: "wrap", borderTop: "1px solid var(--color-divider)", paddingTop: 10 }}>
+          <div style={{ flex: "1 1 320px", minWidth: 0 }}>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <span className="tag tag-neutral" style={{ fontSize: 10.5 }}>{SOURCE_TAG[s.source] || s.source}</span>
+              <span className="text-muted" style={{ fontSize: 11.5 }}>{s.kind}</span>
+            </div>
+            <div style={{ fontWeight: 600, fontSize: 14, marginTop: 4 }}>{s.title}</div>
+            <p className="text-muted" style={{ margin: "2px 0 0", fontSize: 12.5, lineHeight: 1.5 }}>{s.why}</p>
+          </div>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", flex: "0 0 auto" }}>
+            <button
+              type="button"
+              className="btn btn-primary"
+              style={{ fontSize: 12.5, color: "var(--on-accent)" }}
+              disabled={!!busy || !!writingId}
+              onClick={() => act(s, () => onAccept(s, { write: writingEnabled }))}
+            >
+              {busy === s.id ? (writingEnabled ? "Writing…" : "Adding…") : writingEnabled ? "Write it" : "Add to plan"}
+            </button>
+            {writingEnabled ? (
+              <button type="button" className="btn btn-secondary" style={{ fontSize: 12.5 }} disabled={!!busy} onClick={() => act(s, () => onAccept(s, { write: false }))}>
+                Plan only
+              </button>
+            ) : null}
+            <button type="button" className="btn btn-ghost" style={{ fontSize: 12.5 }} disabled={!!busy} onClick={() => act(s, () => onDismiss(s.id))}>
+              Not for us
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }

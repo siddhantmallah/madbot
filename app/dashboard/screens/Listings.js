@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { DIRECTORIES, LISTING_STATUS, listingStatusStyle, priorityOf, relevantFor, validateListing } from "../../../lib/listings";
+import { businessKind, DIRECTORIES, LISTING_STATUS, listingStatusStyle, priorityOf, relevantFor, validateListing } from "../../../lib/listings";
 
 const STATUS_CHOICES = [
   { id: LISTING_STATUS.NOT_STARTED, label: "Not started" },
@@ -101,13 +101,25 @@ function DirectoryCard({ directory, listing, onWrite, onSave, onStatus, writing,
               {Object.entries(directory.fields).map(([f, spec]) => (
                 <li key={f}>
                   {spec.label} — up to {spec.max}
+                  {f === "categories" ? "" : " characters"}
                   {spec.required ? "" : ", optional"}
+                  {spec.confirmed === false ? ` (${directory.name} doesn't publish a limit; kept short)` : ""}
                 </li>
               ))}
               {directory.assets.map((a) => (
                 <li key={a}>{a}</li>
               ))}
             </ul>
+            {directory.rules?.length ? (
+              <>
+                <div className="card-kicker" style={{ margin: "8px 0 4px" }}>What gets a listing rejected</div>
+                <ul style={{ margin: 0, paddingLeft: 17 }} className="text-muted">
+                  {directory.rules.map((r) => (
+                    <li key={r}>{r}</li>
+                  ))}
+                </ul>
+              </>
+            ) : null}
           </div>
 
           {current ? (
@@ -191,7 +203,10 @@ export default function Listings({ listings = [], site, aiConfigured, aiMessage 
     // business.description and .category are what the crawl stores; there
     // is no business.summary, so this read the meta description alone.
     const text = `${intel.business?.name || ""} ${intel.business?.category || ""} ${intel.business?.description || site?.description || ""}`.toLowerCase();
+    const kind = businessKind(site);
     return relevantFor({
+      type: kind.type,
+      country: kind.country,
       isAI: /\b(ai|llm|machine learning|gpt|model)\b/.test(text),
       isAgency: /\b(agency|consultanc|studio|freelance)\b/.test(text),
       isEarlyStage: !site?.launchedBefore,

@@ -221,8 +221,22 @@ test("relevantFor with nothing known hides the directories that would reject the
   assert.deepEqual(relevantFor({}).map((d) => d.id), ids, "an empty object and no argument must agree");
 });
 
-test("relevantFor returns every directory when every flag is set", () => {
-  assert.deepEqual(relevantFor({ isAI: true, isAgency: true, isEarlyStage: true }).map((d) => d.id), DIRECTORY_ORDER);
+// The software directories, as listed before local and industry ones were added
+// (2026-10-15). With no business type known, these are what show, as before.
+const SOFTWARE_SET = ["product_hunt", "g2", "capterra", "alternativeto", "saashub", "crunchbase", "betalist", "theresanaiforthat", "clutch"];
+
+test("relevantFor returns every software directory when every flag is set and no business type is known", () => {
+  assert.deepEqual(relevantFor({ isAI: true, isAgency: true, isEarlyStage: true }).map((d) => d.id), SOFTWARE_SET);
+});
+
+test("every directory is shown to at least one kind of business", () => {
+  const seen = new Set();
+  for (const type of ["local", "services", "products", "software", "other"]) {
+    for (const country of ["IN", null]) {
+      relevantFor({ isAI: true, isAgency: true, isEarlyStage: true, type, country }).forEach((d) => seen.add(d.id));
+    }
+  }
+  assert.deepEqual(DIRECTORY_ORDER.filter((id) => !seen.has(id)), [], "directories nobody would ever see");
 });
 
 test("each flag unlocks exactly the directory it gates", () => {

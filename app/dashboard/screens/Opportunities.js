@@ -1,4 +1,12 @@
-import { planFor, SOURCE_LABELS } from "../../../lib/opportunities";
+import { actionFor, planFor, SOURCE_LABELS } from "../../../lib/opportunities";
+
+// What the button does for each kind of opportunity, and what it says after.
+const ACTION_COPY = {
+  content: { go: "Write this piece", busy: "Writing…", done: "Piece planned — see Content", locked: "Add to my list" },
+  fix: { go: "Draft the fix", busy: "Drafting the fix…", done: "Fix waiting in Approvals" },
+  checklist: { go: "Add to my list", busy: "Adding…", done: "On your list" },
+};
+const DONE_COPY = { content: ACTION_COPY.content.done, fix: ACTION_COPY.fix.done, list: ACTION_COPY.checklist.done };
 
 const SEV = {
   critical: { label: "Costing you now", bg: "var(--color-accent-100)", fg: "var(--color-accent-800)" },
@@ -22,6 +30,9 @@ export default function Opportunities({
   domain,
   onRerunAudit,
   rerunning,
+  fixingId = null,
+  writingId = null,
+  canWrite = true,
 }) {
   const { plays, nodes, hasAudit, score, sources = {}, hidden = 0 } = opportunities;
 
@@ -196,9 +207,32 @@ export default function Opportunities({
               {opp.evidence}
             </p>
           ) : null}
-          <button className="btn btn-primary btn-block" disabled={!!taken[opp.id]} onClick={() => onTake(opp.id)}>
-            {taken[opp.id] ? "On your list" : "Add to my list"}
-          </button>
+          {(() => {
+            const kind = actionFor(opp).kind;
+            const copy = ACTION_COPY[kind];
+            const done = taken[opp.id];
+            const busy = fixingId === opp.id || (kind === "content" && !!writingId && done === "content");
+            const label = busy
+              ? copy.busy
+              : done
+              ? DONE_COPY[done] || DONE_COPY.list
+              : kind === "content" && !canWrite
+              ? copy.locked
+              : copy.go;
+            return (
+              <button className="btn btn-primary btn-block" disabled={!!done || busy || !!fixingId} onClick={() => onTake(opp.id)}>
+                {label}
+              </button>
+            );
+          })()}
+          <p className="text-muted" style={{ margin: 0, fontSize: 11.5, lineHeight: 1.5 }}>
+            {(() => {
+              const kind = actionFor(opp).kind;
+              if (kind === "content") return canWrite ? "Plans the piece with a brief built from this finding, and writes it. Uses one content piece from your plan." : "Writing isn't in your plan, so this goes on your list.";
+              if (kind === "fix") return "Reads the page as it is now and drafts the exact change, with where it goes. Lands in Approvals for you or your developer to apply.";
+              return "This is a change for your hosting or server, so it goes on your list. Re-run the audit once it's done.";
+            })()}
+          </p>
           <button className="btn btn-ghost" disabled={!!dismissed[opp.id]} onClick={() => onDismiss(opp.id)} style={{ alignSelf: "center", fontSize: 12.5 }}>
             {dismissed[opp.id] ? "Hidden — won't be suggested again" : "Not for us"}
           </button>

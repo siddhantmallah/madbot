@@ -94,10 +94,11 @@ Cloud console → IAM & Admin → Service Accounts → Keys, then generate a rep
 
 | Variable | Where |
 |---|---|
-| `COMPANIES_HOUSE_API_KEY` | developer.company-information.service.gov.uk (free) |
-| `OPENCORPORATES_API_KEY` | opencorporates.com/api_accounts (free tier) |
+| `DATA_GOV_IN_API_KEY` | **Indian companies.** The Ministry of Corporate Affairs company register (3.7 million companies: CIN, status, registration date, registered office, paid-up capital), published free on the Open Government Data platform. Register at data.gov.in, then My Account → generate API key. Free; the licence (Government Open Data License – India) requires attribution, which the Leads screen shows next to any company verified this way. |
+| `COMPANIES_HOUSE_API_KEY` | developer.company-information.service.gov.uk (free), UK companies |
+| `OPENCORPORATES_API_KEY` | opencorporates.com. **Paid for commercial use** (its free tier is for journalists, NGOs and researchers only), so leave it unset unless you buy a plan. |
 
-Both degrade honestly when absent — the Leads screen shows which sources are on. RDAP, Certificate Transparency and SEC EDGAR need no key.
+All degrade honestly when absent — the Leads screen shows which sources are on. RDAP, Certificate Transparency, SEC EDGAR and **GLEIF** (the global LEI register, about 400,000 Indian entities, which also gives a company's CIN) need no key.
 
 ### Optional — social publishing
 

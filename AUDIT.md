@@ -101,7 +101,7 @@ No `Math.random()` drives any displayed value, and there is no lorem ipsum, fake
 | F-1 | High | `app/login/page.js:177-182, 236-238` | Signup skips the "confirm your email" screen. The redirect effect fires when `user` is set, before `setMode("verify")` | V | Open |
 | F-2 | High | `AuthProvider.js:130-142`, `AccountNotices.js:22-31` | A user who verifies on another device never gets their trial: `ensureTrial` only runs on sign-in or while polling, and `?verified=1` is never read | R | Open |
 | F-3 | High | `lib/sites.js:113-128`, `dashboard/page.js:1305` | If the sites listener errors, the dashboard spins forever, because the error callback never calls `cb` | R | Open |
-| F-4 | High | `dashboard/page.js:484-502`, `Opportunities.js:199-204` | "Go get it" and "Not for us" only write flags that nothing reads. "Queued — I am on it" is untrue | V | **Partly fixed (2026-10-15).** "Not for us" now removes the item for good (`buildOpportunities` filters `dismissedOpportunities`). "Go get it" became "Add to my list" / "On your list", because nothing acts on it yet. The canned plan is labelled "Suggested steps" and the heuristic score "priority". **Open:** making "Add to my list" start real work is a product decision. |
+| F-4 | High | `dashboard/page.js:484-502`, `Opportunities.js:199-204` | "Go get it" and "Not for us" only write flags that nothing reads. "Queued — I am on it" is untrue | V | **Fixed (2026-10-15).** Taking an opportunity now starts real work (`actionFor`). Page-level problems (title, meta description, headings, structured data, social tags, a competitor's schema, impressions without clicks) get the exact fix drafted against the live page and put in Approvals as a "Fix for your site" (`/api/opportunities/fix`, `lib/fixPipeline.js`, metered as SEO_RECOMMEND). Content gaps (missed AI-visibility questions, page-two queries, competitors' new pages, a thin site) get a piece planned with a brief built from the evidence, and written. Hosting-side work (HTTPS, headers, speed) goes on the owner's list. "Not for us" hides the item for good. |
 | F-5 | High | `DataRules.js`, `lib/jobRunner.js:292`, `cron/retention:81` | The Data & privacy rules are saved but never enforced: `policyCheck` always uses `DEFAULT_POLICY` (a compliance issue) | V | Open |
 | F-6 | High | `dashboard/page.js:153,758` | Search Console state isn't reset on site switch, so site B shows A's traffic, A's data feeds B's opportunities and digest, and Refresh writes A's property onto B | R | Open |
 | F-7 | High | `Listings.js:51-53,150` | After "Rewrite" the new copy never shows, and Save writes the old copy back | R | **Fixed (2026-10-15).** Local edits are tied to the copy they were made on, so a Rewrite shows and Save writes what's on screen. A rewrite also no longer resets a submitted or live listing to "drafted". |
@@ -526,3 +526,27 @@ Also: a `describeFetchFailure` case in `urlguard.test`. The robots check in `adm
 - "Add to my list" starts no work.
 - The lead registries cover only the UK and US, so there's nothing for Indian companies.
 - The listing directories are all SaaS ones.
+
+**Your decisions, built (2026-10-15)**
+
+1. **Content is suggested from data.** `lib/contentSuggestions.js` proposes pieces only from measured signals:
+   - AI-visibility questions you weren't named in;
+   - Search Console queries on page two;
+   - pages competitors just published;
+   - a site too thin to rank.
+
+   Each says why. The Content screen shows them with "Write it", "Plan only" and "Not for us", and a site with no signals gets none, never invented ones. The homepage line "finds the openings, writes the pages" is now true.
+2. **"Add to my list" starts real work.** See F-4.
+3. **Indian companies.** There are no free *lead lists* that can be used legally: IndiaMART, Justdial and similar ban scraping, and GST, Udyam and EPFO are captcha-gated. Discovery stays Claude web search (fixed in F-30), which finds Indian companies. Verification now uses two free official registers:
+   - **GLEIF**, the LEI register: keyless, about 400,000 Indian entities, and it gives a company's CIN. It is matched on the exact name, so "Stripe" doesn't match "Stripe India Private Limited".
+   - **The MCA company register via data.gov.in**: free, but needs `DATA_GOV_IN_API_KEY`.
+
+   Each qualified lead stores the register record and shows it, with the MCA licence attribution.
+4. **Local and industry directories.** 12 added:
+   - Google Business Profile, Bing Places, Apple Business, Facebook, LinkedIn;
+   - Justdial, Sulekha, IndiaMART, TradeIndia, ExportersIndia;
+   - Yelp, Trustpilot.
+
+   Only the limits published by the directories are treated as limits: Google 750 characters and 10 categories, Yelp 1,500/1,000. Unpublished ones are kept short and labelled on screen. Each directory's rejection rules go into the writer and onto the card. Which directories show depends on the business type (local, products, services or software) and on India vs elsewhere, worked out from the crawl.
+
+**Tests:** `tests/workFromData.test.mjs` (14 cases) plus two in `listings.test`. **Not run against the live model yet:** the fix drafter and the writer from suggestions. Both need the production key and a plan with content.

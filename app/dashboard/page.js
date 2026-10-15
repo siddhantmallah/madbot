@@ -36,7 +36,8 @@ import {
   saveListing,
 } from "../../lib/sites";
 import { diffSnapshots } from "../../lib/auditClient";
-import { buildOpportunities } from "../../lib/opportunities";
+import { actionFor, briefFor, buildOpportunities } from "../../lib/opportunities";
+import { suggestContent } from "../../lib/contentSuggestions";
 import { enqueueAndRun } from "../../lib/jobClient";
 import { JOB_TYPES } from "../../lib/jobTypes";
 import { usageSummary, siteAccess, featureAccess, clampAutonomy } from "../../lib/entitlements";
@@ -520,19 +521,144 @@ function DashboardInner() {
     if (user && activeSiteId) updateApproval(orgId, activeSiteId, id, patch);
   }
 
-  function takeOpportunity(oppId) {
+  // What taking an opportunity did: "content" (a piece planned and written),
+  // "fix" (the change drafted into Approvals) or "list" (on the owner's list).
+  async function markTaken(opp, how, activity) {
+    setTakenOpportunities((prev) => ({ ...prev, [opp.id]: how }));
+    await updateSiteSettings(orgId, activeSiteId, { [`takenOpportunities.${opp.id}`]: how });
+    if (activity) await addActivity(orgId, activeSiteId, activity);
+  }
+
+  const [fixingId, setFixingId] = useState(null);
+
+  /**
+   * "Start the work" on an opportunity. It used to only set a flag that
+   * nothing read. Now it does what the opportunity calls for (lib/opportunities
+   * actionFor): plans and writes a piece, drafts the exact fix into Approvals,
+   * or, for hosting-side work no draft can do, puts it on the owner's list.
+   */
+  async function takeOpportunity(oppId) {
     if (!user || !activeSiteId) return;
-    setTakenOpportunities((prev) => ({ ...prev, [oppId]: true }));
-    updateSiteSettings(orgId, activeSiteId, { [`takenOpportunities.${oppId}`]: true });
     const opp = opportunities?.nodes?.[oppId];
-    if (opp) {
-      addActivity(orgId, activeSiteId, {
-        k: "seo",
-        text: `Added to your list: ${opp.title}`,
-        why: opp.fix || "You marked it as worth doing",
-        result: "On your list",
-      });
+    if (!opp) return;
+    const action = actionFor(opp);
+    try {
+      if (action.kind === "content") {
+        if (!access.content.allowed) {
+          await markTaken(opp, "list", { k: "seo", text: `Added to your list: ${opp.title}`, why: opp.fix || "", result: "On your list" });
+          setToast(`${access.content.reason || "Writing isn't included in your plan."} It's on your list instead.`);
+          return;
+        }
+        const brief = briefFor(opp, site);
+        await markTaken(opp, "content");
+        await planAndWrite({ ...brief, why: `From an opportunity: ${opp.title}`, opportunityId: opp.id });
+        return;
+      }
+      if (action.kind === "fix") {
+        await draftFixFor(opp);
+        return;
+      }
+      await markTaken(opp, "list", { k: "seo", text: `Added to your list: ${opp.title}`, why: opp.fix || "", result: "On your list" });
+      setToast("On your list. It's a change for your hosting or server, so re-run the audit once it's done to confirm it took.");
+    } catch (err) {
+      setToast(`Couldn't start that: ${err?.message || err}`);
     }
+  }
+
+  async function draftFixFor(opp) {
+    setFixingId(opp.id);
+    try {
+      const res = await fetch("/api/opportunities/fix", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          idToken: await user.getIdToken(),
+          siteId: activeSiteId,
+          opportunity: { id: opp.id, title: opp.title, detail: opp.detail || null, fix: opp.fix || null, area: opp.area || null, source: opp.source || null },
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) {
+        setToast(data.error || "Couldn't draft that fix.");
+        return;
+      }
+      await addApproval(orgId, activeSiteId, {
+        kind: "fix",
+        title: opp.title,
+        body: data.fix.summary,
+        fix: data.fix,
+        opportunityId: opp.id,
+      });
+      await markTaken(opp, "fix", {
+        k: "seo",
+        text: `Drafted the fix for: ${opp.title}`,
+        why: data.fix.summary,
+        result: "Waiting in Approvals",
+      });
+      setToast("The fix is drafted and waiting in Approvals, with exactly where it goes.");
+    } finally {
+      setFixingId(null);
+    }
+  }
+
+  // Suggested content: computed from what's been measured, never stored, so it
+  // can't go stale (lib/contentSuggestions.js).
+  const contentSuggestions = useMemo(
+    () => (site ? suggestContent(site, { competitors, search: gsc.status === "ready" ? gsc.data : null, existing: content }) : []),
+    [site, competitors, gsc.status, gsc.data, content]
+  );
+
+  async function acceptSuggestion(s, { write = true } = {}) {
+    if (!user || !activeSiteId) return;
+    try {
+      await planAndWrite({ title: s.title, kind: s.kind, angle: s.angle, why: s.why, suggestionId: s.id }, { write });
+    } catch (err) {
+      setToast(`Couldn't add that: ${err?.message || err}`);
+    }
+  }
+
+  async function dismissSuggestion(id) {
+    if (!user || !activeSiteId) return;
+    try {
+      await updateSiteSettings(orgId, activeSiteId, { [`dismissedSuggestions.${id}`]: true });
+    } catch (err) {
+      setToast(`Couldn't hide that: ${err?.message || err}`);
+    }
+  }
+
+  /**
+   * Plans a piece with a real brief and, where writing is on, writes it at
+   * once. Used by opportunities and suggestions; "Ask for a piece" is the
+   * manual route to the same place.
+   */
+  async function planAndWrite({ title, kind, angle, why, opportunityId = null, suggestionId = null }, { write = true } = {}) {
+    const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    const day = (new Date().getDay() + 6) % 7;
+    const ref = await addContentItem(orgId, activeSiteId, {
+      day,
+      dayName: dayNames[day],
+      title,
+      kind,
+      angle,
+      body: angle,
+      meta: opportunityId ? "from an opportunity" : suggestionId ? "suggested from your data" : "you asked for this",
+      opportunityId,
+      suggestionId,
+      requested: true,
+    });
+    await addActivity(orgId, activeSiteId, {
+      k: "content",
+      text: `Planned "${title}"`,
+      why: why || "You asked for it",
+      result: write && writingEnabled ? "Writing now" : "Planned",
+    });
+    if (write && writingEnabled) {
+      setToast(`Writing "${title}". It takes a minute or two; it'll be on the Content screen.`);
+      await writeContent({ id: ref.id, title, kind, angle });
+    } else {
+      setToast(`"${title}" is planned on the Content screen.`);
+    }
+    return ref.id;
   }
   function dismissOpportunity(oppId) {
     if (!user || !activeSiteId) return;
@@ -1661,6 +1787,9 @@ function DashboardInner() {
                   dismissed={dismissedOpportunities}
                   onTake={takeOpportunity}
                   onDismiss={dismissOpportunity}
+                  fixingId={fixingId}
+                  writingId={writingId}
+                  canWrite={access.content.allowed}
                   opportunities={opportunities}
                   siteName={insights.name}
                   domain={insights.domain}
@@ -1695,6 +1824,9 @@ function DashboardInner() {
                   githubError={githubError}
                   onPublishViaGithub={publishViaGithub}
                   publishingId={publishingId}
+                  suggestions={contentSuggestions}
+                  onAcceptSuggestion={acceptSuggestion}
+                  onDismissSuggestion={dismissSuggestion}
                 />
               )}
               {screen === "social" && !access.social.allowed && (

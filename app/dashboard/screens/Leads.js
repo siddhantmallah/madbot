@@ -348,6 +348,28 @@ function Detail({ lead, onDraftOutreach, onDecline, busy }) {
         </p>
       ) : null}
 
+      {lead.registry ? (
+        <div>
+          <div className="card-kicker">Verified in an official register</div>
+          <p style={{ margin: "3px 0 0", fontSize: 13, lineHeight: 1.55 }}>
+            {lead.registry.name}
+            {lead.registry.id ? ` · ${lead.registry.id}` : ""}
+            {lead.registry.status ? ` · ${lead.registry.status}` : ""}
+            {lead.registry.since ? ` · since ${lead.registry.since}` : ""}{" "}
+            {lead.registry.url ? (
+              <a href={lead.registry.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12 }}>
+                {lead.registry.source}
+              </a>
+            ) : (
+              <span className="text-muted" style={{ fontSize: 12 }}>{lead.registry.source}</span>
+            )}
+          </p>
+          {lead.registry.attribution ? (
+            <p className="text-muted" style={{ margin: "2px 0 0", fontSize: 11 }}>{lead.registry.attribution}</p>
+          ) : null}
+        </div>
+      ) : null}
+
       {lead.problemYouSolve ? (
         <div>
           <div className="card-kicker">The problem they appear to have</div>

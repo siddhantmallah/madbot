@@ -18,7 +18,63 @@ function mailtoFor(a) {
   return `mailto:${encodeURIComponent(a.to || "")}?subject=${encodeURIComponent(a.subject || a.title || "")}&body=${encodeURIComponent(body)}`;
 }
 
-const KIND_LABEL = { outreach: "Outreach email", spend: "Spend", claim: "Public claim" };
+const KIND_LABEL = { outreach: "Outreach email", spend: "Spend", claim: "Public claim", fix: "Fix for your site" };
+
+/**
+ * A drafted fix: where it goes, the code to paste, how to check it, and
+ * anything in it that didn't come from the page. MADBOT can't edit the site,
+ * so this is what the owner or their developer applies.
+ */
+function FixDetails({ fix }) {
+  const [copied, setCopied] = useState(null);
+  async function copy(i, code) {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(i);
+      setTimeout(() => setCopied((c) => (c === i ? null : c)), 1800);
+    } catch {
+      setCopied(null);
+    }
+  }
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {fix.where ? (
+        <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.55 }}>
+          <b>Where it goes:</b> {fix.where}
+          {fix.pageUrl ? <span className="text-muted"> ({fix.pageUrl.replace(/^https?:\/\//, "")})</span> : null}
+        </p>
+      ) : null}
+      {(fix.snippets || []).map((sn, i) => (
+        <div key={i} style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span className="mono" style={{ fontSize: 11 }}>{sn.label}</span>
+            <button type="button" className="btn btn-ghost" style={{ marginLeft: "auto", fontSize: 12, padding: "2px 10px" }} onClick={() => copy(i, sn.code)}>
+              {copied === i ? "Copied" : "Copy"}
+            </button>
+          </div>
+          <pre style={{ margin: 0, padding: "10px 12px", borderRadius: 12, background: "var(--wash-1)", border: "1px solid var(--color-divider)", fontSize: 12, lineHeight: 1.5, whiteSpace: "pre-wrap", overflowWrap: "anywhere", maxHeight: 320, overflow: "auto" }}>
+            <code>{sn.code}</code>
+          </pre>
+        </div>
+      ))}
+      {fix.assumptions?.length ? (
+        <div style={{ fontSize: 12, lineHeight: 1.55 }}>
+          <b>Check before you apply it:</b>
+          <ul style={{ margin: "4px 0 0", paddingLeft: 18 }} className="text-muted">
+            {fix.assumptions.map((a, i) => (
+              <li key={i}>{a}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {fix.check ? (
+        <p className="text-muted" style={{ margin: 0, fontSize: 12, lineHeight: 1.5 }}>
+          <b>To confirm it worked:</b> {fix.check}
+        </p>
+      ) : null}
+    </div>
+  );
+}
 
 export default function Approvals({ approvals, onApprove, onDecline, onEdit, socialWaiting = 0, goSocial }) {
   const [editingId, setEditingId] = useState(null);
@@ -55,7 +111,8 @@ export default function Approvals({ approvals, onApprove, onDecline, onEdit, soc
         <h2 style={{ margin: "0 0 3px" }}>{headline}</h2>
         <p className="text-muted" style={{ margin: 0, fontSize: 13.5, lineHeight: 1.6 }}>
           Nothing here sends itself. Approving an email opens it in your own mail app, from your own address, and you
-          press send.
+          press send. A fix is the exact change for your site: apply it (or send it to your developer), then mark it
+          applied and re-run the audit.
         </p>
       </div>
 
@@ -155,6 +212,8 @@ export default function Approvals({ approvals, onApprove, onDecline, onEdit, soc
               </div>
             )}
 
+            {a.kind === "fix" && a.fix ? <FixDetails fix={a.fix} /> : null}
+
             {a.claims?.length ? (
               <details style={{ fontSize: 12 }}>
                 <summary className="text-muted" style={{ cursor: "pointer" }}>
@@ -194,14 +253,16 @@ export default function Approvals({ approvals, onApprove, onDecline, onEdit, soc
                     </a>
                   ) : (
                     <button className="btn btn-primary" disabled={!!status} onClick={() => onApprove(a.id)} style={{ fontSize: 13 }}>
-                      {status === "yes" ? "Approved" : "Approve"}
+                      {a.kind === "fix" ? (status === "yes" ? "Applied" : "I've applied it") : status === "yes" ? "Approved" : "Approve"}
                     </button>
                   )}
-                  <button className="btn btn-secondary" disabled={!!status} onClick={() => startEdit(a)} style={{ fontWeight: 600, fontSize: 13 }}>
-                    Change it first
-                  </button>
+                  {a.kind === "fix" ? null : (
+                    <button className="btn btn-secondary" disabled={!!status} onClick={() => startEdit(a)} style={{ fontWeight: 600, fontSize: 13 }}>
+                      Change it first
+                    </button>
+                  )}
                   <button className="btn btn-ghost" disabled={!!status} onClick={() => onDecline(a.id)} style={{ fontSize: 13 }}>
-                    No thanks
+                    {a.kind === "fix" ? "Not doing this" : "No thanks"}
                   </button>
                 </>
               )}
