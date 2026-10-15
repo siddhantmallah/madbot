@@ -195,9 +195,10 @@ export default function Approvals({ approvals, onApprove, onDecline, onEdit, soc
 
             {isEditing ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <input className="input" value={draftSubject} onChange={(e) => setDraftSubject(e.target.value)} style={{ fontSize: 14, fontWeight: 700 }} placeholder="Subject" />
+                <input className="input" aria-label="Subject" value={draftSubject} onChange={(e) => setDraftSubject(e.target.value)} style={{ fontSize: 14, fontWeight: 700 }} placeholder="Subject" />
                 <textarea
                   className="input"
+                  aria-label="Body"
                   value={draftBody}
                   onChange={(e) => setDraftBody(e.target.value)}
                   style={{ width: "100%", minHeight: 200, fontSize: 13, lineHeight: 1.6 }}

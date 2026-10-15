@@ -176,13 +176,16 @@ function LoginInner() {
       : backToInvite || dashboardDest;
 
   // An already-signed-in visitor goes straight through, unless they have just
-  // signed up and still have an address to confirm.
+  // signed up and still have an address to confirm. Not while a submit is in
+  // flight: Firebase sets `user` partway through signUp, before it returns and
+  // the mode becomes "verify", and redirecting then skipped the confirm screen.
+  // The submit handlers navigate themselves, or clear busy when they fail.
   useEffect(() => {
-    if (loading || !user) return;
+    if (loading || !user || busy) return;
     if (mode === "verify") return;
     router.replace(afterAuth);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, user, router, mode]);
+  }, [loading, user, router, mode, busy]);
 
   useEffect(() => {
     const id = setInterval(() => setTick((t) => (t + 1) % PREVIEW_LINES.length), 3400);
@@ -371,7 +374,7 @@ function LoginInner() {
                 </button>
               </div>
               <p style={{ margin: "18px 0 0", fontSize: 13, lineHeight: 1.55, color: "var(--fg-45)" }}>
-                You can <Link href="/dashboard" style={{ color: "var(--color-accent)" }}>skip to the dashboard</Link> and
+                You can <Link href="/dashboard" style={{ color: "var(--accent-ink)" }}>skip to the dashboard</Link> and
                 confirm later. Your free trial stays switched off until you do.
               </p>
             </>
@@ -467,7 +470,7 @@ function LoginInner() {
                       placeholder="Type it once more"
                     />
                     {confirm && confirm !== pass ? (
-                      <p style={{ margin: "-8px 0 0", fontSize: 12.5, color: "var(--color-accent)" }}>The two passwords don&apos;t match.</p>
+                      <p style={{ margin: "-8px 0 0", fontSize: 12.5, color: "var(--accent-ink)" }}>The two passwords don&apos;t match.</p>
                     ) : null}
                   </>
                 ) : null}
@@ -496,7 +499,7 @@ function LoginInner() {
                   <>
                     <p style={{ margin: 0 }}>
                       No account yet?{" "}
-                      <button type="button" className="btn btn-ghost" style={{ fontSize: "inherit", padding: 0, minHeight: 0, color: "var(--color-accent)" }} onClick={() => { setMode("signup"); setError(""); setNotice(""); }}>
+                      <button type="button" className="btn btn-ghost" style={{ fontSize: "inherit", padding: 0, minHeight: 0, color: "var(--accent-ink)" }} onClick={() => { setMode("signup"); setError(""); setNotice(""); }}>
                         Create one free
                       </button>
                     </p>
@@ -512,7 +515,7 @@ function LoginInner() {
                   <>
                     <p style={{ margin: 0 }}>
                       Already have an account?{" "}
-                      <button type="button" className="btn btn-ghost" style={{ fontSize: "inherit", padding: 0, minHeight: 0, color: "var(--color-accent)" }} onClick={() => { setMode("signin"); setError(""); setNotice(""); }}>
+                      <button type="button" className="btn btn-ghost" style={{ fontSize: "inherit", padding: 0, minHeight: 0, color: "var(--accent-ink)" }} onClick={() => { setMode("signin"); setError(""); setNotice(""); }}>
                         Sign in
                       </button>
                     </p>
@@ -526,7 +529,7 @@ function LoginInner() {
 
                 {mode === "reset" ? (
                   <p style={{ margin: 0 }}>
-                    <button type="button" className="btn btn-ghost" style={{ fontSize: "inherit", padding: 0, minHeight: 0, color: "var(--color-accent)" }} onClick={() => { setMode("signin"); setError(""); setNotice(""); }}>
+                    <button type="button" className="btn btn-ghost" style={{ fontSize: "inherit", padding: 0, minHeight: 0, color: "var(--accent-ink)" }} onClick={() => { setMode("signin"); setError(""); setNotice(""); }}>
                       Back to sign in
                     </button>
                   </p>

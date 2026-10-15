@@ -48,36 +48,35 @@ export default function AutonomyDial({
   // value rather than the stroke keeps the arc and the knob locked together —
   // transitioning `stroke-dasharray` and `cx`/`cy` separately lets them part
   // company for a frame, and the eye catches it.
+  //
+  // Without animateIn, `shown` already starts at the target. Under reduced
+  // motion the sweep takes zero time: the first frame lands on the target.
   useEffect(() => {
-    if (!animateIn) {
-      setShown(target);
-      return undefined;
-    }
-    const calm = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (calm) {
-      setShown(target);
-      return undefined;
-    }
+    if (!animateIn) return undefined;
+    const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     let raf;
     const t0 = performance.now();
-    const dur = 900;
+    const dur = calm ? 0 : 900;
     const tick = (now) => {
-      const p = Math.min(1, (now - t0) / dur);
+      const p = dur ? Math.min(1, (now - t0) / dur) : 1;
       const e = 1 - Math.pow(1 - p, 3);
       setShown(Math.round(target * e));
       if (p < 1) raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-    // Only on mount. Afterwards the effect below owns `shown`.
+    // Only on mount. Afterwards the adjustment below owns `shown`.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const mounted = useRef(false);
-  useEffect(() => {
-    if (mounted.current) setShown(target);
-    else mounted.current = true;
-  }, [target]);
+  // After mount, `shown` follows `value`. Adjusted during render when the
+  // target changes rather than in an effect, which would paint the old value
+  // for a frame first.
+  const [lastTarget, setLastTarget] = useState(target);
+  if (target !== lastTarget) {
+    setLastTarget(target);
+    setShown(target);
+  }
 
   const base = bandInfo(shown);
   const info = { ...base, desc: copy?.[base.label] ?? base.desc };

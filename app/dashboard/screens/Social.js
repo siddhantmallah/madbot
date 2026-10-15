@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { NETWORKS, NETWORK_ORDER, POST_STATUS, effectiveLength, charLimitFor, postStatusStyle, validatePost } from "../../../lib/social";
+import { useModalDialog } from "./useModalDialog";
 
 /**
  * Connecting an account.
@@ -14,11 +15,11 @@ import { NETWORKS, NETWORK_ORDER, POST_STATUS, effectiveLength, charLimitFor, po
 function ConnectDialog({ network, onSubmit, onClose, busy }) {
   const [token, setToken] = useState("");
   const net = NETWORKS[network.networkId];
+  const { titleId, dialogProps } = useModalDialog({ onClose, canClose: !busy });
 
   return (
     <div
-      role="dialog"
-      aria-modal="true"
+      {...dialogProps}
       style={{ position: "fixed", inset: 0, zIndex: 90, background: "rgba(4,3,7,.78)", backdropFilter: "blur(5px)", display: "grid", placeItems: "center", padding: 24 }}
       onClick={(e) => {
         if (e.target === e.currentTarget && !busy) onClose();
@@ -28,11 +29,11 @@ function ConnectDialog({ network, onSubmit, onClose, busy }) {
         className="card elev-lg"
         onSubmit={(e) => {
           e.preventDefault();
-          if (token.trim()) onSubmit(network.provider, token.trim());
+          if (token.trim() && !busy) onSubmit(network.provider, token.trim());
         }}
         style={{ width: "min(520px,100%)", padding: 26, gap: 14, background: "var(--color-bg)", border: "1px solid var(--color-divider)", animation: "rise .3s cubic-bezier(.2,.8,.2,1)" }}
       >
-        <h3 style={{ margin: 0, fontSize: 22 }}>Connect {net.label}</h3>
+        <h3 id={titleId} style={{ margin: 0, fontSize: 22 }}>Connect {net.label}</h3>
         <p style={{ margin: 0, fontSize: 13, lineHeight: 1.55 }} className="text-muted">
           {net.setupNote}
         </p>
@@ -144,6 +145,8 @@ function PostCard({ post, onEdit, onApprove, onDecline, onPublish, busy }) {
   const net = NETWORKS[post.networkId];
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(post.text || "");
+  // Binning deletes the post outright; there is no bin to fish it back out of.
+  const [confirmBin, setConfirmBin] = useState(false);
 
   const limit = charLimitFor(post.networkId, { premium: post.premium });
   const length = effectiveLength(editing ? text : post.text, post.networkId);
@@ -182,6 +185,7 @@ function PostCard({ post, onEdit, onApprove, onDecline, onPublish, busy }) {
       {editing ? (
         <textarea
           className="input"
+          aria-label={`${net?.label || post.networkId} post text`}
           value={text}
           onChange={(e) => setText(e.target.value)}
           style={{ width: "100%", minHeight: 130, fontSize: 13.5, lineHeight: 1.6 }}
@@ -290,9 +294,21 @@ function PostCard({ post, onEdit, onApprove, onDecline, onPublish, busy }) {
                 Approve
               </button>
             )}
-            <button className="btn btn-ghost" style={{ fontSize: 12.5 }} onClick={() => onDecline(post.id)}>
-              Bin it
-            </button>
+            {confirmBin ? (
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5 }}>
+                <span className="text-muted">Delete this post for good?</span>
+                <button className="btn btn-ghost" style={{ fontSize: 12.5, color: "var(--color-accent-800)" }} onClick={() => onDecline(post.id)}>
+                  Yes, bin it
+                </button>
+                <button className="btn btn-ghost" style={{ fontSize: 12.5 }} onClick={() => setConfirmBin(false)}>
+                  Keep it
+                </button>
+              </span>
+            ) : (
+              <button className="btn btn-ghost" style={{ fontSize: 12.5 }} onClick={() => setConfirmBin(true)}>
+                Bin it
+              </button>
+            )}
           </>
         )}
       </div>
@@ -320,6 +336,9 @@ export default function Social({
   const [link, setLink] = useState("");
   const [picked, setPicked] = useState(["linkedin"]);
   const [connecting, setConnecting] = useState(null);
+  // Checking a token takes a round trip to the network; without this the
+  // Connect button stayed live and a second press sent the token twice.
+  const [connectBusy, setConnectBusy] = useState(false);
 
   // Only offer networks this deployment could actually reach. Offering the rest
   // produces drafts with nowhere to go.
@@ -328,13 +347,18 @@ export default function Social({
     [networks]
   );
 
-  useEffect(() => {
-    // Keep the selection honest if the connection state changes underneath it.
+  // Keep the selection honest if the connection state changes underneath it.
+  // Done while rendering, against the list it was last checked with, rather
+  // than in an effect that rendered once with the stale selection first. It
+  // starts unchecked so the first render trims the default too.
+  const [pickedFor, setPickedFor] = useState(null);
+  if (pickedFor !== available) {
+    setPickedFor(available);
     setPicked((prev) => {
       const stillOk = prev.filter((id) => available.some((n) => n.networkId === id));
       return stillOk.length ? stillOk : available.slice(0, 1).map((n) => n.networkId);
     });
-  }, [available]);
+  }
 
   const waiting = posts.filter((p) => p.status === POST_STATUS.DRAFTED || p.status === POST_STATUS.WAITING_APPROVAL);
   const ready = posts.filter((p) => p.status === POST_STATUS.APPROVED || p.status === POST_STATUS.FAILED);
@@ -425,8 +449,8 @@ export default function Social({
         </div>
 
         <div className="field">
-          <label>Which networks?</label>
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          <label id="social-networks">Which networks?</label>
+          <div role="group" aria-labelledby="social-networks" style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             {available.length === 0 ? (
               <p className="text-muted" style={{ margin: 0, fontSize: 12.5 }}>
                 No network is set up on this server yet, so there&apos;s nowhere to post. Drafting still works — the posts
@@ -439,6 +463,7 @@ export default function Social({
                   <button
                     type="button"
                     key={n.networkId}
+                    aria-pressed={on}
                     onClick={() => setPicked((p) => (on ? p.filter((x) => x !== n.networkId) : [...p, n.networkId]))}
                     className={on ? "tag" : "tag tag-neutral"}
                     style={{ fontSize: 12, cursor: "pointer", background: on ? "var(--color-accent)" : undefined, color: on ? "var(--on-accent)" : undefined }}
@@ -454,7 +479,7 @@ export default function Social({
         {!aiConfigured ? (
           <p className="text-muted" style={{ margin: 0, fontSize: 12.5, lineHeight: 1.55 }}>
             Drafting is off. {aiMessage || "The server can't reach a model right now."} Everything else on this screen
-            still works — connecting accounts, editing what's already drafted, and posting it.
+            still works — connecting accounts, editing what&apos;s already drafted, and posting it.
           </p>
         ) : null}
 
@@ -505,11 +530,16 @@ export default function Social({
       {connecting ? (
         <ConnectDialog
           network={connecting}
-          busy={false}
+          busy={connectBusy}
           onClose={() => setConnecting(null)}
           onSubmit={async (provider, token) => {
-            await onConnect(provider, token);
-            setConnecting(null);
+            setConnectBusy(true);
+            try {
+              await onConnect(provider, token);
+              setConnecting(null);
+            } finally {
+              setConnectBusy(false);
+            }
           }}
         />
       ) : null}

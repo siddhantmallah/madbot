@@ -111,7 +111,7 @@ function Invite() {
   }
 
   return (
-    <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 16, background: "var(--color-bg)", color: "var(--color-text)" }}>
+    <main id="main" style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 16, background: "var(--color-bg)", color: "var(--color-text)" }}>
       <div className="card" style={{ maxWidth: 520, width: "100%", padding: 28, gap: 14, lineHeight: 1.6 }}>
         <span className="card-kicker">Invitation</span>
         <h1 style={{ margin: 0, fontSize: 26 }}>Join an organisation on MADBOT</h1>

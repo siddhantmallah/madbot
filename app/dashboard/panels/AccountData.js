@@ -128,7 +128,7 @@ export default function AccountData() {
       <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.6, color: "var(--fg-60)" }}>
         You can download everything MADBOT holds about this account, or delete the whole thing. Both happen
         immediately. The{" "}
-        <Link href="/legal/privacy" style={{ color: "var(--color-accent)" }}>Privacy Policy</Link> explains what the
+        <Link href="/legal/privacy" style={{ color: "var(--accent-ink)" }}>Privacy Policy</Link> explains what the
         export leaves out and the two things that survive a deletion.
       </p>
 
@@ -137,7 +137,7 @@ export default function AccountData() {
           {exporting ? "Preparing…" : "Download my data"}
         </button>
         {!armed ? (
-          <button className="btn btn-ghost" type="button" onClick={() => setArmed(true)} style={{ color: "var(--color-accent)" }}>
+          <button className="btn btn-ghost" type="button" onClick={() => setArmed(true)} style={{ color: "var(--accent-ink)" }}>
             Delete my account
           </button>
         ) : null}
@@ -184,7 +184,7 @@ export default function AccountData() {
         </div>
       ) : null}
 
-      {error && !armed ? <p role="alert" style={{ margin: 0, fontSize: 13, color: "var(--color-accent)" }}>{error}</p> : null}
+      {error && !armed ? <p role="alert" style={{ margin: 0, fontSize: 13, color: "var(--accent-ink)" }}>{error}</p> : null}
     </section>
   );
 }

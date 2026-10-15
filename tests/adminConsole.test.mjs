@@ -166,7 +166,10 @@ await test("a forged or tampered 2FA cookie is refused", () => {
   const [body, mac] = t.split(".");
   const forgedBody = Buffer.from(JSON.stringify({ uid: "u1", exp: Date.now() + 9e12 })).toString("base64url");
   eq(A.verifyMfa(`${forgedBody}.${mac}`, "u1"), null, "body swapped");
-  eq(A.verifyMfa(`${body}.${mac.slice(0, -2)}AA`, "u1"), null, "mac altered");
+  // Change the first character to a different one. Swapping the last two for
+  // "AA" was a no-op whenever the signature already ended in AA (1 in 4096).
+  const altered = (mac[0] === "A" ? "B" : "A") + mac.slice(1);
+  eq(A.verifyMfa(`${body}.${altered}`, "u1"), null, "mac altered");
   eq(A.verifyMfa(`${body}.`, "u1"), null, "no mac");
   eq(A.verifyMfa("garbage", "u1"), null, "garbage");
   eq(A.verifyMfa(undefined, "u1"), null, "missing");

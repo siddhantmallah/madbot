@@ -242,7 +242,7 @@ export default function Opportunities({
           <h5 style={{ margin: 0 }}>Suggested steps</h5>
           {plan.map((t, i) => (
             <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start", background: "var(--color-surface)", borderRadius: 20, padding: "10px 13px", fontSize: 12.5, lineHeight: 1.5 }}>
-              <span style={{ fontFamily: "var(--font-heading)", color: "var(--color-accent)", flex: "none" }}>{i + 1}</span>
+              <span style={{ fontFamily: "var(--font-heading)", color: "var(--accent-ink)", flex: "none" }}>{i + 1}</span>
               {t}
             </div>
           ))}

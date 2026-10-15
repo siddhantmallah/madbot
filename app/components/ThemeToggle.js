@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
 const KEY = "madbot-theme";
+// Fired whenever a toggle changes the theme, so every toggle on the page (the
+// dashboard can show more than one) re-reads it.
+const EVENT = "madbot:theme";
 
 /**
  * The script that runs before first paint, so a light-mode visitor never sees a
@@ -11,41 +14,80 @@ const KEY = "madbot-theme";
  */
 export const themeBootScript = `(function(){try{var t=localStorage.getItem("${KEY}");if(t==="light"||t==="dark"){document.documentElement.setAttribute("data-theme",t)}}catch(e){}})()`;
 
-function currentTheme() {
-  const stamped = document.documentElement.getAttribute("data-theme");
-  if (stamped === "light" || stamped === "dark") return stamped;
-  // Nothing stamped means "follow the system", which is the default state.
-  return window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+const LIGHT_QUERY = "(prefers-color-scheme: light)";
+
+function systemTheme() {
+  return window.matchMedia(LIGHT_QUERY).matches ? "light" : "dark";
 }
 
-export default function ThemeToggle({ compact = false }) {
-  // Undefined until mounted: the server has no idea what the visitor's OS
-  // prefers, so rendering a specific icon would guarantee a hydration mismatch.
-  const [theme, setTheme] = useState(null);
+// "choice:shown" — what the visitor picked ("system" when nothing is stamped)
+// and the theme actually on screen. One string, so the store's snapshot
+// compares by value and doesn't re-render on every read.
+function snapshot() {
+  const stamped = document.documentElement.getAttribute("data-theme");
+  if (stamped === "light" || stamped === "dark") return `${stamped}:${stamped}`;
+  return `system:${systemTheme()}`;
+}
 
-  useEffect(() => {
-    setTheme(currentTheme());
-  }, []);
+function subscribe(onChange) {
+  const media = window.matchMedia(LIGHT_QUERY);
+  media.addEventListener("change", onChange);
+  window.addEventListener(EVENT, onChange);
+  return () => {
+    media.removeEventListener("change", onChange);
+    window.removeEventListener(EVENT, onChange);
+  };
+}
+
+// The server has no idea what the visitor's OS prefers, so it renders the
+// neutral "Theme" state and the real one arrives after hydration.
+const serverSnapshot = () => null;
+
+function apply(choice) {
+  if (choice === "system") document.documentElement.removeAttribute("data-theme");
+  else document.documentElement.setAttribute("data-theme", choice);
+  try {
+    if (choice === "system") localStorage.removeItem(KEY);
+    else localStorage.setItem(KEY, choice);
+  } catch {
+    // Private window — the choice just won't survive a reload.
+  }
+  window.dispatchEvent(new Event(EVENT));
+}
+
+/**
+ * One button, and every press visibly flips the theme. Flipping away from what
+ * the OS shows pins that theme; flipping back hands control back to the OS
+ * ("system") rather than pinning the OS's current theme, so someone who
+ * leaves it matching their OS keeps following it when the OS switches at
+ * sunset. That is how a visitor gets back to "system" — before this, the first
+ * press pinned a theme and nothing could unpin it.
+ */
+export default function ThemeToggle({ compact = false }) {
+  const snap = useSyncExternalStore(subscribe, snapshot, serverSnapshot);
+  const [choice, theme] = snap ? snap.split(":") : [null, null];
 
   function flip() {
-    const next = currentTheme() === "light" ? "dark" : "light";
-    document.documentElement.setAttribute("data-theme", next);
-    setTheme(next);
-    try {
-      localStorage.setItem(KEY, next);
-    } catch {
-      // Private window — the choice just won't survive a reload.
-    }
+    const shown = snapshot().split(":")[1];
+    const next = shown === "light" ? "dark" : "light";
+    apply(next === systemTheme() ? "system" : next);
   }
 
   const isLight = theme === "light";
+  const nextTheme = isLight ? "dark" : "light";
+  // theme is only set in the browser (the server snapshot is null), so
+  // systemTheme() is safe here. The label says when the next press hands
+  // control back to the OS.
+  const label = theme
+    ? `Switch to ${nextTheme} mode${nextTheme === systemTheme() ? " (match system)" : ""}`
+    : "Switch colour theme";
 
   return (
     <button
       type="button"
       onClick={flip}
-      aria-label={theme ? `Switch to ${isLight ? "dark" : "light"} mode` : "Switch colour theme"}
-      title={theme ? `Switch to ${isLight ? "dark" : "light"} mode` : "Switch colour theme"}
+      aria-label={label}
+      title={label}
       style={{
         display: "inline-flex",
         alignItems: "center",
@@ -65,7 +107,7 @@ export default function ThemeToggle({ compact = false }) {
       }}
     >
       <Glyph light={isLight} />
-      {compact ? null : <span>{theme ? (isLight ? "Light" : "Dark") : "Theme"}</span>}
+      {compact ? null : <span>{theme ? `${isLight ? "Light" : "Dark"}${choice === "system" ? " (system)" : ""}` : "Theme"}</span>}
     </button>
   );
 }

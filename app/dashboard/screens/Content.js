@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useModalDialog } from "./useModalDialog";
 
 const DAY_ORDER = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -25,11 +26,11 @@ function AskDialog({ onSubmit, onClose, busy }) {
   const [kind, setKind] = useState("Support");
   const [day, setDay] = useState(5);
   const [angle, setAngle] = useState("");
+  const { titleId, dialogProps } = useModalDialog({ onClose, canClose: !busy });
 
   return (
     <div
-      role="dialog"
-      aria-modal="true"
+      {...dialogProps}
       style={{ position: "fixed", inset: 0, zIndex: 90, background: "rgba(4,3,7,.78)", backdropFilter: "blur(5px)", display: "grid", placeItems: "center", padding: 24 }}
       onClick={(e) => {
         if (e.target === e.currentTarget && !busy) onClose();
@@ -44,7 +45,7 @@ function AskDialog({ onSubmit, onClose, busy }) {
         }}
         style={{ width: "min(500px,100%)", padding: 26, gap: 14, background: "var(--color-bg)", border: "1px solid var(--color-divider)", animation: "rise .3s cubic-bezier(.2,.8,.2,1)" }}
       >
-        <h3 style={{ margin: 0, fontSize: 22 }}>Ask for a piece</h3>
+        <h3 id={titleId} style={{ margin: 0, fontSize: 22 }}>Ask for a piece</h3>
         <p style={{ margin: 0, fontSize: 13, lineHeight: 1.55 }} className="text-muted">
           Tell me what to cover and I&apos;ll add it to the plan with your angle attached.
         </p>
@@ -76,12 +77,13 @@ function AskDialog({ onSubmit, onClose, busy }) {
         </div>
 
         <div className="field">
-          <label>What kind of piece?</label>
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          <label id="ask-kind">What kind of piece?</label>
+          <div role="group" aria-labelledby="ask-kind" style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             {KINDS.map((k) => (
               <button
                 type="button"
                 key={k}
+                aria-pressed={kind === k}
                 onClick={() => setKind(k)}
                 className={kind === k ? "tag" : "tag tag-neutral"}
                 style={{ fontSize: 12, cursor: "pointer", background: kind === k ? "var(--color-accent)" : undefined, color: kind === k ? "var(--on-accent)" : undefined }}
@@ -93,12 +95,13 @@ function AskDialog({ onSubmit, onClose, busy }) {
         </div>
 
         <div className="field">
-          <label>Which day?</label>
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          <label id="ask-day">Which day?</label>
+          <div role="group" aria-labelledby="ask-day" style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             {DAYS.map((d, i) => (
               <button
                 type="button"
                 key={d}
+                aria-pressed={day === i}
                 onClick={() => setDay(i)}
                 className={day === i ? "tag" : "tag tag-neutral"}
                 style={{ fontSize: 12, cursor: "pointer", background: day === i ? "var(--color-accent)" : undefined, color: day === i ? "var(--on-accent)" : undefined }}
@@ -128,11 +131,15 @@ function GithubConnectDialog({ onSubmit, onClose, busy, error }) {
   const [token, setToken] = useState("");
   const [repo, setRepo] = useState("");
   const [contentPath, setContentPath] = useState("");
+  // The error lives on the dashboard and outlasts the dialog, so one left over
+  // from an earlier attempt would greet the next opening. Only show it once
+  // this opening has tried.
+  const [tried, setTried] = useState(false);
+  const { titleId, dialogProps } = useModalDialog({ onClose, canClose: !busy });
 
   return (
     <div
-      role="dialog"
-      aria-modal="true"
+      {...dialogProps}
       style={{ position: "fixed", inset: 0, zIndex: 90, background: "rgba(4,3,7,.78)", backdropFilter: "blur(5px)", display: "grid", placeItems: "center", padding: 24 }}
       onClick={(e) => {
         if (e.target === e.currentTarget && !busy) onClose();
@@ -143,11 +150,12 @@ function GithubConnectDialog({ onSubmit, onClose, busy, error }) {
         onSubmit={(e) => {
           e.preventDefault();
           if (!token.trim() || !repo.trim()) return;
+          setTried(true);
           onSubmit({ token: token.trim(), repo: repo.trim(), contentPath: contentPath.trim() || null });
         }}
         style={{ width: "min(480px,100%)", padding: 26, gap: 14, background: "var(--color-bg)", border: "1px solid var(--color-divider)", animation: "rise .3s cubic-bezier(.2,.8,.2,1)" }}
       >
-        <h3 style={{ margin: 0 }}>Connect a GitHub repo</h3>
+        <h3 id={titleId} style={{ margin: 0 }}>Connect a GitHub repo</h3>
         <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.6 }} className="text-muted">
           Publishing opens a pull request against this repo — it never commits to the default branch, and nothing goes
           live until a person merges it.
@@ -168,8 +176,8 @@ function GithubConnectDialog({ onSubmit, onClose, busy, error }) {
           Needs a fine-grained token scoped to this one repo with Contents and Pull requests write access. Checked
           before it&apos;s saved, and never shown again once it is.
         </p>
-        {error ? (
-          <div style={{ fontSize: 12.5, color: "var(--color-accent-800)", background: "var(--color-accent-100)", borderRadius: 10, padding: "8px 11px" }}>
+        {error && tried && !busy ? (
+          <div role="alert" style={{ fontSize: 12.5, color: "var(--color-accent-800)", background: "var(--color-accent-100)", borderRadius: 10, padding: "8px 11px" }}>
             {error}
           </div>
         ) : null}
@@ -255,6 +263,17 @@ export default function Content({
   const [askOpen, setAskOpen] = useState(false);
   const [connectOpen, setConnectOpen] = useState(false);
 
+  // The connect dialog closes when the repo shows up as connected, not when
+  // the request returns. onConnectGithub reports a failure by setting
+  // githubError rather than throwing, so closing on return hid the error and
+  // left the person guessing whether it had worked.
+  const connected = !!github?.connected;
+  const [wasConnected, setWasConnected] = useState(connected);
+  if (connected !== wasConnected) {
+    setWasConnected(connected);
+    if (connected) setConnectOpen(false);
+  }
+
   const visible = view === "backlog" ? items.filter((c) => c.status !== "published") : items;
   const dates = weekDates();
   const byDay = DAY_ORDER.map((name, i) => ({
@@ -307,10 +326,7 @@ export default function Content({
           busy={connectingGithub}
           error={githubError}
           onClose={() => setConnectOpen(false)}
-          onSubmit={async (spec) => {
-            await onConnectGithub(spec);
-            setConnectOpen(false);
-          }}
+          onSubmit={onConnectGithub}
         />
       ) : null}
 

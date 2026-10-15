@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { businessKind, DIRECTORIES, LISTING_STATUS, listingStatusStyle, priorityOf, relevantFor, validateListing } from "../../../lib/listings";
 
 const STATUS_CHOICES = [
@@ -9,16 +9,21 @@ const STATUS_CHOICES = [
   { id: LISTING_STATUS.SKIPPED, label: "Skipped" },
 ];
 
+// Fields the forms take as lists, the same two lib/listingPipeline.js writes
+// as arrays. Everything else is text.
+const LIST_FIELDS = ["categories", "features"];
+
 /** One field of listing copy, with the directory's own limit shown against it. */
 function CopyField({ directory, field, value, onChange }) {
   const spec = directory.fields[field];
   const isList = Array.isArray(value);
   const length = isList ? value.length : String(value || "").length;
   const over = length > spec.max;
+  const id = useId();
 
   return (
     <div className="field">
-      <label style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+      <label htmlFor={id} style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
         <span>{spec.label}</span>
         <span className="text-muted" style={{ fontSize: 11.5, color: over ? "var(--color-accent-900)" : undefined }}>
           {length} / {spec.max}
@@ -28,6 +33,7 @@ function CopyField({ directory, field, value, onChange }) {
       {isList ? (
         <input
           className="input"
+          id={id}
           value={value.join(", ")}
           onChange={(e) => onChange(e.target.value.split(",").map((s) => s.trim()).filter(Boolean))}
           style={{ fontSize: 13 }}
@@ -35,12 +41,13 @@ function CopyField({ directory, field, value, onChange }) {
       ) : String(value || "").length > 120 || spec.max > 200 ? (
         <textarea
           className="input"
+          id={id}
           value={value || ""}
           onChange={(e) => onChange(e.target.value)}
           style={{ width: "100%", minHeight: 90, fontSize: 13, lineHeight: 1.6 }}
         />
       ) : (
-        <input className="input" value={value || ""} onChange={(e) => onChange(e.target.value)} style={{ fontSize: 13 }} />
+        <input className="input" id={id} value={value || ""} onChange={(e) => onChange(e.target.value)} style={{ fontSize: 13 }} />
       )}
     </div>
   );
@@ -101,7 +108,7 @@ function DirectoryCard({ directory, listing, onWrite, onSave, onStatus, writing,
               {Object.entries(directory.fields).map(([f, spec]) => (
                 <li key={f}>
                   {spec.label} — up to {spec.max}
-                  {f === "categories" ? "" : " characters"}
+                  {LIST_FIELDS.includes(f) ? "" : " characters"}
                   {spec.required ? "" : ", optional"}
                   {spec.confirmed === false ? ` (${directory.name} doesn't publish a limit; kept short)` : ""}
                 </li>
@@ -165,6 +172,19 @@ function DirectoryCard({ directory, listing, onWrite, onSave, onStatus, writing,
             >
               {writing ? "Writing…" : current ? "Rewrite" : "Write the copy"}
             </button>
+            {/* The screen says you can write the copy yourself and record it
+                here, but the fields only appeared once a model had filled
+                them. This opens them empty. */}
+            {!current ? (
+              <button
+                className="btn btn-ghost"
+                style={{ fontSize: 12.5 }}
+                disabled={writing}
+                onClick={() => setCopy(Object.fromEntries(Object.keys(directory.fields).map((f) => [f, LIST_FIELDS.includes(f) ? [] : ""])))}
+              >
+                Write it myself
+              </button>
+            ) : null}
             {current ? (
               <button className="btn btn-primary" style={{ fontSize: 12.5 }} onClick={() => onSave(directory.id, { copy: current })}>
                 Save

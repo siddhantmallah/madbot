@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../../providers/AuthProvider";
 
 /**
@@ -23,12 +23,28 @@ export default function AccountNotices() {
   const trialRefused = trialStatus?.reason === "already-used" || trialStatus?.reason === "domain-used";
 
   // Confirmation happens in a different tab, so this one has to ask. Cheap
-  // (one Firebase read) and only while there is something to wait for.
+  // (one Firebase read) and only while there is something to wait for and
+  // someone looking. Coming back to the tab checks straight away (AuthProvider
+  // listens for that), so this only covers confirming on a phone while the
+  // dashboard sits open in front of them.
   useEffect(() => {
     if (!needsVerification) return undefined;
-    const id = setInterval(() => refreshUser(), 10000);
+    const id = setInterval(() => {
+      if (document.visibilityState === "visible") refreshUser().catch(() => {});
+    }, 20000);
     return () => clearInterval(id);
   }, [needsVerification, refreshUser]);
+
+  // Links sent before confirmation moved to /auth/action went through
+  // Firebase's own page, which sends people back here with ?verified=1. Ask
+  // once on arrival rather than waiting for the timer: refreshUser re-reads
+  // the account and starts the trial if this session hasn't yet.
+  const arrivalChecked = useRef(false);
+  useEffect(() => {
+    if (!user || arrivalChecked.current) return;
+    arrivalChecked.current = true;
+    if (new URLSearchParams(window.location.search).get("verified") === "1") refreshUser().catch(() => {});
+  }, [user, refreshUser]);
 
   if (!needsVerification && !trialRefused) return null;
 
@@ -109,7 +125,7 @@ export default function AccountNotices() {
             {trialStatus?.reason === "domain-used"
               ? "Your organisation's email domain has already had a free trial this month, so this account is on the free plan."
               : "A free trial has already been used for this email address, so this account is on the free plan."}{" "}
-            Everything that reports is still switched on. <Link href="/pricing" style={{ color: "var(--color-accent)" }}>See the plans</Link> if you
+            Everything that reports is still switched on. <Link href="/pricing" style={{ color: "var(--accent-ink)" }}>See the plans</Link> if you
             want the rest.
           </p>
         </div>

@@ -133,6 +133,7 @@ export default function Autonomy({ aut, setAut, onCommitAut, rules, setRules, vo
           <div style={{ display: "flex", gap: 8 }}>
             <input
               className="input"
+              aria-label="New rule, in plain English"
               value={draftRule}
               onChange={(e) => setDraftRule(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") addRuleNow(); }}

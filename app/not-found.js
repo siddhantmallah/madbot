@@ -33,7 +33,7 @@ export default function NotFound() {
         </div>
       </header>
 
-      <main className="pad-responsive" style={{ flex: 1, maxWidth: 760, width: "100%", margin: "0 auto", padding: "clamp(40px, 8vw, 96px) 28px 64px", boxSizing: "border-box" }}>
+      <main id="main" className="pad-responsive" style={{ flex: 1, maxWidth: 760, width: "100%", margin: "0 auto", padding: "clamp(40px, 8vw, 96px) 28px 64px", boxSizing: "border-box" }}>
         <span className="card-kicker">404</span>
         <h1 style={{ fontSize: "clamp(32px, 5vw, 52px)", margin: "10px 0 14px" }}>Nothing lives at this address.</h1>
         <p style={{ margin: "0 0 28px", fontSize: 17, lineHeight: 1.6, color: "var(--fg-80)" }}>

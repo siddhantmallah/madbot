@@ -154,21 +154,38 @@ const FRAG = /* glsl */ `
   }
 `;
 
+// Whether this browser can open a WebGL 2 context, which is all three.js asks
+// for. The probe's context is released straight away so it doesn't count
+// against the browser's limit on live contexts.
+function webglAvailable() {
+  try {
+    const gl = document.createElement("canvas").getContext("webgl2");
+    if (!gl) return false;
+    gl.getExtension("WEBGL_lose_context")?.loseContext();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export default function HeroScene({ className, style, children }) {
   const hostRef = useRef(null);
-  // Set when WebGL can't start, so the caller's fallback (passed as children)
-  // shows in place of an empty box.
-  const [failed, setFailed] = useState(false);
+  // Decided once, before the first paint, so the caller's fallback (passed as
+  // children) shows in place of an empty box. Safe to touch the DOM here: the
+  // landing page loads this component with ssr:false, so it only ever renders
+  // in the browser.
+  const [failed] = useState(() => !webglAvailable());
 
   useEffect(() => {
     const host = hostRef.current;
-    if (!host) return undefined;
+    if (!host || failed) return undefined;
 
     let renderer;
     try {
       renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: "high-performance" });
     } catch {
-      setFailed(true);
+      // The probe passed but three.js still couldn't start. The stage keeps
+      // its grid and vignette; the copy over it is unaffected.
       return undefined;
     }
 
@@ -309,7 +326,7 @@ export default function HeroScene({ className, style, children }) {
       renderer.dispose();
       if (renderer.domElement.parentNode === host) host.removeChild(renderer.domElement);
     };
-  }, []);
+  }, [failed]);
 
   return (
     <>

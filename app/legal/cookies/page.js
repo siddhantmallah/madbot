@@ -46,8 +46,7 @@ const EXAMPLE_COUNTRIES = [
 
 function modelLabel(model) {
   if (model === MODELS.OPT_IN) return "Opt in: nothing optional runs until you say yes";
-  if (model === MODELS.OPT_OUT) return "Opt out: optional storage may run, and you can switch it off";
-  return "Notice only";
+  return "Opt out: optional storage may run, and you can switch it off";
 }
 
 function ReachUs({ address }) {

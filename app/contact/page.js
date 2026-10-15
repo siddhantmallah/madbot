@@ -71,7 +71,7 @@ export default function ContactPage() {
         </div>
       </header>
 
-      <main className="pad-responsive" style={{ maxWidth: 1180, margin: "0 auto", padding: "56px 28px 90px" }}>
+      <main id="main" className="pad-responsive" style={{ maxWidth: 1180, margin: "0 auto", padding: "56px 28px 90px" }}>
         <h1 style={{ margin: "0 0 12px", fontSize: "clamp(29px,7vw,50px)", maxWidth: "16em" }}>Contact</h1>
         <p className="text-muted" style={{ margin: "0 0 30px", maxWidth: "44em", fontSize: 16.5, lineHeight: 1.6 }}>
           One route per kind of question, so nothing sits in the wrong inbox. Where an address is not published yet,

@@ -15,7 +15,11 @@ const figtree = Figtree({ weight: ["400", "600", "700"], subsets: ["latin"], dis
 
 // The browser chrome follows the page: the dark stage, or the light theme's
 // ground. The same two values as --color-bg in globals.css.
+// colorScheme lets the browser paint its own default canvas and controls in
+// the right palette before the stylesheet arrives; globals.css then pins it
+// per theme.
 export const viewport = {
+  colorScheme: "dark light",
   themeColor: [
     { media: "(prefers-color-scheme: dark)", color: "#0A0810" },
     { media: "(prefers-color-scheme: light)", color: "#F6F4F8" },
@@ -156,6 +160,9 @@ export default async function RootLayout({ children }) {
         />
       </head>
       <body>
+        {/* Lets a keyboard user jump past the header. It lands on the page's
+            <main id="main">; a page whose <main> has no id leaves it inert. */}
+        <a href="#main" className="skip-link">Skip to main content</a>
         <AuthProvider>
           {children}
           {/* Renders nothing until it knows where the visitor is, then asks the

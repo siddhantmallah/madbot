@@ -94,33 +94,88 @@ const BAND_TAG_STYLE = [
   { background: "var(--color-accent-2-200)", color: "var(--color-accent-2-800)" },
 ];
 
+// Pause and play glyphs for the two moving strips' controls.
+function MotionGlyph({ paused }) {
+  return paused ? (
+    <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+      <path d="M2 1l7 4-7 4z" fill="currentColor" />
+    </svg>
+  ) : (
+    <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+      <path d="M2 1h2v8H2zM6 1h2v8H6z" fill="currentColor" />
+    </svg>
+  );
+}
+
+// Rotates through TICKER_LINES. Content that updates on its own for longer
+// than five seconds has to be pausable (WCAG 2.2.2), so it carries a button;
+// under reduced motion it never starts, and the button is hidden by CSS.
 function Ticker() {
   const [i, setI] = useState(0);
+  const [paused, setPaused] = useState(false);
   useEffect(() => {
     const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (calm) return;
+    if (calm || paused) return;
     const id = setInterval(() => setI((v) => (v + 1) % TICKER_LINES.length), 3400);
     return () => clearInterval(id);
-  }, []);
+  }, [paused]);
   return (
-    <span
-      key={i}
-      style={{
-        fontSize: 13,
-        color: "var(--fg-80)",
-        whiteSpace: "nowrap",
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-        // A flex item keeps min-width:auto and will not shrink below its
-        // nowrap text, however small the screen. That single span was forcing
-        // the whole hero column to 438px on a 375px phone.
-        minWidth: 0,
-        flex: "1 1 auto",
-        animation: "revealFade .45s ease",
-      }}
-    >
-      {TICKER_LINES[i]}
-    </span>
+    <>
+      <span
+        key={i}
+        style={{
+          fontSize: 13,
+          color: "var(--fg-80)",
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          // A flex item keeps min-width:auto and will not shrink below its
+          // nowrap text, however small the screen. That single span was forcing
+          // the whole hero column to 438px on a 375px phone.
+          minWidth: 0,
+          flex: "1 1 auto",
+          animation: "revealFade .45s ease",
+        }}
+      >
+        {TICKER_LINES[i]}
+      </span>
+      <button
+        type="button"
+        className="motion-toggle"
+        onClick={() => setPaused((p) => !p)}
+        aria-pressed={paused}
+        aria-label="Pause the rotating examples"
+        title={paused ? "Play" : "Pause"}
+      >
+        <MotionGlyph paused={paused} />
+      </button>
+    </>
+  );
+}
+
+// The strip under the hero. The second copy exists only to make the loop
+// seamless, so it is hidden from screen readers, who would otherwise hear
+// every line twice.
+function Marquee() {
+  const [paused, setPaused] = useState(false);
+  return (
+    <div className={paused ? "marquee is-paused" : "marquee"} role="region" aria-label="What MADBOT does">
+      <div className="marquee-track">
+        {[...MARQUEE, ...MARQUEE].map((t, i) => (
+          <span key={i} className="marquee-item" aria-hidden={i >= MARQUEE.length ? true : undefined}>{t}</span>
+        ))}
+      </div>
+      <button
+        type="button"
+        className="motion-toggle"
+        onClick={() => setPaused((p) => !p)}
+        aria-pressed={paused}
+        aria-label="Pause the scrolling strip"
+        title={paused ? "Play" : "Pause"}
+      >
+        <MotionGlyph paused={paused} />
+      </button>
+    </div>
   );
 }
 
@@ -214,7 +269,12 @@ export default function LandingPage() {
   }
 
   return (
-    <div ref={rootRef} className="marketing" style={{ minHeight: "100vh", fontSize: 16, overflowX: "hidden", background: "var(--color-bg)" }}>
+    // clip, not hidden. overflow-x:hidden quietly makes this wrapper a scroll
+    // container (the other axis computes to auto), and a sticky element sticks
+    // to its nearest scroll container — so the header stuck to a box that never
+    // scrolled, and slid away with the page. clip cuts the sideways overflow
+    // without creating a scroll container, so the header sticks to the viewport.
+    <div ref={rootRef} className="marketing" style={{ minHeight: "100vh", fontSize: 16, overflowX: "clip", background: "var(--color-bg)" }}>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(landingSchema(FAQS)) }}
@@ -259,7 +319,7 @@ export default function LandingPage() {
         />
       </header>
 
-      <main>
+      <main id="main">
         {/* HERO — the opportunity map, live, behind the headline. */}
         <section aria-labelledby="hero-h" data-hero-zone className="hero-full dark-stage grain">
           <div className="hero-grid" aria-hidden="true" />
@@ -291,11 +351,17 @@ export default function LandingPage() {
                 line box is already narrower than any em-based cap would be —
                 the 10.5em that used to sit here never once applied. The break
                 is placed by hand instead, so the accent phrase always starts
-                its own line however the rest of it wraps. */}
-            <h1 id="hero-h" className="reveal display-xl">
+                its own line however the rest of it wraps.
+
+                Deliberately not .reveal, unlike its siblings: that starts it at
+                opacity 0 until the page hydrates and the observer fires, and
+                this headline is the largest thing on the first screen — the
+                paint the LCP metric waits for, and the one line a visitor
+                without JavaScript must still see. */}
+            <h1 id="hero-h" className="display-xl">
               Turn your website into
               <br />
-              <span style={{ color: "var(--color-accent)" }}>your growth engine.</span>
+              <span style={{ color: "var(--accent-ink)" }}>your growth engine.</span>
             </h1>
             {/* "Earns the links" is gone from this line: nothing in the product
                 builds backlinks. Listing you in directories is what it does. */}
@@ -364,7 +430,7 @@ export default function LandingPage() {
             </div>
             <dl className="reveal" style={{ display: "flex", gap: 42, margin: "40px 0 0", flexWrap: "wrap" }}>
               <div>
-                <dt className="mono" style={{ color: "var(--color-accent)" }}>The free report</dt>
+                <dt className="mono" style={{ color: "var(--accent-ink)" }}>The free report</dt>
                 <dd style={{ margin: "6px 0 0", fontFamily: "var(--font-heading)", fontSize: 30 }}>No account</dd>
               </div>
               <div>
@@ -383,13 +449,7 @@ export default function LandingPage() {
             weren't; then a static row of four facts; now the facts and the
             ticker lines running as a marquee. Every line is something the code
             does today. */}
-        <div className="marquee" aria-label="What MADBOT does">
-          <div className="marquee-track">
-            {[...MARQUEE, ...MARQUEE].map((t, i) => (
-              <span key={i} className="marquee-item">{t}</span>
-            ))}
-          </div>
-        </div>
+        <Marquee />
 
         {/* HOW */}
         <section id="how" aria-labelledby="how-h" className="pad-responsive" style={{ maxWidth: 1180, margin: "0 auto", padding: "84px 28px 24px" }}>
@@ -408,7 +468,7 @@ export default function LandingPage() {
             {[
               { n: "1", bg: "var(--color-accent)", fg: "var(--on-accent)", ring: false, glow: "rgba(255,106,26,.35)", title: "Reads your site", body: "Products, buyers, rivals, technical debt, and the openings you didn't know were there. One URL, no tags." },
               { n: "2", bg: "var(--color-accent-2-500)", fg: "var(--on-accent)", ring: false, glow: "rgba(168,85,247,.35)", title: "Picks its battles", body: "Every opportunity gets an expected value, a difficulty and a confidence score. Cheap wins first, moonshots last." },
-              { n: "3", bg: "transparent", fg: "var(--color-accent)", ring: "var(--color-accent)", title: "Does the work", body: "Writes articles, social posts, listings and outreach drafts, and finds buyers — inside the rules you wrote in plain English." },
+              { n: "3", bg: "transparent", fg: "var(--accent-ink)", ring: "var(--color-accent)", title: "Does the work", body: "Writes articles, social posts, listings and outreach drafts, and finds buyers — inside the rules you wrote in plain English." },
               { n: "4", bg: "transparent", fg: "var(--color-accent-2-700)", ring: "var(--color-accent-2-500)", title: "Shows the receipts", body: "A digest whenever you want one, and every action on the record with the reason it was taken." },
             ].map((s, i) => (
               <li key={s.n} className="reveal" style={{ display: "flex", flexDirection: "column", gap: 13 }}>
@@ -579,10 +639,10 @@ export default function LandingPage() {
           <div className="split-2" style={{ gap: 48, alignItems: "center" }}>
             <div data-reveal data-stagger="90" className="grid-2" style={{ gap: 16 }}>
               {[
-                { k: "Technical checks per crawl", v: "25+", n: "Every one traceable to a line on your page", c: "var(--color-accent)" },
+                { k: "Technical checks per crawl", v: "25+", n: "Every one traceable to a line on your page", c: "var(--accent-ink)" },
                 { k: "Buying questions put to AI", v: "Live", n: "Real model calls with web search, not a lookup table", c: "var(--color-accent-2-700)" },
                 { k: "Free report", v: "~10s", n: "No account, no card, nothing written to your site", c: "var(--color-accent-2-700)" },
-                { k: "Published without asking", v: "None", n: "Articles arrive as a pull request you merge, posts wait for your approval", c: "var(--color-accent)" },
+                { k: "Published without asking", v: "None", n: "Articles arrive as a pull request you merge, posts wait for your approval", c: "var(--accent-ink)" },
               ].map((s) => (
                 <div key={s.k} className="card card-3d reveal" style={{ padding: 22, gap: 5, background: "var(--color-surface)", border: "1px solid var(--color-divider)" }}>
                   <span className="card-kicker" style={{ color: s.c }}>{s.k}</span>
@@ -655,7 +715,7 @@ export default function LandingPage() {
                 <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 5, fontSize: 12.5 }}>
                   {highlightsFor(p).slice(0, 6).map((h) => (
                     <li key={h} style={{ display: "flex", gap: 6 }}>
-                      <span style={{ color: "var(--color-accent)", flex: "none" }} aria-hidden="true">→</span>
+                      <span style={{ color: "var(--accent-ink)", flex: "none" }} aria-hidden="true">→</span>
                       <span>{h}</span>
                     </li>
                   ))}

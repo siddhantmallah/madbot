@@ -80,14 +80,12 @@ export function MadbotMark({ size = 30, color = "var(--fg)", label }) {
 const ICON_CACHE = new Map();
 
 function useProxiedIcon(faviconUrl) {
-  const [src, setSrc] = useState(() => ICON_CACHE.get(faviconUrl) || null);
+  // Stamped with the URL it was fetched for, so a stale icon from a previous
+  // site can never show against a new one.
+  const [loaded, setLoaded] = useState(null);
 
   useEffect(() => {
-    if (!faviconUrl) return undefined;
-    if (ICON_CACHE.has(faviconUrl)) {
-      setSrc(ICON_CACHE.get(faviconUrl));
-      return undefined;
-    }
+    if (!faviconUrl || ICON_CACHE.has(faviconUrl)) return undefined;
 
     let alive = true;
     (async () => {
@@ -104,7 +102,7 @@ function useProxiedIcon(faviconUrl) {
         if (!res.ok) throw new Error(String(res.status));
         const url = URL.createObjectURL(await res.blob());
         ICON_CACHE.set(faviconUrl, url);
-        if (alive) setSrc(url);
+        if (alive) setLoaded({ for: faviconUrl, src: url });
       } catch {
         // Cached as a failure so one unreachable icon is not retried by every
         // other instance on the page. The letter tile shows through.
@@ -117,7 +115,11 @@ function useProxiedIcon(faviconUrl) {
     };
   }, [faviconUrl]);
 
-  return src;
+  // A cached answer is used straight away, during render; another instance
+  // may have fetched it already.
+  if (!faviconUrl) return null;
+  if (ICON_CACHE.has(faviconUrl)) return ICON_CACHE.get(faviconUrl);
+  return loaded?.for === faviconUrl ? loaded.src : null;
 }
 
 /**

@@ -27,7 +27,7 @@ export default function PricingPage() {
         </div>
       </header>
 
-      <main className="pad-responsive" style={{ maxWidth: 1180, margin: "0 auto", padding: "56px 28px 90px" }}>
+      <main id="main" className="pad-responsive" style={{ maxWidth: 1180, margin: "0 auto", padding: "56px 28px 90px" }}>
         <h1 style={{ margin: "0 0 12px", fontSize: "clamp(29px,7vw,50px)", maxWidth: "20em" }}>
           Pay for the work, not the seats
         </h1>
@@ -118,7 +118,7 @@ export default function PricingPage() {
                 <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 6, fontSize: 12.5 }}>
                   {highlightsFor(p).map((h) => (
                     <li key={h} style={{ display: "flex", gap: 7 }}>
-                      <span style={{ color: "var(--color-accent)", flex: "none" }} aria-hidden="true">→</span>
+                      <span style={{ color: "var(--accent-ink)", flex: "none" }} aria-hidden="true">→</span>
                       <span>{h}</span>
                     </li>
                   ))}

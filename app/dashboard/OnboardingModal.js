@@ -3,6 +3,7 @@ import { createSite, addActivity } from "../../lib/sites";
 import { baseActivitySeed, hostnameOf, shortSiteName } from "../../lib/seed";
 import { MadbotMark, SiteIcon } from "../components/Brand";
 import { bandInfo } from "../../lib/autonomyDial";
+import { useModalDialog } from "./screens/useModalDialog";
 
 const STEP_BORDER = (active) => (active ? "var(--color-accent)" : "var(--color-divider)");
 
@@ -15,8 +16,28 @@ export default function OnboardingModal({ uid, canSkip, initialUrl, onClose, onF
   const [readError, setReadError] = useState("");
   const [siteInfo, setSiteInfo] = useState(null);
   const autoReadDone = useRef(false);
+  // The site this modal already created, and whether its first log entry was
+  // written. A retry after a half-finished start picks up from here; it used
+  // to call createSite again and leave a duplicate site behind.
+  const created = useRef({ siteId: null, seeded: false });
+
+  // Closing is safe at any point except once "Start marketing" is pressed:
+  // from then the site is being written and the dashboard is about to switch
+  // to it, and walking away mid-way would leave it half set up.
+  const canClose = !!canSkip && !started;
+  const { titleId, dialogProps } = useModalDialog({ onClose, canClose });
 
   const back = () => setStep((s) => Math.max(0, s - 1));
+
+  // Each step replaces the last one's content, taking the focused button with
+  // it. Move focus to the new step's heading so keyboard and screen reader
+  // users land on what changed rather than at the top of the page.
+  const shownStep = useRef(step);
+  useEffect(() => {
+    if (shownStep.current === step) return;
+    shownStep.current = step;
+    document.getElementById(titleId)?.focus();
+  }, [step, titleId]);
 
   useEffect(() => {
     if (initialUrl && !autoReadDone.current) {
@@ -62,15 +83,21 @@ export default function OnboardingModal({ uid, canSkip, initialUrl, onClose, onF
     const description = siteInfo?.description || "";
     const name = shortSiteName({ title, url: url.trim() });
     try {
-      const siteId = await createSite(uid, {
-        url: url.trim(),
-        title,
-        description,
-        autonomy: aut,
-        faviconUrl: siteInfo?.faviconUrl || null,
-        audit: siteInfo?.audit ? { ...siteInfo.audit, ranAt: new Date().toISOString() } : null,
-      });
-      await Promise.all(baseActivitySeed(domain, { read: !!siteInfo }).map((entry) => addActivity(uid, siteId, entry)));
+      if (!created.current.siteId) {
+        created.current.siteId = await createSite(uid, {
+          url: url.trim(),
+          title,
+          description,
+          autonomy: aut,
+          faviconUrl: siteInfo?.faviconUrl || null,
+          audit: siteInfo?.audit ? { ...siteInfo.audit, ranAt: new Date().toISOString() } : null,
+        });
+      }
+      const siteId = created.current.siteId;
+      if (!created.current.seeded) {
+        await Promise.all(baseActivitySeed(domain, { read: !!siteInfo }).map((entry) => addActivity(uid, siteId, entry)));
+        created.current.seeded = true;
+      }
       setTimeout(() => {
         // Leads need a confirmed buyer profile first, so "starting leads" here
         // was a promise the product then didn't keep.
@@ -84,6 +111,7 @@ export default function OnboardingModal({ uid, canSkip, initialUrl, onClose, onF
 
   return (
     <div
+      {...dialogProps}
       style={{
         position: "fixed",
         inset: 0,
@@ -104,7 +132,7 @@ export default function OnboardingModal({ uid, canSkip, initialUrl, onClose, onF
 
         {step === 0 && (
           <div style={{ textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
-            <h1 style={{ margin: 0, fontSize: 50, maxWidth: 640 }}>Give me a website. That&apos;s the whole setup.</h1>
+            <h1 id={titleId} tabIndex={-1} style={{ margin: 0, fontSize: 50, maxWidth: 640, outline: "none" }}>Give me a website. That&apos;s the whole setup.</h1>
             <p className="text-muted" style={{ margin: 0, fontSize: 16, maxWidth: 520 }}>
               No tags to install, no keyword research, no 40-field form. I&apos;ll read the site myself and tell you
               what I found.
@@ -113,8 +141,13 @@ export default function OnboardingModal({ uid, canSkip, initialUrl, onClose, onF
               onSubmit={(e) => { e.preventDefault(); readSite(); }}
               style={{ display: "flex", gap: 10, width: "min(520px,100%)", marginTop: 6 }}
             >
+              <label htmlFor="onboard-url" className="sr-only">Your website address</label>
               <input
                 className="input"
+                id="onboard-url"
+                type="text"
+                inputMode="url"
+                autoComplete="url"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 placeholder="yourcompany.com"
@@ -135,7 +168,7 @@ export default function OnboardingModal({ uid, canSkip, initialUrl, onClose, onF
         {step === 1 && (
           <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 16 }}>
             <div style={{ textAlign: "center" }}>
-              <h2 style={{ margin: "0 0 5px", fontSize: 36 }}>Right — here&apos;s what I found.</h2>
+              <h2 id={titleId} tabIndex={-1} style={{ margin: "0 0 5px", fontSize: 36, outline: "none" }}>Right — here&apos;s what I found.</h2>
               <p className="text-muted" style={{ margin: 0, fontSize: 14.5 }}>
                 {readError || "Correct anything later from the dashboard — corrections teach me faster than forms do."}
               </p>
@@ -183,7 +216,7 @@ export default function OnboardingModal({ uid, canSkip, initialUrl, onClose, onF
         {step === 2 && (
           <div style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
             <div style={{ textAlign: "center" }}>
-              <h2 style={{ margin: "0 0 5px", fontSize: 36 }}>Last question. How much rope?</h2>
+              <h2 id={titleId} tabIndex={-1} style={{ margin: "0 0 5px", fontSize: 36, outline: "none" }}>Last question. How much rope?</h2>
               <p className="text-muted" style={{ margin: 0, fontSize: 14.5 }}>You can change this at any moment, and it&apos;s the only setting that really matters.</p>
             </div>
             <div className="grid-4" style={{ gap: 12, width: "100%" }}>
@@ -197,6 +230,7 @@ export default function OnboardingModal({ uid, canSkip, initialUrl, onClose, onF
               }).map((o) => (
                 <button
                   key={o.v}
+                  aria-pressed={aut === o.v}
                   onClick={() => setAut(o.v)}
                   style={{ textAlign: "left", border: `2px solid ${STEP_BORDER(aut === o.v)}`, background: "var(--color-bg)", borderRadius: 26, padding: 16, cursor: "pointer", fontFamily: "var(--font-body)" }}
                 >
@@ -218,7 +252,7 @@ export default function OnboardingModal({ uid, canSkip, initialUrl, onClose, onF
 
         {step === 3 && (
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 20, textAlign: "center" }}>
-            <h2 style={{ margin: 0, fontSize: 40, maxWidth: 600 }}>
+            <h2 id={titleId} tabIndex={-1} style={{ margin: 0, fontSize: 40, maxWidth: 600, outline: "none" }}>
               {started ? "Off it goes." : "One button and I start working."}
             </h2>
             <p className="text-muted" style={{ margin: 0, fontSize: 15, maxWidth: 460 }}>
@@ -256,11 +290,27 @@ export default function OnboardingModal({ uid, canSkip, initialUrl, onClose, onF
               <span className="tag tag-neutral">Nothing published without your rules</span>
             </div>
             {canSkip ? (
-              <button className="btn btn-ghost" onClick={onClose} style={{ fontSize: 13 }}>Cancel</button>
+              <button className="btn btn-ghost" onClick={onClose} disabled={!canClose} style={{ fontSize: 13 }}>Cancel</button>
             ) : null}
           </div>
         )}
       </div>
+
+      {/* A way out on every step, not just the last. Last in the markup so Tab
+          reaches the step's own controls first. */}
+      {canSkip ? (
+        <button
+          type="button"
+          className="btn btn-ghost"
+          onClick={onClose}
+          disabled={!canClose}
+          aria-label="Close setup"
+          title="Close setup"
+          style={{ position: "absolute", top: 18, right: 18, fontSize: 22, lineHeight: 1, paddingInline: 10 }}
+        >
+          ×
+        </button>
+      ) : null}
     </div>
   );
 }

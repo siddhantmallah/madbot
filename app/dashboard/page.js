@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../providers/AuthProvider";
 import { OrgProvider, useOrg } from "../providers/OrgProvider";
 import {
@@ -38,7 +38,8 @@ import {
 import { diffSnapshots } from "../../lib/auditClient";
 import { actionFor, briefFor, buildOpportunities } from "../../lib/opportunities";
 import { suggestContent } from "../../lib/contentSuggestions";
-import { enqueueAndRun } from "../../lib/jobClient";
+import { effectivePolicy, retentionFor } from "../../lib/dataPolicy";
+import { closeAbandonedJobs, enqueueAndRun, isLive } from "../../lib/jobClient";
 import { JOB_TYPES } from "../../lib/jobTypes";
 import { usageSummary, siteAccess, featureAccess, clampAutonomy } from "../../lib/entitlements";
 import { FEATURES, autonomyLabel } from "../../lib/plans";
@@ -114,7 +115,7 @@ function FullScreenLoading() {
 function OrgProblem({ message, memberships, onSwitch, onSignOut }) {
   const others = (memberships || []).filter((m) => m.status === "active");
   return (
-    <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 24, background: "var(--color-bg)", color: "var(--color-text)" }}>
+    <main id="main" style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 24, background: "var(--color-bg)", color: "var(--color-text)" }}>
       <div className="card" style={{ maxWidth: 460, padding: 28, gap: 14 }}>
         <span className="card-kicker">Organisation</span>
         <h1 style={{ margin: 0, fontSize: 24 }}>Nothing to open right now</h1>
@@ -137,6 +138,44 @@ function OrgProblem({ message, memberships, onSwitch, onSignOut }) {
   );
 }
 
+/**
+ * One live list under the active site (activity, approvals, leads…), stamped
+ * with the site it was loaded for. A site switch shows an empty list until the
+ * new site's arrives, rather than the previous site's data, and nothing is
+ * cleared inside an effect.
+ */
+function useSiteList(subscribe, orgId, siteId) {
+  const key = orgId && siteId ? `${orgId}/${siteId}` : null;
+  const [state, setState] = useState({ key: null, items: [] });
+  useEffect(() => {
+    if (!key) return undefined;
+    return subscribe(orgId, siteId, (items) => setState({ key, items }));
+  }, [subscribe, key, orgId, siteId]);
+  return state.key === key ? state.items : EMPTY_LIST;
+}
+const EMPTY_LIST = [];
+
+/**
+ * State that belongs to one key (a site, an organisation) and starts again at
+ * `initial` when the key changes. An answer that arrives late for the old key
+ * is ignored rather than shown under the new one. `initial` must be a
+ * constant: it is compared by identity.
+ */
+function useKeyedState(key, initial) {
+  const [state, setState] = useState({ key, value: initial });
+  const value = state.key === key ? state.value : initial;
+  const set = useCallback(
+    (next) =>
+      setState((prev) => {
+        const base = prev.key === key ? prev.value : initial;
+        return { key, value: typeof next === "function" ? next(base) : next };
+      }),
+    [key, initial]
+  );
+  return [value, set];
+}
+const GITHUB_UNKNOWN = { checked: false, connected: false, repo: null };
+
 function DashboardInner() {
   const router = useRouter();
   const params = useSearchParams();
@@ -158,39 +197,63 @@ function DashboardInner() {
 
   const [sites, setSites] = useState(null);
   const [activeSiteId, setActiveSiteId] = useState(null);
-  const [site, setSite] = useState(null);
-  const [activity, setActivity] = useState([]);
-  const [approvals, setApprovals] = useState([]);
-  const [leads, setLeads] = useState([]);
-  const [content, setContent] = useState([]);
-  const [competitors, setCompetitors] = useState([]);
+  const siteKey = user && orgId && activeSiteId ? `${orgId}/${activeSiteId}` : null;
+  const [site, setSite] = useKeyedState(siteKey, null);
+  const activity = useSiteList(subscribeActivity, user && orgId ? orgId : null, activeSiteId);
+  const approvals = useSiteList(subscribeApprovals, user && orgId ? orgId : null, activeSiteId);
+  const leads = useSiteList(subscribeLeads, user && orgId ? orgId : null, activeSiteId);
+  const content = useSiteList(subscribeContent, user && orgId ? orgId : null, activeSiteId);
+  const competitors = useSiteList(subscribeCompetitors, user && orgId ? orgId : null, activeSiteId);
   const [competitorBusy, setCompetitorBusy] = useState(null);
   const [addingCompetitor, setAddingCompetitor] = useState(false);
   const [digestSentTo, setDigestSentTo] = useState(null);
-  const [jobs, setJobs] = useState([]);
+  const jobs = useSiteList(subscribeJobs, user && orgId ? orgId : null, activeSiteId);
+  // Once per site visit, close runs that were abandoned (lib/jobClient.js
+  // closeAbandonedJobs), so the list and the "in flight" count tell the truth.
+  // A run whose lease is still held, in another tab, is left alone.
+  const sweptSite = useRef(null);
+  useEffect(() => {
+    if (!siteKey || !jobs.length || sweptSite.current === siteKey) return;
+    sweptSite.current = siteKey;
+    closeAbandonedJobs(orgId, activeSiteId, jobs).catch(() => {});
+  }, [siteKey, jobs, orgId, activeSiteId]);
   const [jobBusy, setJobBusy] = useState(null);
 
   // Social. `socialNetworks` stays null until the status call answers, so the
   // screen can say "checking" rather than flashing "not connected" at someone
   // whose accounts are connected fine.
-  const [socialPosts, setSocialPosts] = useState([]);
-  const [socialNetworks, setSocialNetworks] = useState(null);
-  const [socialAiConfigured, setSocialAiConfigured] = useState(false);
-  // Why it can't run, in the server's own words, so the screen says "the key is
-  // being rejected" rather than a generic "unavailable".
-  const [aiStatusMessage, setAiStatusMessage] = useState(null);
+  const socialPosts = useSiteList(subscribeSocialPosts, user && orgId ? orgId : null, activeSiteId);
+  const [socialNetworks, setSocialNetworks] = useKeyedState(siteKey, null);
   const [drafting, setDrafting] = useState(false);
   const [socialPublishingId, setSocialPublishingId] = useState(null);
 
-  const [listings, setListings] = useState([]);
+  const listings = useSiteList(subscribeListings, user && orgId ? orgId : null, activeSiteId);
   const [writingListingId, setWritingListingId] = useState(null);
 
   // Search Console. The OAuth access token is session-only by design: Firebase
   // hands back no refresh token, so we never persist it and just reconnect.
-  const [gsc, setGsc] = useState({ status: "idle", error: "", properties: [], siteUrl: null, data: null });
+  // Stamped with the site it was loaded for. Switching sites used to keep the
+  // previous site's traffic on screen, feed it into the new site's
+  // opportunities and digest, and let Refresh save site A's property onto
+  // site B. Read through `gsc` below, which is empty for any other site.
+  const [gscState, setGscState] = useState({ siteId: null, status: "idle", error: "", properties: [], siteUrl: null, data: null });
   const gscTokenRef = useRef(null);
+  const GSC_EMPTY = { status: "idle", error: "", properties: [], siteUrl: null, data: null };
+  const gsc = gscState.siteId === activeSiteId ? gscState : { ...GSC_EMPTY, siteId: activeSiteId };
+  // Updates apply to the active site's state, starting fresh if the stored
+  // state belongs to another site.
+  const setGsc = (update) =>
+    setGscState((prev) => {
+      const base = prev.siteId === activeSiteId ? prev : { ...GSC_EMPTY, siteId: activeSiteId };
+      return { ...(typeof update === "function" ? update(base) : update), siteId: activeSiteId };
+    });
+  const [sitesError, setSitesError] = useState(null);
+  const [sitesRetry, setSitesRetry] = useState(0);
   const jobsInFlight = useRef(new Set());
-  const [onboardOpen, setOnboardOpen] = useState(false);
+  // null: decide from the data (open when there are no sites yet); after that,
+  // whatever the person chose.
+  const [onboardChoice, setOnboardOpen] = useState(null);
+  const onboardOpen = onboardChoice ?? (sites !== null && sites.length === 0);
 
   const [aut, setAut] = useState(62);
   const [rules, setRules] = useState([]);
@@ -209,21 +272,24 @@ function DashboardInner() {
 
   useEffect(() => {
     if (!user || !orgId) return undefined;
-    return subscribeSites(orgId, (list) => {
-      setSites(list);
-      setActiveSiteId((prev) => (prev && list.some((s) => s.id === prev) ? prev : list[0]?.id || null));
-    });
-  }, [user, orgId]);
+    return subscribeSites(
+      orgId,
+      (list) => {
+        setSitesError(null);
+        setSites(list);
+        setActiveSiteId((prev) => (prev && list.some((s) => s.id === prev) ? prev : list[0]?.id || null));
+      },
+      (err) =>
+        setSitesError(
+          /permission/i.test(String(err?.code || err?.message))
+            ? "Your sites couldn't be read: the database refused access. If you were just added to this organisation, sign out and back in."
+            : "Your sites couldn't be loaded. Check your connection and try again."
+        )
+    );
+  }, [user, orgId, sitesRetry]);
 
   useEffect(() => {
-    if (sites !== null && sites.length === 0) setOnboardOpen(true);
-  }, [sites]);
-
-  useEffect(() => {
-    if (!user || !orgId || !activeSiteId) {
-      setSite(null);
-      return undefined;
-    }
+    if (!siteKey) return undefined;
     return subscribeSite(orgId, activeSiteId, (s) => {
       setSite(s);
       if (s) {
@@ -235,81 +301,14 @@ function DashboardInner() {
         setDismissedOpportunities(s.dismissedOpportunities || {});
       }
     });
-  }, [user, orgId, activeSiteId]);
-
-  useEffect(() => {
-    if (!user || !orgId || !activeSiteId) {
-      setActivity([]);
-      return undefined;
-    }
-    return subscribeActivity(orgId, activeSiteId, setActivity);
-  }, [user, orgId, activeSiteId]);
-
-  useEffect(() => {
-    if (!user || !orgId || !activeSiteId) {
-      setApprovals([]);
-      return undefined;
-    }
-    return subscribeApprovals(orgId, activeSiteId, setApprovals);
-  }, [user, orgId, activeSiteId]);
-
-  useEffect(() => {
-    if (!user || !orgId || !activeSiteId) {
-      setLeads([]);
-      return undefined;
-    }
-    return subscribeLeads(orgId, activeSiteId, setLeads);
-  }, [user, orgId, activeSiteId]);
-
-  useEffect(() => {
-    if (!user || !orgId || !activeSiteId) {
-      setContent([]);
-      return undefined;
-    }
-    return subscribeContent(orgId, activeSiteId, setContent);
-  }, [user, orgId, activeSiteId]);
-
-  useEffect(() => {
-    if (!user || !orgId || !activeSiteId) {
-      setCompetitors([]);
-      return undefined;
-    }
-    return subscribeCompetitors(orgId, activeSiteId, setCompetitors);
-  }, [user, orgId, activeSiteId]);
-
-  useEffect(() => {
-    if (!user || !orgId || !activeSiteId) {
-      setJobs([]);
-      return undefined;
-    }
-    return subscribeJobs(orgId, activeSiteId, setJobs);
-  }, [user, orgId, activeSiteId]);
-
-  useEffect(() => {
-    if (!user || !orgId || !activeSiteId) {
-      setSocialPosts([]);
-      return undefined;
-    }
-    return subscribeSocialPosts(orgId, activeSiteId, setSocialPosts);
-  }, [user, orgId, activeSiteId]);
-
-  useEffect(() => {
-    if (!user || !orgId || !activeSiteId) {
-      setListings([]);
-      return undefined;
-    }
-    return subscribeListings(orgId, activeSiteId, setListings);
-  }, [user, orgId, activeSiteId]);
+  }, [siteKey, orgId, activeSiteId, setSite]);
 
   // Connection state for the social accounts. Not a snapshot listener: the
   // integration documents are server-only in the rules, precisely because they
   // hold live posting credentials, so this reads the safe summary the API
   // returns instead.
   useEffect(() => {
-    if (!user || !orgId || !activeSiteId) {
-      setSocialNetworks(null);
-      return undefined;
-    }
+    if (!siteKey) return undefined;
     let cancelled = false;
     (async () => {
       try {
@@ -328,32 +327,6 @@ function DashboardInner() {
     };
   }, [user, orgId, activeSiteId]);
 
-  // Whether the server can draft at all. Asked once — it depends on the
-  // deployment, not on the site.
-  //
-  // Deliberately /api/ai-status rather than the cheaper "is the key set" probe:
-  // a revoked or out-of-credit key is still present in the environment, so
-  // checking presence reports everything as ready and then every button fails
-  // with a 401 nobody can interpret. That probe makes one live call and caches
-  // it, and it is the only thing that can tell the difference.
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch("/api/ai-status");
-        const data = await res.json();
-        if (!cancelled) {
-          setSocialAiConfigured(!!data.ready);
-          setAiStatusMessage(data.ready ? null : data.message || null);
-        }
-      } catch {
-        if (!cancelled) setSocialAiConfigured(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   // There is deliberately no background timer writing invented activity here.
   // The feed only grows when something real happens — a fetch at setup, or an
@@ -379,14 +352,11 @@ function DashboardInner() {
   // What the account has actually spent this month, so the allowance isn't a
   // number that only exists on the pricing page. Account-wide, because that is
   // what the allowance is.
-  const [usageNow, setUsageNow] = useState(null);
+  const [usageNow, setUsageNow] = useKeyedState(user && orgId ? orgId : null, null);
   // A stable key, so the subscription only restarts when the set of sites does.
   const siteIdsKey = (sites || []).map((s) => s.id).join(",");
   useEffect(() => {
-    if (!user || !orgId) {
-      setUsageNow(null);
-      return undefined;
-    }
+    if (!user || !orgId) return undefined;
     return subscribeUsage(orgId, siteIdsKey ? siteIdsKey.split(",") : [], setUsageNow);
   }, [user, orgId, siteIdsKey]);
 
@@ -456,16 +426,34 @@ function DashboardInner() {
         title: data.title || site.title,
         faviconUrl: data.faviconUrl || site.faviconUrl || null,
       });
-      addActivity(orgId, activeSiteId, {
+      persist(addActivity(orgId, activeSiteId, {
         k: "seo",
         text: `Re-read ${hostnameOf(site.url)} — score ${data.score}, ${data.counts.critical} critical`,
         why: "You asked for a fresh audit",
         result: `Score ${data.score}`,
-      });
+      }), "log the audit");
       setToast(`Audit refreshed — score ${data.score}, ${data.counts.critical} critical finding${data.counts.critical === 1 ? "" : "s"}.`);
+    } catch (err) {
+      setToast(`The audit didn't finish: ${err?.message || "try again"}.`);
     } finally {
       setRerunning(false);
     }
+  }
+
+  /**
+   * Writes the screen fires without waiting go through here. About twenty of
+   * them had no catch, so a refusal (a role without permission, a rule, the
+   * network) vanished and the screen kept showing a change that never saved.
+   */
+  function persist(write, what) {
+    return Promise.resolve(write).catch((err) => {
+      const code = String(err?.code || "");
+      setToast(
+        code.includes("permission-denied")
+          ? `Couldn't ${what}: your role in this organisation doesn't allow it.`
+          : `Couldn't ${what}. ${err?.message || "Try again."}`
+      );
+    });
   }
 
   function go(k) {
@@ -484,42 +472,43 @@ function DashboardInner() {
       setAut(allowed);
       setToast(`${usage.plan.name} stops at "${autonomyLabel(autonomyCap)}". Saved at that level.`);
     }
-    updateSiteSettings(orgId, activeSiteId, { autonomy: allowed });
+    persist(updateSiteSettings(orgId, activeSiteId, { autonomy: allowed }), "save the autonomy level");
   }
+  // The write happens outside the state updater: React may run an updater
+  // twice, and this used to write the rules from inside one.
   function saveRules(updater) {
-    setRules((prev) => {
-      const next = typeof updater === "function" ? updater(prev) : updater;
-      if (user && activeSiteId) updateSiteSettings(orgId, activeSiteId, { rules: next });
-      return next;
-    });
+    const next = typeof updater === "function" ? updater(rules) : updater;
+    setRules(next);
+    if (user && activeSiteId) persist(updateSiteSettings(orgId, activeSiteId, { rules: next }), "save your rules");
   }
   function saveVoice(v) {
     setVoice(v);
-    if (user && activeSiteId) updateSiteSettings(orgId, activeSiteId, { voice: v });
+    if (user && activeSiteId) persist(updateSiteSettings(orgId, activeSiteId, { voice: v }), "save the voice");
   }
   function togglePause() {
-    setPaused((p) => {
-      const next = !p;
-      if (user && activeSiteId) updateSiteSettings(orgId, activeSiteId, { paused: next });
-      return next;
-    });
+    const next = !paused;
+    setPaused(next);
+    if (user && activeSiteId) {
+      persist(updateSiteSettings(orgId, activeSiteId, { paused: next }), next ? "pause" : "resume");
+      setToast(next ? "Paused: nothing runs on a schedule until you resume. Anything you start yourself still runs." : "Resumed.");
+    }
   }
   function toggleUndo(id, undone) {
-    if (user && activeSiteId) setActivityUndone(orgId, activeSiteId, id, undone);
+    if (user && activeSiteId) persist(setActivityUndone(orgId, activeSiteId, id, undone), "update that entry");
   }
   function approve(id) {
     if (!user || !activeSiteId) return;
-    setApprovalStatus(orgId, activeSiteId, id, "yes");
+    persist(setApprovalStatus(orgId, activeSiteId, id, "yes"), "approve that");
     // An approved draft is now the customer's to send from their own mail app.
     // Reflect that on the lead, so its card stops saying the draft is waiting.
     const a = approvals.find((x) => x.id === id);
-    if (a?.leadId) updateLead(orgId, activeSiteId, a.leadId, { status: "approved" });
+    if (a?.leadId) persist(updateLead(orgId, activeSiteId, a.leadId, { status: "approved" }), "update the lead");
   }
   function decline(id) {
-    if (user && activeSiteId) setApprovalStatus(orgId, activeSiteId, id, "no");
+    if (user && activeSiteId) persist(setApprovalStatus(orgId, activeSiteId, id, "no"), "decline that");
   }
   function editApproval(id, patch) {
-    if (user && activeSiteId) updateApproval(orgId, activeSiteId, id, patch);
+    if (user && activeSiteId) persist(updateApproval(orgId, activeSiteId, id, patch), "save your changes");
   }
 
   // What taking an opportunity did: "content" (a piece planned and written),
@@ -664,45 +653,57 @@ function DashboardInner() {
   function dismissOpportunity(oppId) {
     if (!user || !activeSiteId) return;
     setDismissedOpportunities((prev) => ({ ...prev, [oppId]: true }));
-    updateSiteSettings(orgId, activeSiteId, { [`dismissedOpportunities.${oppId}`]: true });
+    persist(updateSiteSettings(orgId, activeSiteId, { [`dismissedOpportunities.${oppId}`]: true }), "hide that");
   }
 
   // sendLead and saveLeadDraft are gone. sendLead marked a lead "sent" while
   // delivering nothing, which was honest in its wording and confusing in
   // practice. Outreach now goes to Approvals and is sent from there, so there
   // is one path and it actually delivers.
+  // A declined lead is kept only as long as a rejected one should be, and
+  // qualification skips it (Leads.js). It used to keep the 90-day active
+  // retention, and could still be qualified, spending a lead credit.
   function declineLead(id) {
-    if (user && activeSiteId) updateLead(orgId, activeSiteId, id, { status: "declined" });
+    if (!user || !activeSiteId) return;
+    const lead = leads.find((l) => l.id === id);
+    const r = retentionFor({ status: "declined", policy: effectivePolicy(site?.dataPolicy) });
+    persist(
+      updateLead(orgId, activeSiteId, id, {
+        status: "declined",
+        ...(lead?.provenance ? { provenance: { ...lead.provenance, status: "rejected", retentionUntil: r.retentionUntil, retentionNote: r.note } } : {}),
+      }),
+      "decline that company"
+    );
   }
 
   // No GitHub repo connected: publishing is honestly just a status flag, and
   // says so. Once a repo is connected, publishGithub takes over below.
   function publishContent(id) {
     if (!user || !activeSiteId) return;
-    updateContentItem(orgId, activeSiteId, id, { status: "published" });
+    persist(updateContentItem(orgId, activeSiteId, id, { status: "published" }), "mark it published");
     const item = content.find((c) => c.id === id);
     if (item) {
-      addActivity(orgId, activeSiteId, {
-        k: "content",
-        text: `Marked "${item.title}" as published (not live on your site)`,
-        why: "You approved this piece",
-        result: "Marked published",
-      });
+      persist(
+        addActivity(orgId, activeSiteId, {
+          k: "content",
+          text: `Marked "${item.title}" as published (not live on your site)`,
+          why: "You approved this piece",
+          result: "Marked published",
+        }),
+        "log that"
+      );
     }
   }
 
   // ---- publish by GitHub PR ----
-  const [github, setGithub] = useState({ checked: false, connected: false, repo: null });
+  const [github, setGithub] = useKeyedState(siteKey, GITHUB_UNKNOWN);
   const [connectingGithub, setConnectingGithub] = useState(false);
   const [githubError, setGithubError] = useState("");
   const [publishingId, setPublishingId] = useState(null);
 
   useEffect(() => {
     let alive = true;
-    if (!user || !orgId || !activeSiteId) {
-      setGithub({ checked: false, connected: false, repo: null });
-      return undefined;
-    }
+    if (!siteKey) return undefined;
     user.getIdToken().then((idToken) =>
       fetch(`/api/integrations/github?siteId=${activeSiteId}`, { headers: { "x-id-token": idToken } })
         .then((r) => r.json())
@@ -732,12 +733,14 @@ function DashboardInner() {
       const data = await res.json();
       if (!data.ok) {
         setGithubError(data.error || "Couldn't connect that repository.");
-        return;
+        return false;
       }
       setGithub({ checked: true, connected: true, repo: data.repo, defaultBranch: data.defaultBranch });
       setToast(`Connected to ${data.repo}. Publishing opens a pull request there.`);
+      return true;
     } catch (err) {
       setGithubError(String(err?.message || err));
+      return false;
     } finally {
       setConnectingGithub(false);
     }
@@ -745,13 +748,24 @@ function DashboardInner() {
 
   async function disconnectGithub() {
     if (!user || !activeSiteId) return;
-    const idToken = await user.getIdToken();
-    await fetch("/api/integrations/github", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ idToken, siteId: activeSiteId }),
-    });
-    setGithub({ checked: true, connected: false, repo: null });
+    try {
+      const idToken = await user.getIdToken();
+      const res = await fetch("/api/integrations/github", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken, siteId: activeSiteId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      // It used to show "disconnected" whatever the server said.
+      if (!res.ok || data.ok === false) {
+        setToast(data.error || "Couldn't disconnect GitHub. It's still connected; try again.");
+        return;
+      }
+      setGithub({ checked: true, connected: false, repo: null });
+      setToast("GitHub disconnected.");
+    } catch {
+      setToast("Couldn't reach the server, so GitHub is still connected. Try again.");
+    }
   }
 
   async function publishViaGithub(id) {
@@ -788,8 +802,17 @@ function DashboardInner() {
   // Whether the model features can actually run — probed, not assumed. A key
   // that exists but has been disabled or revoked used to report as ready, so
   // every button was enabled and every click failed with an uninterpretable 401.
+  // Whether the server can use a model at all, from /api/ai-status, which makes
+  // one live call and caches it: a revoked or out-of-credit key is still
+  // present in the environment, so checking presence would report everything
+  // ready and then every button would fail with a 401 nobody can interpret.
+  // Asked once per page (it used to be asked twice, by two effects).
   const [ai, setAi] = useState({ state: "checking", ready: false, message: null });
   const writingEnabled = ai.ready;
+  const socialAiConfigured = !!ai.ready;
+  // Why it can't run, in the server's own words, so the screen says "the key is
+  // being rejected" rather than a generic "unavailable".
+  const aiStatusMessage = ai.ready ? null : ai.message || null;
   const [writingId, setWritingId] = useState(null);
   const [writeError, setWriteError] = useState("");
 
@@ -876,7 +899,11 @@ function DashboardInner() {
   }
 
   async function askForPiece({ topic, kind, day, angle }) {
-    if (!user || !activeSiteId || !insights) return;
+    if (!user || !activeSiteId) return;
+    if (!insights) {
+      setToast("The site hasn't been read yet, so there's nothing to plan from. Run a crawl first.");
+      return;
+    }
     setAsking(true);
     try {
       const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -899,18 +926,26 @@ function DashboardInner() {
         result: "Planned",
       });
       setToast(`"${topic}" added to the plan.`);
+    } catch (err) {
+      setToast(`Couldn't add that piece: ${err?.message || "try again"}.`);
     } finally {
       setAsking(false);
     }
   }
 
+  // Never throws: a network failure comes back as { ok: false }, so no caller
+  // can be left on "loading".
   async function gscCall(action, extra = {}) {
-    const res = await fetch("/api/search-console", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ idToken: await user.getIdToken(), token: gscTokenRef.current, action, ...extra }),
-    });
-    return res.json();
+    try {
+      const res = await fetch("/api/search-console", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken: await user.getIdToken(), token: gscTokenRef.current, action, ...extra }),
+      });
+      return await res.json().catch(() => ({ ok: false, error: `The server answered ${res.status}.` }));
+    } catch {
+      return { ok: false, error: "Couldn't reach the server. Check your connection and try again." };
+    }
   }
 
   async function loadGscSummary(propertyUrl) {
@@ -921,7 +956,7 @@ function DashboardInner() {
       return;
     }
     setGsc((s) => ({ ...s, status: "ready", siteUrl: propertyUrl, data }));
-    if (user && activeSiteId) updateSiteSettings(orgId, activeSiteId, { gscProperty: propertyUrl });
+    if (user && activeSiteId) persist(updateSiteSettings(orgId, activeSiteId, { gscProperty: propertyUrl }), "remember the Search Console property");
   }
 
   async function handleConnectSearchConsole() {
@@ -964,12 +999,12 @@ function DashboardInner() {
       const data = await res.json();
       if (!data.ok) return { error: data.error };
       await addCompetitor(orgId, activeSiteId, { url: data.snapshot.url, snapshot: data.snapshot });
-      addActivity(orgId, activeSiteId, {
+      persist(addActivity(orgId, activeSiteId, {
         k: "link",
         text: `Started watching ${hostnameOf(url)} for changes`,
         why: "You added them as a competitor",
         result: "Watching",
-      });
+      }), "log that");
       return {};
     } catch {
       return { error: "Couldn't reach that site." };
@@ -986,7 +1021,11 @@ function DashboardInner() {
         headers: { "x-id-token": await user.getIdToken() },
       });
       const data = await res.json();
-      if (!data.ok) return;
+      // It used to return silently here, so a failed check looked like "no change".
+      if (!data.ok) {
+        setToast(`Couldn't check ${hostnameOf(c.url)}: ${data.error || "the site didn't answer"}.`);
+        return;
+      }
       const changes = diffSnapshots(c.snapshot, data.snapshot);
       await updateCompetitor(orgId, activeSiteId, c.id, {
         snapshot: data.snapshot,
@@ -994,14 +1033,18 @@ function DashboardInner() {
         lastCheckedAt: new Date(),
       });
       if (changes.length) {
-        addActivity(orgId, activeSiteId, {
+        persist(addActivity(orgId, activeSiteId, {
           k: "link",
           text: `${hostnameOf(c.url)} changed: ${changes[0].text}`,
           why: "Detected by comparing against the previous snapshot",
           result: `${changes.length} change${changes.length === 1 ? "" : "s"}`,
-        });
+        }), "log that");
         setToast(`${hostnameOf(c.url)} changed — ${changes[0].text}`);
+      } else {
+        setToast(`No change on ${hostnameOf(c.url)} since the last check.`);
       }
+    } catch {
+      setToast(`Couldn't check ${hostnameOf(c.url)} just now. Try again shortly.`);
     } finally {
       setCompetitorBusy(null);
     }
@@ -1060,15 +1103,10 @@ function DashboardInner() {
   // Two steps on purpose: working out the questions is cheap, answering them
   // with live web search is not. The user sees and approves the questions
   // before anything expensive runs.
-  const [visQuestions, setVisQuestions] = useState(null);
+  // Per site: a different site's questions must not linger on screen.
+  const [visQuestions, setVisQuestions] = useKeyedState(activeSiteId, null);
   const [visPlanning, setVisPlanning] = useState(false);
-  const [visError, setVisError] = useState(null);
-
-  // A different site's questions must not linger on screen.
-  useEffect(() => {
-    setVisQuestions(null);
-    setVisError(null);
-  }, [activeSiteId]);
+  const [visError, setVisError] = useKeyedState(activeSiteId, null);
 
   async function planVisibility() {
     if (!user || !site?.intelligence) return;
@@ -1120,13 +1158,13 @@ function DashboardInner() {
 
   function saveDataPolicy(next) {
     if (!user || !activeSiteId) return;
-    updateSiteSettings(orgId, activeSiteId, { dataPolicy: next });
+    persist(updateSiteSettings(orgId, activeSiteId, { dataPolicy: next }), "save your data rules");
     setToast("Data rules updated.");
   }
 
   function saveProfile(next) {
     if (!user || !activeSiteId) return;
-    updateSiteSettings(orgId, activeSiteId, { buyerProfile: next });
+    persist(updateSiteSettings(orgId, activeSiteId, { buyerProfile: next }), "save the buyer profile");
     setToast(next.needsConfirmation ? "Saved." : "Buyer profile confirmed.");
   }
 
@@ -1136,7 +1174,9 @@ function DashboardInner() {
     startJob(JOB_TYPES.LEAD_QUALIFY, {
       profile: buyerProfile,
       customerDomain: site?.intelligence?.domain || insights?.domain,
-      companies: (companies || []).map((c) => ({
+      // Never a company the owner declined: qualifying costs a lead credit
+      // per company, and it used to spend one on these.
+      companies: (companies || []).filter((c) => c.status !== "declined").map((c) => ({
         name: c.co,
         domain: c.domain,
         signals: c.signals || null,
@@ -1315,9 +1355,9 @@ function DashboardInner() {
     }
   }
 
-  const editSocialPost = (postId, patch) => updateSocialPost(orgId, activeSiteId, postId, patch);
-  const approveSocialPost = (postId) => updateSocialPost(orgId, activeSiteId, postId, { status: POST_STATUS.APPROVED, approvedAt: new Date() });
-  const declineSocialPost = (postId) => deleteSocialPost(orgId, activeSiteId, postId);
+  const editSocialPost = (postId, patch) => persist(updateSocialPost(orgId, activeSiteId, postId, patch), "save the post");
+  const approveSocialPost = (postId) => persist(updateSocialPost(orgId, activeSiteId, postId, { status: POST_STATUS.APPROVED, approvedAt: new Date() }), "approve the post");
+  const declineSocialPost = (postId) => persist(deleteSocialPost(orgId, activeSiteId, postId), "delete the post");
 
   async function publishSocialPost(post) {
     if (!user || !activeSiteId) return;
@@ -1367,24 +1407,38 @@ function DashboardInner() {
 
   async function disconnectSocial(provider) {
     if (!user || !activeSiteId) return;
-    const idToken = await user.getIdToken();
-    await fetch("/api/integrations/social", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ idToken, siteId: activeSiteId, provider }),
-    });
-    setToast("Disconnected. Nothing already posted is affected.");
+    try {
+      const idToken = await user.getIdToken();
+      const res = await fetch("/api/integrations/social", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken, siteId: activeSiteId, provider }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.ok === false) {
+        setToast(data.error || "Couldn't disconnect that account. It's still connected; try again.");
+        return;
+      }
+      setToast("Disconnected. Nothing already posted is affected.");
+    } catch {
+      setToast("Couldn't reach the server, so the account is still connected. Try again.");
+      return;
+    }
     await refreshSocialNetworks();
   }
 
   async function refreshSocialNetworks() {
     if (!user || !activeSiteId) return;
-    const idToken = await user.getIdToken();
-    const res = await fetch(`/api/integrations/social?siteId=${encodeURIComponent(activeSiteId)}`, {
-      headers: { "x-id-token": idToken },
-    });
-    const data = await res.json();
-    setSocialNetworks(data.ok ? data.networks : []);
+    try {
+      const idToken = await user.getIdToken();
+      const res = await fetch(`/api/integrations/social?siteId=${encodeURIComponent(activeSiteId)}`, {
+        headers: { "x-id-token": idToken },
+      });
+      const data = await res.json();
+      setSocialNetworks(data.ok ? data.networks : []);
+    } catch {
+      setToast("Couldn't refresh your social connections. Reload to try again.");
+    }
   }
 
   // --- Directory listings -----------------------------------------------------
@@ -1501,12 +1555,31 @@ function DashboardInner() {
   const pendingCount = approvals.filter((a) => a.status === "pending").length;
   // What is genuinely in flight, so the header and the Growth feed say
   // "working" only when something is — not a spinner that never stops.
-  const runningJobs = jobs.filter((j) => ["running", "verifying", "queued"].includes(j.status)).length;
+  // Only runs that are really in progress: an abandoned one (the page that
+  // drove it was closed) used to count as "in flight" for ever.
+  const runningJobs = jobs.filter((j) => isLive(j)).length;
 
   if (loading) return <FullScreenLoading />;
   if (!user) return null;
   if (orgCtx.status === "error") {
     return <OrgProblem message={orgCtx.error} memberships={orgCtx.memberships} onSwitch={orgCtx.switchOrg} onSignOut={handleSignOut} />;
+  }
+  if (sitesError) {
+    return (
+      <main id="main" style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 24, background: "var(--color-bg)", color: "var(--color-text)" }}>
+        <div className="card" style={{ maxWidth: 460, padding: 28, gap: 14 }}>
+          <span className="card-kicker">Your sites</span>
+          <h1 style={{ margin: 0, fontSize: 24 }}>Couldn&apos;t load your sites</h1>
+          <p role="alert" style={{ margin: 0, lineHeight: 1.6, color: "var(--fg-80)" }}>{sitesError}</p>
+          <button type="button" className="btn btn-primary" style={{ color: "var(--on-accent)" }} onClick={() => setSitesRetry((n) => n + 1)}>
+            Try again
+          </button>
+          <button type="button" className="btn btn-ghost" onClick={handleSignOut}>
+            Sign out
+          </button>
+        </div>
+      </main>
+    );
   }
   if (!orgId || sites === null) return <FullScreenLoading />;
 
@@ -1628,7 +1701,7 @@ function DashboardInner() {
         </div>
       </aside>
 
-      <main style={{ overflow: "auto", position: "relative" }}>
+      <main id="main" style={{ overflow: "auto", position: "relative" }}>
         <header
           className="dash-header"
           style={{
@@ -1762,7 +1835,7 @@ function DashboardInner() {
                       competitors={competitors}
                       onAdd={addCompetitorSite}
                       onCheck={checkCompetitor}
-                      onRemove={(id) => removeCompetitor(orgId, activeSiteId, id)}
+                      onRemove={(id) => persist(removeCompetitor(orgId, activeSiteId, id), "remove that competitor")}
                       busyId={competitorBusy}
                       adding={addingCompetitor}
                     />
@@ -2000,18 +2073,24 @@ function DashboardInner() {
           )}
         </div>
 
-        {toast ? (
-          <div style={{ position: "fixed", right: 24, bottom: 24, zIndex: 75, width: 352, animation: "rise .35s cubic-bezier(.2,.8,.2,1)" }}>
-            <div className="card elev-lg" style={{ padding: 18, gap: 10, background: "var(--color-accent-2-100)" }}>
+        {/* Always rendered, so screen readers announce each new message: a
+            live region added together with its text is often not read out.
+            Fits a 375px phone (it was a fixed 352px wide at 24px from the
+            edge). */}
+        <div role="status" aria-live="polite" aria-atomic="true" style={{ position: "fixed", right: "clamp(12px, 3vw, 24px)", bottom: "clamp(12px, 3vw, 24px)", zIndex: 75, width: "min(352px, calc(100vw - 24px))" }}>
+          {toast ? (
+            <div className="card elev-lg" style={{ padding: 18, gap: 10, background: "var(--color-accent-2-100)", animation: "rise .35s cubic-bezier(.2,.8,.2,1)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-                <span style={{ width: 28, height: 28, borderRadius: "50%", background: "var(--color-accent-2-500)", flex: "none", animation: "drift 3s ease-in-out infinite" }} />
+                <span aria-hidden="true" style={{ width: 28, height: 28, borderRadius: "50%", background: "var(--color-accent-2-500)", flex: "none" }} />
                 <div style={{ fontFamily: "var(--font-heading)", fontSize: 16 }}>Update</div>
-                <button className="btn btn-ghost" onClick={() => setToast(null)} style={{ marginLeft: "auto", color: "var(--color-accent-2-800)", fontSize: 16, paddingInline: 4 }}>×</button>
+                <button type="button" className="btn btn-ghost" aria-label="Dismiss this message" onClick={() => setToast(null)} style={{ marginLeft: "auto", color: "var(--color-accent-2-800)", fontSize: 16, paddingInline: 4 }}>
+                  ×
+                </button>
               </div>
-              <p style={{ margin: 0, fontSize: 13.5, color: "var(--color-accent-2-900)", lineHeight: 1.5 }}>{toast}</p>
+              <p style={{ margin: 0, fontSize: 13.5, color: "var(--color-accent-2-900)", lineHeight: 1.5, overflowWrap: "anywhere" }}>{toast}</p>
             </div>
-          </div>
-        ) : null}
+          ) : null}
+        </div>
       </main>
 
       {onboardOpen && user ? (

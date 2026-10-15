@@ -15,7 +15,7 @@ export default function DigestPanel({ digest, onSend, sending, lastSentTo }) {
               <span className="text-muted" style={{ flex: 1 }}>{l.label}</span>
               <strong style={{ flex: "none" }}>{l.value}</strong>
               {l.delta ? (
-                <span style={{ flex: "none", fontSize: 11, fontWeight: 700, color: l.delta.startsWith("-") ? "#FF8A6B" : "var(--ok)" }}>
+                <span style={{ flex: "none", fontSize: 11, fontWeight: 700, color: l.delta.startsWith("-") ? "var(--accent-ink)" : "var(--ok)" }}>
                   {l.delta}
                 </span>
               ) : null}

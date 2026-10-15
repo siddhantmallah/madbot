@@ -48,44 +48,52 @@ export default function CookieConsent() {
 
   // Where they are. Only used to pick the consent model and name the regime;
   // the answer is cached at the edge and no IP address reaches this component.
+  // Once it arrives, the stored answer (or GPC) is read in the same callback,
+  // so the banner settles in one pass rather than a second effect reacting to
+  // the first.
   useEffect(() => {
     let alive = true;
+
+    const settle = (where) => {
+      if (!alive) return;
+      setCountry(where);
+
+      const stored = readConsent();
+      if (stored) {
+        setChoices(stored.choices);
+        setDecided(true);
+        return;
+      }
+
+      // GPC is an opt-out signal, so it answers the question without asking it.
+      if (globalPrivacyControl()) {
+        const rec = writeConsent({
+          choices: { ...allOff(), [CATEGORIES.PREFERENCES]: true },
+          model: modelFor(where),
+          country: where,
+          method: "gpc",
+        });
+        setChoices(rec.choices);
+        setDecided(true);
+        return;
+      }
+
+      setChoices(initialChoices(where));
+      setDecided(false);
+      setOpen(true);
+    };
+
     fetch("/api/region")
       .then((r) => r.json())
-      .then((d) => alive && setCountry(d?.country || null))
-      .catch(() => alive && setCountry(null));
+      .then(
+        (d) => d?.country || null,
+        () => null
+      )
+      .then(settle);
     return () => {
       alive = false;
     };
   }, []);
-
-  useEffect(() => {
-    if (country === undefined) return;
-
-    const stored = readConsent();
-    if (stored) {
-      setChoices(stored.choices);
-      setDecided(true);
-      return;
-    }
-
-    // GPC is an opt-out signal, so it answers the question without asking it.
-    if (globalPrivacyControl()) {
-      const rec = writeConsent({
-        choices: { ...allOff(), [CATEGORIES.PREFERENCES]: true },
-        model: modelFor(country),
-        country,
-        method: "gpc",
-      });
-      setChoices(rec.choices);
-      setDecided(true);
-      return;
-    }
-
-    setChoices(initialChoices(country));
-    setDecided(false);
-    setOpen(true);
-  }, [country]);
 
   // The footer link, and the legal index page.
   useEffect(() => {
@@ -187,7 +195,7 @@ export default function CookieConsent() {
                 ) : (
                   <>Under {regime} you can switch any of it off, at any time.</>
                 )}{" "}
-                <Link href="/legal/cookies" style={{ color: "var(--color-accent)" }}>
+                <Link href="/legal/cookies" style={{ color: "var(--accent-ink)" }}>
                   Cookie Policy
                 </Link>
               </p>
@@ -280,8 +288,8 @@ export default function CookieConsent() {
 
               <p style={{ margin: "14px 0 0", fontSize: 12, lineHeight: 1.6, color: "var(--fg-45)" }}>
                 Your answer is stored in this browser only and never leaves it. Changing it later is one click from the
-                footer of any page. Read the <Link href="/legal/cookies" style={{ color: "var(--color-accent)" }}>Cookie Policy</Link> or the{" "}
-                <Link href="/legal/privacy" style={{ color: "var(--color-accent)" }}>Privacy Policy</Link>.
+                footer of any page. Read the <Link href="/legal/cookies" style={{ color: "var(--accent-ink)" }}>Cookie Policy</Link> or the{" "}
+                <Link href="/legal/privacy" style={{ color: "var(--accent-ink)" }}>Privacy Policy</Link>.
               </p>
             </>
           ) : null}

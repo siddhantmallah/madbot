@@ -12,6 +12,9 @@ function relative(ts) {
 export default function CompetitorPanel({ competitors, onAdd, onCheck, onRemove, busyId, adding }) {
   const [draft, setDraft] = useState("");
   const [error, setError] = useState("");
+  // Removing deletes the competitor along with its last snapshot and the
+  // changes found so far, and none of it comes back. One click was too easy.
+  const [confirmId, setConfirmId] = useState(null);
 
   async function submit(e) {
     e.preventDefault();
@@ -60,10 +63,29 @@ export default function CompetitorPanel({ competitors, onAdd, onCheck, onRemove,
                 >
                   {checking ? "Checking…" : "Check now"}
                 </button>
-                <button className="btn btn-ghost" onClick={() => onRemove(c.id)} style={{ fontSize: 11.5, paddingInline: 4, flex: "none" }}>
+                <button className="btn btn-ghost" onClick={() => setConfirmId(c.id)} style={{ fontSize: 11.5, paddingInline: 4, flex: "none" }}>
                   Remove
                 </button>
               </div>
+
+              {confirmId === c.id ? (
+                <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", fontSize: 12, marginBottom: 7 }}>
+                  <span className="text-muted">Stop watching {hostnameOf(c.url)}?</span>
+                  <button
+                    className="btn btn-ghost"
+                    onClick={() => {
+                      setConfirmId(null);
+                      onRemove(c.id);
+                    }}
+                    style={{ fontSize: 11.5, paddingInline: 4, color: "var(--color-accent-800)" }}
+                  >
+                    Yes, remove
+                  </button>
+                  <button className="btn btn-ghost" onClick={() => setConfirmId(null)} style={{ fontSize: 11.5, paddingInline: 4 }}>
+                    Cancel
+                  </button>
+                </div>
+              ) : null}
 
               {c.snapshot?.title ? (
                 <div className="text-muted" style={{ fontSize: 11.5, marginBottom: changes.length ? 7 : 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -93,6 +115,7 @@ export default function CompetitorPanel({ competitors, onAdd, onCheck, onRemove,
       <form onSubmit={submit} style={{ display: "flex", gap: 8 }}>
         <input
           className="input"
+          aria-label="Competitor's website"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           placeholder="competitor.com"

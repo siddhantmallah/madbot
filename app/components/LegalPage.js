@@ -31,7 +31,7 @@ export default function LegalPage({ title, kicker, updated, effective, intro, to
         </div>
       </header>
 
-      <main className="pad-responsive" style={{ maxWidth: 1180, margin: "0 auto", padding: "clamp(32px, 5vw, 60px) 28px 80px" }}>
+      <main id="main" className="pad-responsive" style={{ maxWidth: 1180, margin: "0 auto", padding: "clamp(32px, 5vw, 60px) 28px 80px" }}>
         <div className="kicker-row mono" style={{ marginBottom: 20 }}>
           <span>{kicker || "Legal"}</span>
           {effective ? <span>In force from {effective}</span> : null}
@@ -77,7 +77,7 @@ export default function LegalPage({ title, kicker, updated, effective, intro, to
               <ol style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 8 }}>
                 {toc.map((t, i) => (
                   <li key={t.id} style={{ display: "flex", gap: 9, fontSize: 13.5, lineHeight: 1.4 }}>
-                    <span className="mono" style={{ flex: "none", color: "var(--fg-32)" }}>{String(i + 1).padStart(2, "0")}</span>
+                    <span className="mono" style={{ flex: "none", color: "var(--fg-45)" }}>{String(i + 1).padStart(2, "0")}</span>
                     <a href={`#${t.id}`} style={{ color: "var(--fg-60)", textDecoration: "none" }}>{t.title}</a>
                   </li>
                 ))}

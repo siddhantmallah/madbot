@@ -126,6 +126,7 @@ export default function DataRules({ policy, onChange }) {
                       ) : (
                         <select
                           className="input"
+                          aria-label={`${LEVEL_META[level].label}, prospect in ${JURISDICTIONS[region].label}`}
                           value={value}
                           onChange={(e) => setCell(level, region, e.target.value)}
                           style={{ width: "auto", minHeight: 30, paddingBlock: 0, fontSize: 12 }}

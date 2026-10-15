@@ -1,11 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useId, useMemo, useRef, useState } from "react";
 import { SiteIcon } from "./Brand";
 import { THRESHOLDS as T, bandFor } from "../../lib/auditClient";
 
 const GATE_AFTER_MS = 60_000;
+
+// What Tab can land on inside the dialog, for the focus trap.
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 // The report is always a dark document (it sits on the .dark-stage tokens), so
 // the severity tints are fixed dark-friendly values rather than theme tokens
@@ -284,7 +287,7 @@ function metricsFor(d) {
   ];
 }
 
-function Scanning({ domain, adsense }) {
+function Scanning({ domain, adsense, titleId }) {
   const steps = [
     `Fetching ${domain}`,
     "Reading titles, headings and meta tags",
@@ -302,7 +305,7 @@ function Scanning({ domain, adsense }) {
     <div style={{ padding: "72px 40px 80px", textAlign: "center" }}>
       <div style={{ width: 52, height: 52, margin: "0 auto 26px", borderRadius: "50%", border: "3px solid rgba(255,106,26,.25)", borderTopColor: "var(--color-accent)", animation: "sweep 1s linear infinite" }} />
       <div className="mono" style={{ marginBottom: 10 }}>Live read</div>
-      <h3 style={{ margin: "0 0 22px", fontSize: "clamp(24px, 3vw, 32px)", lineHeight: 1.1 }}>Reading {domain}…</h3>
+      <h3 id={titleId} style={{ margin: "0 0 22px", fontSize: "clamp(24px, 3vw, 32px)", lineHeight: 1.1 }}>Reading {domain}…</h3>
       <div className="mono" style={{ marginBottom: 10, color: "var(--fg-60)", textTransform: "none", letterSpacing: ".02em", fontSize: 12 }}>
         What&apos;s being checked
       </div>
@@ -343,7 +346,7 @@ function Finding({ f, index, actionLabel = "How to fix →" }) {
         {f.detail ? <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.6, color: "var(--fg-60)" }}>{f.detail}</p> : null}
         {f.fix ? (
           <div style={{ marginTop: 11, paddingTop: 10, borderTop: "1px solid var(--color-divider)", fontSize: 13, lineHeight: 1.55, display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <span className="mono" style={{ color: "var(--color-accent)", flex: "none" }}>{actionLabel}</span>
+            <span className="mono" style={{ color: "var(--accent-ink)", flex: "none" }}>{actionLabel}</span>
             <span style={{ color: "var(--fg-80)", flex: "1 1 240px", minWidth: 0 }}>{f.fix}</span>
           </div>
         ) : null}
@@ -492,7 +495,7 @@ function Gate({ url }) {
         <Link className="btn btn-primary" href={`/login${qs}`} style={{ minHeight: 50, fontSize: 15.5, color: "var(--on-accent)" }}>
           Create your account
         </Link>
-        <Link href="/pricing" style={{ fontSize: 13, color: "var(--color-accent)", textDecoration: "none" }}>
+        <Link href="/pricing" style={{ fontSize: 13, color: "var(--accent-ink)", textDecoration: "none" }}>
           See pricing first
         </Link>
       </div>
@@ -542,17 +545,72 @@ export default function AuditModal({ url, adsense = false, onClose }) {
     return () => clearTimeout(id);
   }, [state.phase]);
 
+  const titleId = useId();
+  const panelRef = useRef(null);
+  const bodyRef = useRef(null);
+  const closeRef = useRef(null);
+  // The page passes a fresh arrow every render. The key handler reads the
+  // latest one from here, so the effect below can run once per opening.
+  const onCloseRef = useRef(onClose);
   useEffect(() => {
+    onCloseRef.current = onClose;
+  });
+
+  // A modal dialog's housekeeping, for as long as it is open: the page behind
+  // doesn't scroll, focus starts on the close button and can't Tab out, Escape
+  // closes, and on the way out both scroll and focus go back to where they
+  // were. The gate used to switch off Escape, the backdrop and the close
+  // button after a minute, which left a visitor stuck on a sign-up prompt with
+  // the page behind it locked. Closing now works at any point.
+  useEffect(() => {
+    const previousFocus = document.activeElement;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    closeRef.current?.focus();
+
     const onKey = (e) => {
-      if (e.key === "Escape" && !gated) onClose();
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onCloseRef.current();
+        return;
+      }
+      if (e.key !== "Tab") return;
+      const panel = panelRef.current;
+      if (!panel) return;
+      // Inert content (the report behind the gate) and anything not laid out
+      // can't take focus, so it isn't part of the cycle.
+      const items = Array.from(panel.querySelectorAll(FOCUSABLE)).filter((el) => !el.closest("[inert]") && el.getClientRects().length > 0);
+      if (!items.length) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      const active = document.activeElement;
+      if (!panel.contains(active)) {
+        e.preventDefault();
+        first.focus();
+      } else if (e.shiftKey && active === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      }
     };
     document.addEventListener("keydown", onKey);
-    document.body.style.overflow = "hidden";
+
     return () => {
       document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "";
+      document.body.style.overflow = previousOverflow;
+      if (previousFocus instanceof HTMLElement && previousFocus.isConnected) previousFocus.focus();
     };
-  }, [onClose, gated]);
+  }, []);
+
+  // When the gate covers the report, the report goes inert and anything
+  // focused inside it loses focus. Put it somewhere the visitor can act from.
+  useEffect(() => {
+    if (!gated) return;
+    const active = document.activeElement;
+    if (!active || active === document.body || bodyRef.current?.contains(active)) closeRef.current?.focus();
+  }, [gated]);
 
   const d = state.data;
   const criticals = d ? d.findings.filter((f) => f.severity === "critical") : [];
@@ -572,22 +630,28 @@ export default function AuditModal({ url, adsense = false, onClose }) {
 
   const pad = "clamp(18px, 3vw, 34px)";
 
-  // 01 is the header and score, 02 the measurements; everything after is
-  // numbered as it is emitted. Reset on every render by being declared here.
-  let sectionNo = 2;
-  const nextIndex = () => String((sectionNo += 1)).padStart(2, "0");
+  // 01 is the header and score, 02 the measurements; the sections after are
+  // numbered in the order they appear, counting only the ones that render.
+  // Listed up front rather than counted as they are emitted, because a render
+  // has to be free of side effects — a counter bumped from inside JSX is one.
+  const later = [d?.adsense && "adsense", criticals.length && "critical", warnings.length && "warning", goods.length && "good"].filter(Boolean);
+  const indexOf = (key) => String(3 + later.indexOf(key)).padStart(2, "0");
 
   return (
     <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={`Site report for ${domain}`}
       style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(4,3,7,.84)", backdropFilter: "blur(6px)", display: "grid", placeItems: "center", padding: "20px 12px" }}
       onClick={(e) => {
-        if (e.target === e.currentTarget && !gated) onClose();
+        if (e.target === e.currentTarget) onClose();
       }}
     >
       <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        // The site name (finished report only; a missing id is skipped), then
+        // whichever heading the current phase shows.
+        aria-labelledby={`${titleId}-site ${titleId}`}
+        tabIndex={-1}
         className="marketing dark-stage"
         style={{
           position: "relative",
@@ -601,25 +665,28 @@ export default function AuditModal({ url, adsense = false, onClose }) {
           fontSize: 16,
         }}
       >
-        {!gated ? (
-          <button
-            onClick={onClose}
-            aria-label="Close report"
-            style={{ position: "absolute", right: 14, top: 14, zIndex: 6, width: 36, height: 36, borderRadius: 6, background: "var(--color-surface)", border: "1px solid var(--fg-32)", color: "var(--fg)", fontSize: 18, lineHeight: 1, display: "grid", placeItems: "center", boxShadow: "0 6px 18px rgba(0,0,0,.45)" }}
-          >
-            ×
-          </button>
-        ) : null}
+        {/* Always present, above the gate (z-index 6 over 5). */}
+        <button
+          ref={closeRef}
+          type="button"
+          onClick={onClose}
+          aria-label="Close report"
+          style={{ position: "absolute", right: 14, top: 14, zIndex: 6, width: 36, height: 36, borderRadius: 6, background: "var(--color-surface)", border: "1px solid var(--fg-32)", color: "var(--fg)", fontSize: 18, lineHeight: 1, display: "grid", placeItems: "center", boxShadow: "0 6px 18px rgba(0,0,0,.45)" }}
+        >
+          ×
+        </button>
 
         {gated ? <Gate url={url} /> : null}
 
-        <div style={{ maxHeight: "94vh", overflowY: "auto" }}>
-          {state.phase === "loading" ? <Scanning domain={domain} adsense={adsense} /> : null}
+        {/* Inert under the gate, so Tab and screen readers can't wander into
+            the report the gate is covering. */}
+        <div ref={bodyRef} inert={gated} style={{ maxHeight: "94vh", overflowY: "auto" }}>
+          {state.phase === "loading" ? <Scanning domain={domain} adsense={adsense} titleId={titleId} /> : null}
 
           {state.phase === "error" ? (
             <div style={{ padding: "64px 40px", textAlign: "center" }}>
               <div className="mono" style={{ marginBottom: 10 }}>Could not read</div>
-              <h3 style={{ margin: "0 0 8px", fontSize: 26 }}>{domain}</h3>
+              <h3 id={titleId} style={{ margin: "0 0 8px", fontSize: 26 }}>{domain}</h3>
               <p style={{ margin: "0 0 22px", fontSize: 14, color: "var(--fg-60)" }}>{state.error}</p>
               <button className="btn btn-secondary" onClick={onClose} style={{ fontWeight: 600, color: "var(--fg)", borderColor: "var(--color-divider)" }}>Try another address</button>
             </div>
@@ -630,14 +697,14 @@ export default function AuditModal({ url, adsense = false, onClose }) {
               {/* 01 — Header and score */}
               <header style={{ padding: `${pad} ${pad} 0` }}>
                 <div className="kicker-row mono" style={{ marginBottom: 18, paddingRight: 48 }}>
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
+                  <span id={`${titleId}-site`} style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
                     <SiteIcon site={{ faviconUrl: d.faviconUrl, title: d.title, url: d.url }} size={14} />
                     Site report — {domain}
                   </span>
                   <span>Checked live · {time}</span>
                   <span>{total} checks</span>
                 </div>
-                <h2 style={{ margin: "0 0 10px", fontSize: "clamp(28px, 4vw, 46px)", lineHeight: 1.02, letterSpacing: "-.01em", maxWidth: "18em" }}>
+                <h2 id={titleId} style={{ margin: "0 0 10px", fontSize: "clamp(28px, 4vw, 46px)", lineHeight: 1.02, letterSpacing: "-.01em", maxWidth: "18em" }}>
                   {d.counts.critical > 0
                     ? `${d.counts.critical} thing${d.counts.critical === 1 ? "" : "s"} costing you traffic right now`
                     : d.counts.warning > 0
@@ -730,15 +797,15 @@ export default function AuditModal({ url, adsense = false, onClose }) {
               </section>
 
               {/* 03 onwards — the AdSense section if it was asked for, then
-                  the findings. Numbered from a counter rather than by hand:
-                  the indices used to be spelled out per section and adding one
-                  more meant three separate expressions had to agree. */}
+                  the findings. Numbered from the `later` list rather than by
+                  hand: the indices used to be spelled out per section and
+                  adding one more meant three separate expressions had to agree. */}
               <div style={{ padding: `26px ${pad} ${pad}`, display: "flex", flexDirection: "column", gap: 30 }}>
-                {d.adsense ? <AdsenseSection index={nextIndex()} report={d.adsense} /> : null}
+                {d.adsense ? <AdsenseSection index={indexOf("adsense")} report={d.adsense} /> : null}
 
                 {criticals.length ? (
                   <section>
-                    <SectionHead index={nextIndex()} title="Costing you now" count={`${criticals.length}`} />
+                    <SectionHead index={indexOf("critical")} title="Costing you now" count={`${criticals.length}`} />
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                       {criticals.map((f, i) => <Finding key={f.title} f={f} index={i + 1} />)}
                     </div>
@@ -747,7 +814,7 @@ export default function AuditModal({ url, adsense = false, onClose }) {
 
                 {warnings.length ? (
                   <section>
-                    <SectionHead index={nextIndex()} title="Worth fixing" count={`${warnings.length}`} />
+                    <SectionHead index={indexOf("warning")} title="Worth fixing" count={`${warnings.length}`} />
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                       {warnings.map((f, i) => <Finding key={f.title} f={f} index={criticals.length + i + 1} />)}
                     </div>
@@ -756,7 +823,7 @@ export default function AuditModal({ url, adsense = false, onClose }) {
 
                 {goods.length ? (
                   <section>
-                    <SectionHead index={nextIndex()} title="Already right" count={`${goods.length}`} />
+                    <SectionHead index={indexOf("good")} title="Already right" count={`${goods.length}`} />
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 8 }}>
                       {goods.map((f) => (
                         <div key={f.title} style={{ display: "flex", gap: 10, fontSize: 13.5, padding: "11px 14px", borderRadius: 6, background: "var(--wash-1)", border: "1px solid var(--color-divider)" }}>

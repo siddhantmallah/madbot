@@ -5,6 +5,7 @@ import { authorize } from "../../../../lib/licenseServer";
 import { reserve, record } from "../../../../lib/costControl";
 import { adminDb } from "../../../../lib/firebaseAdmin";
 import { fields, LIMITS, rateLimit, readJson, reply, z } from "../../../../lib/apiGuard";
+import { effectivePolicy } from "../../../../lib/dataPolicy";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -85,13 +86,16 @@ async function trustedParams(db, uid, siteId, site, job) {
         questions: p.questions || [],
         intel: site.intelligence || null,
       };
+    // The site's data rules come from the site document, never from the
+    // request, so a browser can't loosen them.
     case JOB_TYPES.LEAD_DISCOVER:
-      return { profile: site.buyerProfile || null, max: p.max ?? 30 };
+      return { profile: site.buyerProfile || null, max: p.max ?? 30, dataPolicy: effectivePolicy(site.dataPolicy) };
     case JOB_TYPES.LEAD_QUALIFY:
       return {
         profile: site.buyerProfile || null,
         customerDomain: site.intelligence?.domain || hostnameOf(site.url),
         companies: p.companies || [],
+        dataPolicy: effectivePolicy(site.dataPolicy),
       };
     default:
       return {};

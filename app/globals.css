@@ -44,12 +44,19 @@
    explicit stamp.
    =========================================================================== */
 :root{
-  /* Foreground tiers, brightest to faintest. */
+  /* Tells the browser which palette its own chrome should use: scrollbars,
+     form controls, autofill. Without it a dark page got light scrollbars. */
+  color-scheme:dark;
+  /* Foreground tiers, brightest to faintest. Every tier down to --fg-45 is
+     used for text, so each one holds 4.5:1 on the ground and the surface in
+     both themes. --fg-32 and --fg-22 are for rules, disabled states and
+     decoration only. */
   --fg:#FFFFFF;
   --fg-80:rgba(255,255,255,.80);
   --fg-70:var(--fg-80);
   --fg-60:rgba(255,255,255,.60);
-  --fg-45:rgba(255,255,255,.45);
+  /* .47, not .45: .45 on the ground measured 4.49:1, a hair under AA. */
+  --fg-45:rgba(255,255,255,.47);
   --fg-32:rgba(255,255,255,.32);
   --fg-22:rgba(255,255,255,.22);
   /* Washes: hover fills and faint tints over the ground. */
@@ -59,6 +66,12 @@
   /* Text that sits on an accent fill. Stays dark in both themes, because the
      accent stays orange in both. */
   --on-accent:#0A0810;
+  /* The accent as text. Orange fills, buttons and marks stay #FF6A1A in both
+     themes, but as text on the light ground that orange is 2.62:1, so the
+     light theme swaps in a deeper shade here. Use this, not --color-accent,
+     for anything that has to be read: kickers, indices, links, ghost buttons,
+     focus rings. */
+  --accent-ink:#FF6A1A;
   /* Scrims for sticky headers and image overlays. */
   --scrim-strong:rgba(10,8,16,.92);
   --scrim:rgba(10,8,16,.82);
@@ -72,15 +85,20 @@
    palette so the accent still sits correctly on them. */
 @media (prefers-color-scheme: light){
   :root:not([data-theme="dark"]){
+    color-scheme:light;
     --color-bg:#F6F4F8;
     --color-surface:#FFFFFF;
     --color-text:#140F1E;
     --color-divider:rgba(20,15,30,.14);
+    /* 5.09:1 on the ground, 5.57:1 on white, 4.74:1 on neutral-100. */
+    --accent-ink:#B34508;
     --fg:#140F1E;
     --fg-80:rgba(20,15,30,.80);
     --fg-70:rgba(20,15,30,.68);
-    --fg-60:rgba(20,15,30,.58);
-    --fg-45:rgba(20,15,30,.46);
+    /* .64 and .60 were .58 and .46, which measured 4.48:1 and 3.07:1 on the
+       ground. Now 5.49:1 and 4.79:1. */
+    --fg-60:rgba(20,15,30,.64);
+    --fg-45:rgba(20,15,30,.60);
     --fg-32:rgba(20,15,30,.34);
     --fg-22:rgba(20,15,30,.24);
     --wash-1:rgba(20,15,30,.025);
@@ -109,15 +127,17 @@
   }
 }
 :root[data-theme="light"]{
+  color-scheme:light;
   --color-bg:#F6F4F8;
   --color-surface:#FFFFFF;
   --color-text:#140F1E;
   --color-divider:rgba(20,15,30,.14);
+  --accent-ink:#B34508;
   --fg:#140F1E;
   --fg-80:rgba(20,15,30,.80);
   --fg-70:rgba(20,15,30,.68);
-  --fg-60:rgba(20,15,30,.58);
-  --fg-45:rgba(20,15,30,.46);
+  --fg-60:rgba(20,15,30,.64);
+  --fg-45:rgba(20,15,30,.60);
   --fg-32:rgba(20,15,30,.34);
   --fg-22:rgba(20,15,30,.24);
   --wash-1:rgba(20,15,30,.025);
@@ -144,7 +164,8 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
-html{scroll-behavior:smooth}
+/* Smooth in-page jumps only for people who haven't asked for less motion. */
+@media (prefers-reduced-motion: no-preference){html{scroll-behavior:smooth}}
 body{margin:0;background:var(--color-bg);color:var(--color-text);font-family:var(--font-body);font-size:15px;line-height:1.55;font-weight:400}
 h1,h2,h3,h4,h5,h6{font-family:var(--font-heading);font-weight:var(--font-heading-weight);line-height:1.12;letter-spacing:-0.015em;margin:0 0 var(--space-2)}
 /* Fluid, so a display heading can't push a phone into sideways scroll. The
@@ -167,9 +188,15 @@ ul,ol{padding-left:1.2em}
 button{font-family:inherit;font-size:inherit;color:inherit;background:none;border:none;padding:0;margin:0;text-align:inherit;cursor:pointer}
 ::selection{background:rgba(255,106,26,.35)}
 :focus{outline:none}
-:focus-visible{outline:2px solid var(--color-accent);outline-offset:2px}
+/* The ink shade, because a focus ring is a control's outline and needs 3:1
+   against the ground; the bright orange gave 2.62:1 on the light theme. */
+:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
 /* Read by screen readers, invisible on screen: labels for controls whose purpose the layout already shows. */
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+/* The first thing a keyboard reaches on every page. Off-screen until focused,
+   so it costs sighted mouse users nothing. */
+.skip-link{position:fixed;left:12px;top:12px;z-index:200;padding:10px 16px;border-radius:6px;background:var(--color-surface);color:var(--fg);font-weight:600;font-size:14px;text-decoration:none;box-shadow:var(--shadow-md);transform:translateY(-200%)}
+.skip-link:focus-visible{transform:none}
 
 .text-muted{color:var(--fg-60)}
 
@@ -194,7 +221,7 @@ button{font-family:inherit;font-size:inherit;color:inherit;background:none;borde
 .btn-secondary{border-color:var(--color-divider)}
 .btn-secondary:hover{background:var(--wash-2)}
 .btn-secondary:active{background:var(--wash-3)}
-.btn-ghost{color:var(--color-accent);padding-inline:var(--space-1);background:transparent}
+.btn-ghost{color:var(--accent-ink);padding-inline:var(--space-1);background:transparent}
 .btn-ghost:hover{background:rgba(255,106,26,.1)}
 .btn-ghost:active{background:rgba(255,106,26,.18)}
 .btn-icon{width:36px;height:36px;padding:0}
@@ -208,9 +235,10 @@ button{font-family:inherit;font-size:inherit;color:inherit;background:none;borde
   background:var(--color-surface);
   border:1px solid var(--color-divider);border-radius:999px;
 }
-.input::placeholder{color:var(--fg-32)}
+/* Placeholder text is still text, and at --fg-32 it was 2.2:1 on white. */
+.input::placeholder{color:var(--fg-45)}
 .input:hover{border-color:var(--fg-45)}
-.input:focus-visible{border-color:var(--color-accent);outline-offset:0}
+.input:focus-visible{border-color:var(--accent-ink);outline-offset:0}
 textarea.input{min-height:90px;resize:vertical;border-radius:var(--radius-md)}
 .radio{display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-size:14px}
 .radio input,.seg-opt input{position:absolute;opacity:0;width:0;height:0;pointer-events:none}
@@ -219,14 +247,14 @@ textarea.input{min-height:90px;resize:vertical;border-radius:var(--radius-md)}
 .seg-opt + .seg-opt{border-left:1px solid var(--color-divider)}
 .seg-opt:has(input:checked){background:var(--color-accent);color:var(--on-accent)}
 .seg-opt:not(:has(input:checked)):hover{background:var(--wash-2)}
-.seg-opt:has(input:focus-visible){outline:2px solid var(--color-accent);outline-offset:-2px}
+.seg-opt:has(input:focus-visible){outline:2px solid var(--accent-ink);outline-offset:-2px}
 
 /* — cards — */
 .card{
   display:flex;flex-direction:column;gap:var(--space-2);
   padding:var(--space-3);border-radius:calc(var(--radius-lg) * 1.15);background:var(--color-surface);
 }
-.card-kicker{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent)}
+.card-kicker{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent-ink)}
 .card-title{font-family:var(--font-heading);font-weight:var(--font-heading-weight);font-size:17px;line-height:1.2}
 .card-body{margin:0;font-size:13px;opacity:.8;flex:1}
 .card-meta{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--fg-45)}
@@ -239,12 +267,12 @@ textarea.input{min-height:90px;resize:vertical;border-radius:var(--radius-md)}
 .tag-accent{background:var(--color-accent-100);color:var(--color-accent-800)}
 .tag-accent-2{background:var(--color-accent-2-100);color:var(--color-accent-2-800)}
 .tag-neutral{background:var(--color-neutral-100);color:var(--color-neutral-800)}
-.tag-outline{border:1px solid var(--color-accent);color:var(--color-accent)}
+.tag-outline{border:1px solid var(--color-accent);color:var(--accent-ink)}
 
 /* — navigation — */
 .nav{display:flex;align-items:center;gap:var(--space-4)}
 .nav a{color:var(--fg-80);text-decoration:none;font-size:14px}
-.nav a:hover{color:var(--color-accent)}
+.nav a:hover{color:var(--accent-ink)}
 
 /* — tables — */
 .table{width:100%;border-collapse:collapse;font-size:14px}
@@ -287,7 +315,7 @@ textarea.input{min-height:90px;resize:vertical;border-radius:var(--radius-md)}
 
 .float-slow{animation:drift 5.5s ease-in-out infinite}
 .dial-pulse{animation:pulseRing 2.4s cubic-bezier(.2,.7,.3,1) infinite}
-.autonomy-dial:focus-visible{box-shadow:0 0 0 3px var(--color-accent)}
+.autonomy-dial:focus-visible{box-shadow:0 0 0 3px var(--accent-ink)}
 
 /* — landing: the editorial surface —
    Scale, contrast and rhythm rather than decoration. The hero is full-bleed
@@ -298,12 +326,28 @@ textarea.input{min-height:90px;resize:vertical;border-radius:var(--radius-md)}
    light added to dark — which on a pale ground washes out to nothing. So any
    surface that hosts it carries its own dark palette: every token a child reads
    is redefined here, and theme-aware chrome around it stays theme-aware. Used
-   by the landing hero and the sign-in page. */
+   by the landing hero and the sign-in page.
+
+   The ramps are redefined in full. Only four neutrals used to be, so on the
+   light theme anything reading the accent or accent-2 ramp inside the stage
+   got the light theme's deep inks on a near-black ground: accent-2-700 at
+   2.23:1, and links (accent-700) at 3.22:1. */
 .dark-stage{
-  --fg:#FFFFFF;--fg-80:rgba(255,255,255,.80);--fg-70:rgba(255,255,255,.70);--fg-60:rgba(255,255,255,.60);--fg-45:rgba(255,255,255,.45);--fg-32:rgba(255,255,255,.32);--fg-22:rgba(255,255,255,.22);
+  color-scheme:dark;
+  --fg:#FFFFFF;--fg-80:rgba(255,255,255,.80);--fg-70:rgba(255,255,255,.70);--fg-60:rgba(255,255,255,.60);--fg-45:rgba(255,255,255,.47);--fg-32:rgba(255,255,255,.32);--fg-22:rgba(255,255,255,.22);
   --wash-1:rgba(255,255,255,.03);--wash-2:rgba(255,255,255,.07);--wash-3:rgba(255,255,255,.14);
   --color-bg:#0A0810;--color-surface:#15121F;--color-text:#FFFFFF;--color-divider:rgba(255,255,255,.14);
-  --color-neutral-100:#15131C;--color-neutral-200:#1D1A26;--color-neutral-300:#2A2636;--color-neutral-800:#D8D4E2;
+  --accent-ink:#FF6A1A;--ok:#7ED957;
+  --color-neutral-100:#15131C;--color-neutral-200:#1D1A26;--color-neutral-300:#2A2636;
+  --color-neutral-400:#3E3950;--color-neutral-500:#5C5670;--color-neutral-600:#8A8499;
+  --color-neutral-700:#ADA8BC;--color-neutral-800:#D8D4E2;--color-neutral-900:#F6F4FA;
+  --color-accent-100:#26130A;--color-accent-200:#3A1C0C;--color-accent-300:#57290F;
+  --color-accent-400:#8A3F12;--color-accent-500:#FF6A1A;--color-accent-600:#FF8036;
+  --color-accent-700:#FF9557;--color-accent-800:#FFB284;--color-accent-900:#FFD6C2;
+  --color-accent-2-100:#1A0F2E;--color-accent-2-200:#25153F;--color-accent-2-300:#3A2160;
+  --color-accent-2-400:#573094;--color-accent-2-500:#A855F7;--color-accent-2-600:#B972FF;
+  --color-accent-2-700:#C68FFF;--color-accent-2-800:#DBB6FF;--color-accent-2-900:#EFDCFF;
+  --shadow-sm:0 1px 2px rgba(0,0,0,.5);--shadow-md:0 6px 22px rgba(0,0,0,.55);--shadow-lg:0 24px 70px rgba(0,0,0,.7);
   --scrim-strong:rgba(10,8,16,.92);--scrim:rgba(10,8,16,.82);--scrim-soft:rgba(10,8,16,.35);--scrim-none:rgba(10,8,16,0);
   background:#0A0810;color:#FFFFFF}
 .hero-full{position:relative;min-height:92vh;display:grid;grid-template-columns:minmax(0,1fr);align-items:center;overflow:hidden;isolation:isolate}
@@ -353,7 +397,7 @@ textarea.input{min-height:90px;resize:vertical;border-radius:var(--radius-md)}
 .section-index::after{content:"";flex:1;height:1px;background:var(--color-divider)}
 /* Hard-edged cards. The rest of the app is soft; the marketing surface is not. */
 .hard{border-radius:6px!important;border:1px solid var(--color-divider);background:var(--color-surface)}
-.hard-index{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;letter-spacing:.12em;color:var(--color-accent)}
+.hard-index{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;letter-spacing:.12em;color:var(--accent-ink)}
 .shape{width:54px;height:54px;background:var(--fg);display:block;flex:none}
 .shape-circle{border-radius:50%}
 .shape-quarter{border-radius:0 100% 0 0}
@@ -362,12 +406,19 @@ textarea.input{min-height:90px;resize:vertical;border-radius:var(--radius-md)}
 .shape-ring{border-radius:50%;background:transparent;border:11px solid var(--fg)}
 .shape-diamond{transform:rotate(45deg) scale(.78)}
 /* The marquee. Two copies of the strip, translated by half, so the loop has
-   no seam. Pauses under the pointer so it can be read; still under reduced
-   motion. */
+   no seam. Pauses under the pointer and while anything in it has focus, stops
+   for good from its own pause button (WCAG 2.2.2: anything that moves for
+   more than five seconds needs one), and is still under reduced motion. */
 @keyframes marquee{to{transform:translateX(-50%)}}
-.marquee{overflow:hidden;white-space:nowrap;border-block:1px solid var(--color-divider);padding:15px 0;background:var(--wash-1)}
+.marquee{position:relative;overflow:hidden;white-space:nowrap;border-block:1px solid var(--color-divider);padding:15px 0;background:var(--wash-1)}
 .marquee-track{display:inline-flex;animation:marquee 42s linear infinite;will-change:transform}
-.marquee:hover .marquee-track{animation-play-state:paused}
+.marquee:hover .marquee-track,.marquee:focus-within .marquee-track,.marquee.is-paused .marquee-track{animation-play-state:paused}
+.marquee .motion-toggle{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:var(--color-bg)}
+/* The pause control shared by the marquee and the hero ticker. Hidden when
+   the visitor has asked for reduced motion, because then nothing moves. */
+.motion-toggle{display:inline-flex;align-items:center;justify-content:center;flex:none;width:28px;height:28px;border-radius:50%;border:1px solid var(--color-divider);color:var(--fg-80)}
+.motion-toggle:hover{background:var(--wash-2)}
+@media (prefers-reduced-motion: reduce){.motion-toggle{display:none}}
 .marquee-item{display:inline-flex;align-items:center;gap:18px;padding:0 24px;font-size:14px;color:var(--fg-80)}
 .marquee-item::after{content:"";width:6px;height:6px;border-radius:50%;background:var(--color-accent);flex:none}
 @media (prefers-reduced-motion: reduce){.marquee-track{animation:none}}
@@ -377,6 +428,17 @@ textarea.input{min-height:90px;resize:vertical;border-radius:var(--radius-md)}
   .reveal,.reveal-fade{transition:none;opacity:1;transform:none}
   .card-3d,.card-3d:hover{transition:none;transform:none}
   .float-slow,.dial-pulse{animation:none}
+  /* The catch-all. Most animations here are inline styles — pulses, spinners,
+     entrances — and an inline style can only be overridden with !important.
+     Each one plays a single near-instant pass instead, so it lands on its
+     final frame: entrances end visible and loops simply stop. */
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important}
+}
+
+/* Without JavaScript nothing would ever add .in, and the page would stay
+   blank under its reveal classes. */
+@media (scripting: none){
+  .reveal,.reveal-fade{opacity:1;transform:none}
 }
 
 /* ===========================================================================
@@ -542,7 +604,7 @@ textarea.input{min-height:90px;resize:vertical;border-radius:var(--radius-md)}
    --------------------------------------------------------------------------- */
 .legal-body{display:grid;grid-template-columns:minmax(0,220px) minmax(0,1fr);gap:clamp(24px,4vw,56px);align-items:start}
 .legal-toc{position:sticky;top:88px;padding:16px 0 0;border-top:1px solid var(--color-divider);max-height:calc(100vh - 120px);overflow-y:auto}
-.legal-toc a:hover{color:var(--color-accent)}
+.legal-toc a:hover{color:var(--accent-ink)}
 .legal-prose{font-size:15.5px;line-height:1.72;color:var(--fg-80)}
 .legal-prose p{margin:0 0 14px}
 .legal-prose ul,.legal-prose ol{margin:0 0 14px;padding-left:22px;display:flex;flex-direction:column;gap:7px}
@@ -550,7 +612,7 @@ textarea.input{min-height:90px;resize:vertical;border-radius:var(--radius-md)}
 .legal-prose h3{margin:22px 0 8px;font-size:17px;line-height:1.25;color:var(--fg)}
 .legal-prose h4{margin:18px 0 6px;font-size:14.5px;line-height:1.3;color:var(--fg)}
 .legal-prose strong,.legal-prose b{color:var(--fg);font-weight:650}
-.legal-prose a{color:var(--color-accent);text-decoration:underline;text-underline-offset:2px}
+.legal-prose a{color:var(--accent-ink);text-decoration:underline;text-underline-offset:2px}
 .legal-prose code{font-family:var(--font-mono,ui-monospace,monospace);font-size:.88em;padding:1px 5px;border-radius:3px;background:var(--wash-2)}
 .legal-prose > :last-child{margin-bottom:0}
 @media (max-width:900px){

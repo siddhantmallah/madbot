@@ -447,7 +447,7 @@ function Detail({ lead, onDraftOutreach, onDecline, busy }) {
             disabled={busy === "outreach" || lead.status === "drafted" || lead.status === "approved"}
           >
             {lead.status === "approved"
-              ? "Approved — sent from your mail app"
+              ? "Approved — send it from your mail app"
               : lead.status === "drafted"
               ? "Draft is in Approvals"
               : busy === "outreach"
@@ -476,7 +476,7 @@ function Provenance({ provenance }) {
   const lines = explainProvenance(provenance);
   return (
     <details style={{ fontSize: 11.5 }}>
-      <summary style={{ cursor: "pointer", color: "var(--color-accent)" }}>Why do we have this?</summary>
+      <summary style={{ cursor: "pointer", color: "var(--accent-ink)" }}>Why do we have this?</summary>
       <div style={{ display: "flex", flexDirection: "column", gap: 5, marginTop: 7 }}>
         {lines.map((l) => (
           <p key={l} style={{ margin: 0, lineHeight: 1.55 }} className="text-muted">{l}</p>

@@ -98,29 +98,35 @@ No `Math.random()` drives any displayed value, and there is no lorem ipsum, fake
 
 | ID | Sev | File:line | Finding | Ver | Status |
 |---|---|---|---|---|---|
-| F-1 | High | `app/login/page.js:177-182, 236-238` | Signup skips the "confirm your email" screen. The redirect effect fires when `user` is set, before `setMode("verify")` | V | Open |
-| F-2 | High | `AuthProvider.js:130-142`, `AccountNotices.js:22-31` | A user who verifies on another device never gets their trial: `ensureTrial` only runs on sign-in or while polling, and `?verified=1` is never read | R | Open |
-| F-3 | High | `lib/sites.js:113-128`, `dashboard/page.js:1305` | If the sites listener errors, the dashboard spins forever, because the error callback never calls `cb` | R | Open |
+| F-1 | High | `app/login/page.js:177-182, 236-238` | Signup skips the "confirm your email" screen. The redirect effect fires when `user` is set, before `setMode("verify")` | V | **Fixed (Phase 5).** The redirect effect in `app/login/page.js` waits while a signup is in flight, so a new account lands on "confirm your email". |
+| F-2 | High | `AuthProvider.js:130-142`, `AccountNotices.js:22-31` | A user who verifies on another device never gets their trial: `ensureTrial` only runs on sign-in or while polling, and `?verified=1` is never read | R | **Fixed (Phase 5).** A verified password account that opens the app fresh gets `ensureTrial` once per load until the trial is settled (remembered per browser). While an address is unconfirmed, coming back to the tab (focus or visibility) re-checks it. `?verified=1` is read once. The link itself now goes to `/auth/action`, which applies the code and refreshes. |
+| F-3 | High | `lib/sites.js:113-128`, `dashboard/page.js:1305` | If the sites listener errors, the dashboard spins forever, because the error callback never calls `cb` | R | **Fixed (Phase 5).** `subscribeSites` reports errors. The dashboard shows "Couldn't load your sites" with Try again and Sign out instead of spinning for ever. |
 | F-4 | High | `dashboard/page.js:484-502`, `Opportunities.js:199-204` | "Go get it" and "Not for us" only write flags that nothing reads. "Queued — I am on it" is untrue | V | **Fixed (2026-10-15).** Taking an opportunity now starts real work (`actionFor`). Page-level problems (title, meta description, headings, structured data, social tags, a competitor's schema, impressions without clicks) get the exact fix drafted against the live page and put in Approvals as a "Fix for your site" (`/api/opportunities/fix`, `lib/fixPipeline.js`, metered as SEO_RECOMMEND). Content gaps (missed AI-visibility questions, page-two queries, competitors' new pages, a thin site) get a piece planned with a brief built from the evidence, and written. Hosting-side work (HTTPS, headers, speed) goes on the owner's list. "Not for us" hides the item for good. |
-| F-5 | High | `DataRules.js`, `lib/jobRunner.js:292`, `cron/retention:81` | The Data & privacy rules are saved but never enforced: `policyCheck` always uses `DEFAULT_POLICY` (a compliance issue) | V | Open |
-| F-6 | High | `dashboard/page.js:153,758` | Search Console state isn't reset on site switch, so site B shows A's traffic, A's data feeds B's opportunities and digest, and Refresh writes A's property onto B | R | Open |
+| F-5 | High | `DataRules.js`, `lib/jobRunner.js:292`, `cron/retention:81` | The Data & privacy rules are saved but never enforced: `policyCheck` always uses `DEFAULT_POLICY` (a compliance issue) | V | **Fixed (Phase 5).** `effectivePolicy(site.dataPolicy)` (lib/dataPolicy.js) is built on the server from the site document and passed to lead discovery and qualification. Both `policyCheck` and every `buildProvenance` now use the customer's rules. Invalid decisions are ignored, special-category data stays "never", and retention stays as defined. Tested in `tests/phase5.test.mjs`. |
+| F-6 | High | `dashboard/page.js:153,758` | Search Console state isn't reset on site switch, so site B shows A's traffic, A's data feeds B's opportunities and digest, and Refresh writes A's property onto B | R | **Fixed (Phase 5).** Search Console state is stamped with its site, so another site reads as not connected: no stale traffic, opportunities or digest, and Refresh can't save A's property onto B. Every per-site list (activity, approvals, leads, content, competitors, jobs, social, listings) is stamped the same way (`useSiteList`, `useKeyedState`), so a switch never shows the previous site's data. |
 | F-7 | High | `Listings.js:51-53,150` | After "Rewrite" the new copy never shows, and Save writes the old copy back | R | **Fixed (2026-10-15).** Local edits are tied to the copy they were made on, so a Rewrite shows and Save writes what's on screen. A rewrite also no longer resets a submitted or live listing to "drafted". |
-| F-8 | Medium | `OnboardingModal.js:252-254` | Can't be closed on steps 1–3 (no cancel, no Escape) | R | Open |
-| F-9 | Medium | `Content.js:305-308`, `page.js:555` | The GitHub connect dialog closes even on failure, which hides the error | R | Open |
-| F-10 | Medium | `lib/jobClient.js:381-390` | Retryable or abandoned jobs stay "queued"/"running" forever and inflate "N runs in flight". Nothing retries them | R | Open |
-| F-11 | Medium | `AccountNotices.js:29` | Unverified users tear down and re-subscribe about 13 Firestore listeners every 10s (the activity query has no limit) | R | Open |
-| F-12 | Medium | `Leads.js:42,240`, `page.js:509` | Declined leads are still qualified (spending a credit) and keep their long retention | R | Open |
-| F-13 | Medium | `dashboard/page.js` (446–516, 949, 955, 1259, 1262, 1530) | About 20 fire-and-forget writes with no catch, no error and no rollback. "Saved." is shown before the write lands | R | **Partly fixed (2026-10-15).** Listing save and status changes are awaited, and a failure is reported. The other fire-and-forget writes are still open for Phase 5. |
-| F-14 | Medium | `page.js:397-428,712-739,580-589,1193-1203,750-759,823` | Async handlers without catch or `res.ok`: audit rerun, ask-for-piece, disconnect GitHub/social (marked disconnected even if it failed), GSC stuck "loading", competitor check silent | R | Open |
-| F-15 | Medium | `SearchConsolePanel.js:73-77`, `Social.js:432,508`, `Listings.js:212` | Dead ends: GSC "reconnect" with no button; social Connect with no pending state (double submit); copy says you can draft or write when no control exists | R | Open |
-| F-16 | Medium | `AuditModal.js:540-603` | After 60s the free report removes close, Escape and backdrop close, and body scroll stays locked, which traps the visitor | R | Open |
-| F-17 | Medium | `page.js:899-918,1049`, `OnboardingModal.js:63-81` | Stale visibility questions after a site switch; a failed run clears approved questions; a retry after a partial onboarding failure creates a duplicate site | R | Open |
-| F-18 | Medium | `lib/crawler.js` | A start URL disallowed by robots.txt is dropped silently and reported as `blockedByRobots:false` (failing test) | V | Open |
-| F-19 | Low | `lib/officialSources.js`, `lib/consent.js` | `notConfigured` misreports key-less sources; `MODELS.notice` is dead (both failing tests) | V | Open |
-| F-20 | Low | various | No confirmation on "Bin it" (social, permanent) or competitor Remove; "Approve & open in mail app" marks the item sent even if it never was; Pause doesn't stop user-started runs; the reset email doesn't return to the app; `/api/ai-status` is fetched twice; the consent panel can't be dismissed when reopened | R | Open |
+| F-8 | Medium | `OnboardingModal.js:252-254` | Can't be closed on steps 1–3 (no cancel, no Escape) | R | **Fixed (Phase 5).** Onboarding has a close button and Escape on every step, except after "Start marketing", when the site is being written. |
+| F-9 | Medium | `Content.js:305-308`, `page.js:555` | The GitHub connect dialog closes even on failure, which hides the error | R | **Fixed (Phase 5).** The GitHub dialog closes only once `github.connected` turns true, and shows the error from that attempt. `connectGithub` also returns whether it worked. |
+| F-10 | Medium | `lib/jobClient.js:381-390` | Retryable or abandoned jobs stay "queued"/"running" forever and inflate "N runs in flight". Nothing retries them | R | **Fixed (Phase 5).** A retryable failure is retried in the page up to twice, with a growing pause, rather than left "queued". Abandoned runs (queued over 15 minutes, or running past an expired lease) are closed once per site visit with a reason. The "in flight" count uses `isLive`. |
+| F-11 | Medium | `AccountNotices.js:29` | Unverified users tear down and re-subscribe about 13 Firestore listeners every 10s (the activity query has no limit) | R | **Fixed (Phase 5).** `refreshUser` replaces the user object only when `emailVerified` changes. The poll runs every 20 seconds, only while the tab is visible, plus a check on return. The roughly 13 listeners no longer churn. |
+| F-12 | Medium | `Leads.js:42,240`, `page.js:509` | Declined leads are still qualified (spending a credit) and keep their long retention | R | **Fixed (Phase 5).** Qualification skips declined companies (no credit spent). Declining sets the provenance to rejected, with the shorter rejected retention. |
+| F-13 | Medium | `dashboard/page.js` (446–516, 949, 955, 1259, 1262, 1530) | About 20 fire-and-forget writes with no catch, no error and no rollback. "Saved." is shown before the write lands | R | **Fixed (Phase 5).** The remaining fire-and-forget writes go through `persist()`, which reports a refusal (permission or network) instead of losing it. The rules and pause writes moved out of state updaters. |
+| F-14 | Medium | `page.js:397-428,712-739,580-589,1193-1203,750-759,823` | Async handlers without catch or `res.ok`: audit rerun, ask-for-piece, disconnect GitHub/social (marked disconnected even if it failed), GSC stuck "loading", competitor check silent | R | **Fixed (Phase 5).** Each handler now catches and reports a failure: the audit rerun, ask-for-a-piece (which also explains a site that hasn't been crawled), a competitor check ("no change" is said too), Search Console calls (never stuck on "loading"), and GitHub and social disconnect, which only show "disconnected" once the server agreed. |
+| F-15 | Medium | `SearchConsolePanel.js:73-77`, `Social.js:432,508`, `Listings.js:212` | Dead ends: GSC "reconnect" with no button; social Connect with no pending state (double submit); copy says you can draft or write when no control exists | R | **Fixed (Phase 5).** Search Console's empty "choosing" state has Open Search Console and Reconnect buttons. Social Connect has a busy state, so it can't be submitted twice. Listings has "Write it myself", which opens empty fields. |
+| F-16 | Medium | `AuditModal.js:540-603` | After 60s the free report removes close, Escape and backdrop close, and body scroll stays locked, which traps the visitor | R | **Fixed (Phase 5).** The free report can always be closed (close button, Escape, backdrop). After 60 seconds the gate only covers the report, which becomes `inert`. Scroll and focus are restored on close. |
+| F-17 | Medium | `page.js:899-918,1049`, `OnboardingModal.js:63-81` | Stale visibility questions after a site switch; a failed run clears approved questions; a retry after a partial onboarding failure creates a duplicate site | R | **Fixed (Phase 5).** Stale questions were fixed earlier (F-32, keyed per site). On a retry, onboarding reuses the site it already created instead of making a duplicate. Open: once a site exists after a half-failed start, the modal can still be closed, leaving the site in the list without a crawl (a question for you). |
+| F-18 | Medium | `lib/crawler.js` | A start URL disallowed by robots.txt is dropped silently and reported as `blockedByRobots:false` (failing test) | V | **Fixed (Phase 5).** `crawlSite` returns `startDisallowed` when robots.txt excludes the start URL, and the crawl summary says so. The test passes. |
+| F-19 | Low | `lib/officialSources.js`, `lib/consent.js` | `notConfigured` misreports key-less sources; `MODELS.notice` is dead (both failing tests) | V | **Fixed (Phase 5).** `notConfigured` lists every key-gated source whose key is missing, whether or not it applied. The dead `MODELS.NOTICE` is removed. Both tests pass. |
+| F-20 | Low | various | No confirmation on "Bin it" (social, permanent) or competitor Remove; "Approve & open in mail app" marks the item sent even if it never was; Pause doesn't stop user-started runs; the reset email doesn't return to the app; `/api/ai-status` is fetched twice; the consent panel can't be dismissed when reopened | R | **Fixed (Phase 5).** Each part:
+- "Bin it" and competitor Remove ask first.
+- The lead label now says "send it from your mail app" rather than claiming it was sent.
+- Pause now says what it does: scheduled work stops, and things you start yourself still run.
+- The reset email links back to /login.
+- `/api/ai-status` is fetched once.
+- The consent panel decision moved into its fetch callback. |
 | F-21 | Low | `package.json` | `npm run lint` is broken (`next lint` was removed in Next 16) | V | **Fixed.** Set up ESLint 9 with `eslint-config-next@16.3.8` using the flat config from the Next 16 docs (`eslint.config.mjs`). `npm run lint` now runs; see F-23. |
 | F-22 | Low | `app/dashboard/page.js:1233`, `app/api/listings/prepare` | Found in Phase 1. Listing copy is sent `site.intelligence.pages`, a field the intelligence object doesn't have (it has `structure.topPages`), so the pipeline never sees the site's pages | V | **Fixed (2026-10-15).** The listing writer gets `structure.topPages` and `business.category` + `description`. The fields it read before, `intelligence.pages` and `business.summary`, don't exist. |
-| F-23 | Low | `app/components/*`, `app/dashboard/page.js`, `app/dashboard/screens/Social.js`, `lib/useRegion.js` | Found in Phase 1, once lint ran again. 23 lint errors in existing UI code: 21 `react-hooks/set-state-in-effect`, 1 `react-hooks/immutability` (`AuditModal.js:577`) and 1 unescaped entity (`Social.js:457`). None of them is in code changed in Phase 1 | V | Open (Phase 5) |
+| F-23 | Low | `app/components/*`, `app/dashboard/page.js`, `app/dashboard/screens/Social.js`, `lib/useRegion.js` | Found in Phase 1, once lint ran again. 23 lint errors in existing UI code: 21 `react-hooks/set-state-in-effect`, 1 `react-hooks/immutability` (`AuditModal.js:577`) and 1 unescaped entity (`Social.js:457`). None of them is in code changed in Phase 1 | V | **Fixed (Phase 5).** `npx eslint .` reports **0 errors** (43 warnings). Every set-state-in-effect was rewritten: `useSiteList`, `useKeyedState`, render-time derivation, `useSyncExternalStore` for theme and region. `no-undef` is on for app code. |
 | F-24 | Low | `app/api/read-site/route.js` | Found in Phase 4 when `api.test` failed on пример.рф. Every failure on the target's side came back as "Couldn't read that site in time", including a broken certificate chain (`UNABLE_TO_VERIFY_LEAF_SIGNATURE`), which no amount of waiting fixes | V | **Fixed (Phase 4).** `describeFetchFailure()` in `lib/urlGuard.js` says which it was: certificate, timeout, or no connection. It is unit-tested in `urlguard.test`. `api.test` counts those as upstream facts, as its own comment already said they were. |
 | F-25 | **Critical** | `app/api/orgs/me/route.js` | Found live on 2026-10-15, right after the Phase 1–4 deploy. Every dashboard load failed with "Couldn't load your organisation". Moving the closed-signups check out of this route had deleted the line that loads the platform settings, but the response still read `settings.maintenance`, so the route threw a ReferenceError on its last line for every user. Lint didn't catch it (the Next preset leaves `no-undef` off), and no test called the route as a real signed-in user | V | **Fixed (`1e9cd0e`).** The settings load is restored. `no-undef` is on for app/, lib/ and proxy.js, and a sweep with it finds nothing else. It was verified live by calling the route with a short-lived token for the support account; that check is now the standard for anything behind sign-in. |
 | F-26 | High | `app/api/auth/send-verification/route.js` | Found 2026-10-15. Confirmation emails landed in spam. SPF, DKIM and DMARC for getmadbot.com all check out, so the setup wasn't at fault. But the mail's one button pointed at `madbot-256aa.firebaseapp.com`, a different domain from the sender, which filters read as phishing | V | **Fixed.** The link now goes to `/auth/action` on getmadbot.com, carrying Firebase's one-time code, and that page applies it with the Firebase client (`app/auth/action/page.js`, noindex). Inbox placement still depends on the new domain building reputation; see the note in the Phase 4 log. |
@@ -142,16 +148,30 @@ No `Math.random()` drives any displayed value, and there is no lorem ipsum, fake
 
 | ID | Sev | File:line | Finding | Ver | Status |
 |---|---|---|---|---|---|
-| U-1 | High | `app/globals.css:74-144` | The light theme never redefines `--color-accent` (#FF6A1A on #F6F4F8 = **2.62:1**). This affects `.card-kicker`, `.hard-index`, `.btn-ghost`, `.tag-outline`, **every link in every legal page** (`.legal-prose a`), and inline accent text across the site and dashboard | R | Open |
-| U-2 | High | `dashboard/page.js:1763-1768` | Toast: the close "×" has no label, there is no `aria-live`, and its fixed 352px width overflows a 375px viewport | R | Open |
-| U-3 | High | `OnboardingModal.js:85,115` | Full-screen modal with no `role="dialog"`, `aria-modal`, Escape or focus trap; the URL input has no label | R | Open |
-| U-4 | Medium | `Content.js:30,133`, `Social.js:19`, `AuditModal.js:544-610` | Dialogs lack `aria-labelledby`, focus trap, Escape and focus restore | R | Open |
-| U-5 | Medium | `CompetitorPanel.js:94`, `Approvals.js:141-142`, `Autonomy.js:134`, `DataRules.js:127`, `Social.js:183`, `Listings.js:21-43` | Inputs, selects and textareas without programmatic labels | R | Open |
-| U-6 | Medium | `globals.css` | Light-mode contrast: muted text 4.48:1, `.mono` and meta text 3.07:1, placeholders 2.22:1. Dark-mode meta text 4.49:1. `.dark-stage` in light mode: accent-2-700 2.23:1, links 2.99:1. Hardcoded `#FF8A6B` for negative deltas: 2.31:1 | R | Open |
-| U-7 | Medium | `page.js:352,378-383,89-117`, `login/page.js:330`, `dashboard/page.js:1475,1766`, `OnboardingModal.js:239,242` | Inline infinite animations ignore `prefers-reduced-motion`. The marquee and ticker have no pause control (WCAG 2.2.2). Marquee items are read twice by screen readers | R | Open |
-| U-8 | Medium | `app/page.js:209,216` | `overflowX:hidden` on the wrapper likely breaks the sticky header (`overflow-x: clip` is the fix). **Needs browser confirmation** | R | Open |
-| U-9 | Medium | `app/page.js:287` | The hero `<h1>` starts at `opacity:0` (`.reveal`) until hydration, which delays LCP and leaves content invisible without JS | R | Open |
-| U-10 | Low | various | No skip link; no `aria-current` on dashboard nav; the Visibility toggle has no `aria-pressed`; few live regions; `scroll-behavior:smooth` isn't gated on reduced motion; no `color-scheme`; the theme toggle can't return to "system"; login has an h2 before the h1; footer h4 sits under h2; tables lack captions and `scope` | R | Open |
+| U-1 | High | `app/globals.css:74-144` | The light theme never redefines `--color-accent` (#FF6A1A on #F6F4F8 = **2.62:1**). This affects `.card-kicker`, `.hard-index`, `.btn-ghost`, `.tag-outline`, **every link in every legal page** (`.legal-prose a`), and inline accent text across the site and dashboard | R | **Fixed (Phase 5).** New `--accent-ink` for orange text: #B34508 in light (5.09:1 on the background), the brand #FF6A1A in dark and on the dark stage. It is used by kickers, ghost buttons, outline tags, legal links, focus rings, and the inline accent text across the dashboard, login, pricing and the free report. The brand orange stays for fills. |
+| U-2 | High | `dashboard/page.js:1763-1768` | Toast: the close "×" has no label, there is no `aria-live`, and its fixed 352px width overflows a 375px viewport | R | **Fixed (Phase 5).** The toast is an always-present `role="status"` live region. The × is labelled. It fits a 375px screen (`min(352px, 100vw - 24px)`), and its endless decorative animation is removed. |
+| U-3 | High | `OnboardingModal.js:85,115` | Full-screen modal with no `role="dialog"`, `aria-modal`, Escape or focus trap; the URL input has no label | R | **Fixed (Phase 5).** Onboarding has dialog semantics, an Escape key, a focus trap, focus restore, focus on each step's heading, and a labelled URL input (`useModalDialog`). |
+| U-4 | Medium | `Content.js:30,133`, `Social.js:19`, `AuditModal.js:544-610` | Dialogs lack `aria-labelledby`, focus trap, Escape and focus restore | R | **Fixed (Phase 5).** The same hook covers Content's ask and GitHub dialogs and Social's connect dialog. The free report modal has its own: dialog role, `aria-labelledby`, a focus trap and focus restore. |
+| U-5 | Medium | `CompetitorPanel.js:94`, `Approvals.js:141-142`, `Autonomy.js:134`, `DataRules.js:127`, `Social.js:183`, `Listings.js:21-43` | Inputs, selects and textareas without programmatic labels | R | **Fixed (Phase 5).** Labels were added in CompetitorPanel, Approvals, Autonomy, DataRules, Social and Listings (`htmlFor` with `useId`). |
+| U-6 | Medium | `globals.css` | Light-mode contrast: muted text 4.48:1, `.mono` and meta text 3.07:1, placeholders 2.22:1. Dark-mode meta text 4.49:1. `.dark-stage` in light mode: accent-2-700 2.23:1, links 2.99:1. Hardcoded `#FF8A6B` for negative deltas: 2.31:1 | R | **Fixed (Phase 5).** Contrast changes:
+
+| Text | Before | After |
+|---|---|---|
+| Muted text (light) | 4.48:1 | 5.49:1 |
+| Meta text (light) | 3.07:1 | 4.79:1 |
+| Meta text (dark) | 4.49:1 | 4.81:1 |
+| Placeholders | 2.19 / 2.89:1 | 4.93 / 4.82:1 |
+
+On the dark stage in light mode, `accent-2-700` went from 2.23 to 8.32:1 and links from 3.22 to 9.18:1. The `#FF8A6B` deltas now use `--accent-ink`. |
+| U-7 | Medium | `page.js:352,378-383,89-117`, `login/page.js:330`, `dashboard/page.js:1475,1766`, `OnboardingModal.js:239,242` | Inline infinite animations ignore `prefers-reduced-motion`. The marquee and ticker have no pause control (WCAG 2.2.2). Marquee items are read twice by screen readers | R | **Fixed (Phase 5).** A global `prefers-reduced-motion` rule stops every loop, including inline ones. The marquee and ticker have pause buttons and pause on hover or focus, and the marquee's duplicate copy is `aria-hidden`. |
+| U-8 | Medium | `app/page.js:209,216` | `overflowX:hidden` on the wrapper likely breaks the sticky header (`overflow-x: clip` is the fix). **Needs browser confirmation** | R | **Fixed (Phase 5).** `overflow-x: clip`. Checked in the browser: the header stays at top 0 after scrolling 1,500px, with no sideways scroll. |
+| U-9 | Medium | `app/page.js:287` | The hero `<h1>` starts at `opacity:0` (`.reveal`) until hydration, which delays LCP and leaves content invisible without JS | R | **Fixed (Phase 5).** The hero `<h1>` no longer starts hidden. Checked in the browser: opacity is 1 before reveal. `@media (scripting: none)` shows all reveal content. |
+| U-10 | Low | various | No skip link; no `aria-current` on dashboard nav; the Visibility toggle has no `aria-pressed`; few live regions; `scroll-behavior:smooth` isn't gated on reduced motion; no `color-scheme`; the theme toggle can't return to "system"; login has an h2 before the h1; footer h4 sits under h2; tables lack captions and `scope` | R | **Fixed (Phase 5).** Accessibility basics:
+- A skip link, with `id="main"` on every page's main element.
+- `color-scheme` is set.
+- Smooth scrolling only without a reduced-motion preference.
+- The theme toggle returns to "system" by flipping back to the OS theme.
+- `aria-pressed` on toggles. |
 
 **Already good:** visible `:focus-visible` ring; the dial is an accessible slider; hero and login fields are labelled; decorative images use `alt=""`; dark mode has no flash; the WebGL scene is lazy and honours reduced motion; dashboard tables scroll; breakpoints are centralised. **Not yet checked live at 375/768/1440**: that happens in Phase 5 with the browser pane, and the dashboard needs you signed in.
 
@@ -550,3 +570,43 @@ Also: a `describeFetchFailure` case in `urlguard.test`. The robots check in `adm
    Only the limits published by the directories are treated as limits: Google 750 characters and 10 categories, Yelp 1,500/1,000. Unpublished ones are kept short and labelled on screen. Each directory's rejection rules go into the writer and onto the card. Which directories show depends on the business type (local, products, services or software) and on India vs elsewhere, worked out from the crawl.
 
 **Tests:** `tests/workFromData.test.mjs` (14 cases) plus two in `listings.test`. **Not run against the live model yet:** the fix drafter and the writer from suggestions. Both need the production key and a plan with content.
+
+---
+
+## Phase 5 change log (2026-10-16): UI and functionality
+
+Every open F- and U- item is fixed, apart from the part of F-17 noted above.
+
+Phase 5 was split by file between me and three parallel agents, so no two edited the same file:
+- **Auth** (login, AuthProvider, AccountNotices, /auth/action): F-1, F-2, F-11 and the reset link.
+- **Accessibility and marketing UI** (globals.css, the homepage and its components): U-1, U-6 to U-10, F-16, and F-23's lint in those files.
+- **Dialogs and dashboard screens:**
+  - U-3, U-4, U-5;
+  - F-8, F-9, F-15, F-17;
+  - F-20's confirmations;
+  - Social.js's lint.
+
+  The shared hook is `app/dashboard/screens/useModalDialog.js`.
+- **Me** (`app/dashboard/page.js`, lib/, the API):
+  - F-3, F-5, F-6, F-10, F-12, F-13, F-14, F-18, F-19 and U-2;
+  - the rest of F-20;
+  - page.js's lint;
+  - the contrast and skip-link follow-ups in files no agent owned.
+
+I reviewed and integrated all of it, then built and tested the result together.
+
+**Verification**
+- **Build:** `next build` passes.
+- **Lint:** **0 errors**, down from 23 at the start of the pass.
+- **Tests:** `npm test` gives 950 passed, 0 failed, 2 skipped. The three failures that predate this pass (F-18, F-19) are fixed. A flaky 2FA tamper test (1 in 4,096) is now deterministic.
+- **Rules:** `npm run test:rules` gives 423 of 423.
+- **In the browser, homepage and legal pages, light and dark, 375px and desktop:**
+  - The skip link is present, and every page has `main#main`.
+  - The hero `<h1>` is visible before hydration.
+  - The sticky header holds.
+  - There is no sideways scroll.
+  - Legal links are #B34508 in light mode.
+  - A fresh load shows no console errors.
+- **Not checked live:** the signed-in dashboard flows (focus traps in its dialogs, the site-switch stamping, retries). They need your sign-in.
+
+**Still deferred, with reasons:** S-10's per-field and count limits in the rules (see that row), and E-5 (kept as a conscious trade-off).

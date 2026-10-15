@@ -16,7 +16,7 @@ export const metadata = {
 export default async function MaintenancePage() {
   const { maintenance } = await platformSettings();
   return (
-    <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 24, background: "var(--color-bg)", color: "var(--color-text)" }}>
+    <main id="main" style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 24, background: "var(--color-bg)", color: "var(--color-text)" }}>
       <div className="card" style={{ maxWidth: 480, padding: 28, gap: 12 }}>
         <span className="card-kicker">Maintenance</span>
         <h1 style={{ margin: 0, fontSize: 26 }}>MADBOT is down for maintenance</h1>

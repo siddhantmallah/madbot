@@ -41,8 +41,13 @@ function Action() {
 
   // Signed in on this device: pick up the change now, which also starts the
   // trial (AuthProvider.refreshUser), rather than on the dashboard's next poll.
+  // Once: refreshUser hands back a new user object when the address flips to
+  // confirmed, which re-runs this effect.
+  const refreshed = useRef(false);
   useEffect(() => {
-    if (state.status === "done" && user) refreshUser();
+    if (state.status !== "done" || !user || refreshed.current) return;
+    refreshed.current = true;
+    refreshUser().catch(() => {});
   }, [state.status, user, refreshUser]);
 
   let title;
@@ -73,7 +78,7 @@ function Action() {
   }
 
   return (
-    <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 16, background: "var(--color-bg)", color: "var(--color-text)" }}>
+    <main id="main" style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 16, background: "var(--color-bg)", color: "var(--color-text)" }}>
       <div className="card" role="status" aria-live="polite" style={{ maxWidth: 480, width: "100%", padding: 28, gap: 14, lineHeight: 1.6 }}>
         <span className="card-kicker">Your account</span>
         <h1 style={{ margin: 0, fontSize: 26 }}>{title}</h1>

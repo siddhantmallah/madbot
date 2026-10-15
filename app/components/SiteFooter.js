@@ -28,7 +28,9 @@ export default function SiteFooter({ onManageCookies }) {
           <p style={{ margin: "0 0 12px", fontSize: 13.5, maxWidth: "26em", color: "var(--fg-45)" }}>
             Autonomous website marketing. One dial, a full audit trail, and no seats to buy.
           </p>
-          <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.6, color: "var(--fg-32)", maxWidth: "26em" }}>
+          {/* --fg-45, the faintest tier that holds 4.5:1. This is the seller's
+              legal identity, and it was set at --fg-32: about 2.2:1. */}
+          <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.6, color: "var(--fg-45)", maxWidth: "26em" }}>
             A product of {COMPANY.legalName}
             {COMPANY.cin ? <><br />CIN {COMPANY.cin}</> : null}
             {address ? <><br />{address}</> : null}
@@ -36,7 +38,7 @@ export default function SiteFooter({ onManageCookies }) {
         </div>
 
         <nav aria-label="Product" style={{ display: "flex", flexDirection: "column", gap: 9, fontSize: 14 }}>
-          <h4 style={{ margin: "0 0 2px", fontSize: 12.5, letterSpacing: ".09em", textTransform: "uppercase", color: "var(--fg-45)" }}>Product</h4>
+          <h2 style={{ margin: "0 0 2px", fontSize: 12.5, letterSpacing: ".09em", textTransform: "uppercase", color: "var(--fg-45)" }}>Product</h2>
           <Link href="/#how">How it works</Link>
           <Link href="/#does">What it does</Link>
           <Link href="/#rope">Autonomy</Link>
@@ -45,7 +47,7 @@ export default function SiteFooter({ onManageCookies }) {
         </nav>
 
         <nav aria-label="Company" style={{ display: "flex", flexDirection: "column", gap: 9, fontSize: 14 }}>
-          <h4 style={{ margin: "0 0 2px", fontSize: 12.5, letterSpacing: ".09em", textTransform: "uppercase", color: "var(--fg-45)" }}>Company</h4>
+          <h2 style={{ margin: "0 0 2px", fontSize: 12.5, letterSpacing: ".09em", textTransform: "uppercase", color: "var(--fg-45)" }}>Company</h2>
           <Link href="/about">About</Link>
           <Link href="/contact">Contact</Link>
           <Link href="/legal/security">Security</Link>
@@ -53,7 +55,7 @@ export default function SiteFooter({ onManageCookies }) {
         </nav>
 
         <nav aria-label="Legal" style={{ display: "flex", flexDirection: "column", gap: 9, fontSize: 14 }}>
-          <h4 style={{ margin: "0 0 2px", fontSize: 12.5, letterSpacing: ".09em", textTransform: "uppercase", color: "var(--fg-45)" }}>Legal</h4>
+          <h2 style={{ margin: "0 0 2px", fontSize: 12.5, letterSpacing: ".09em", textTransform: "uppercase", color: "var(--fg-45)" }}>Legal</h2>
           <Link href="/legal/terms">Terms of Service</Link>
           <Link href="/legal/privacy">Privacy Policy</Link>
           <Link href="/legal/cookies">Cookie Policy</Link>
@@ -75,7 +77,7 @@ export default function SiteFooter({ onManageCookies }) {
 
       <div
         className="pad-responsive"
-        style={{ maxWidth: 1180, margin: "0 auto", padding: "0 28px 36px", fontSize: 12.5, color: "var(--fg-32)", display: "flex", gap: "8px 20px", flexWrap: "wrap" }}
+        style={{ maxWidth: 1180, margin: "0 auto", padding: "0 28px 36px", fontSize: 12.5, color: "var(--fg-45)", display: "flex", gap: "8px 20px", flexWrap: "wrap" }}
       >
         <span>{copyrightLine()}</span>
         <span>MADBOT is a product of {COMPANY.shortLegalName}, {COMPANY.entityType}, {COMPANY.incorporatedIn}.</span>

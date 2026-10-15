@@ -3,7 +3,7 @@ function Delta({ now, before }) {
   const d = ((now - before) / before) * 100;
   const up = d >= 0;
   return (
-    <span style={{ fontSize: 11.5, fontWeight: 700, color: up ? "var(--ok)" : "#FF8A6B" }}>
+    <span style={{ fontSize: 11.5, fontWeight: 700, color: up ? "var(--ok)" : "var(--accent-ink)" }}>
       {up ? "▲" : "▼"} {Math.abs(d).toFixed(0)}%
     </span>
   );
@@ -71,10 +71,21 @@ export default function SearchConsolePanel({ state, onConnect, onPickProperty, o
           <span className="tag tag-accent-2" style={{ marginLeft: "auto" }}>Connected</span>
         </div>
         {properties.length === 0 ? (
-          <p style={{ margin: 0, fontSize: 13, lineHeight: 1.55 }} className="text-muted">
-            That Google account doesn&apos;t have any verified Search Console properties. Add and verify {domain} in
-            Search Console first, then reconnect.
-          </p>
+          <>
+            <p style={{ margin: 0, fontSize: 13, lineHeight: 1.55 }} className="text-muted">
+              That Google account doesn&apos;t have any verified Search Console properties. Add and verify {domain} in
+              Search Console first, then reconnect.
+            </p>
+            {/* The copy said "reconnect" and there was nothing to press. */}
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <a className="btn btn-secondary" href="https://search.google.com/search-console" target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, fontWeight: 600 }}>
+                Open Search Console
+              </a>
+              <button className="btn btn-primary" onClick={onConnect} style={{ fontSize: 13 }}>
+                Reconnect Search Console
+              </button>
+            </div>
+          </>
         ) : (
           <>
             <p style={{ margin: 0, fontSize: 12.5 }} className="text-muted">
