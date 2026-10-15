@@ -6,16 +6,14 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signInWithPopup,
-  linkWithPopup,
-  reauthenticateWithPopup,
   sendPasswordResetEmail,
-  GoogleAuthProvider,
   signOut,
   updateProfile,
 } from "firebase/auth";
 import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { auth, db, googleProvider, githubProvider } from "../../lib/firebase";
 import { MIN_LENGTH, isAcceptable } from "../../lib/password";
+import { requestGoogleToken } from "../../lib/googleToken";
 
 const AuthContext = createContext(null);
 
@@ -198,38 +196,13 @@ export function AuthProvider({ children }) {
     return signOut(auth);
   }
 
-  // Asks Google for the read-only Search Console scope and hands back the
-  // OAuth access token. Deliberately uses link/reauthenticate rather than a
-  // plain popup sign-in: a plain sign-in would swap an email/password user
-  // onto a different uid and orphan all their data.
+  // The read-only Search Console scope, from whichever Google account owns the
+  // property: not necessarily the one this person signs in to MADBOT with,
+  // and never by linking or re-authenticating the MADBOT login (that failed
+  // with auth/user-mismatch). See lib/googleToken.js.
   async function connectSearchConsole() {
-    const current = auth.currentUser;
-    if (!current) throw new Error("Sign in first.");
-
-    const provider = new GoogleAuthProvider();
-    provider.addScope("https://www.googleapis.com/auth/webmasters.readonly");
-    provider.setCustomParameters({ prompt: "consent" });
-
-    const alreadyGoogle = current.providerData.some((p) => p.providerId === "google.com");
-    let result;
-    if (alreadyGoogle) {
-      result = await reauthenticateWithPopup(current, provider);
-    } else {
-      try {
-        result = await linkWithPopup(current, provider);
-      } catch (err) {
-        // Already linked on another pass — reauthenticating gets us the token.
-        if (err?.code === "auth/provider-already-linked" || err?.code === "auth/credential-already-in-use") {
-          result = await reauthenticateWithPopup(current, provider);
-        } else {
-          throw err;
-        }
-      }
-    }
-
-    const cred = GoogleAuthProvider.credentialFromResult(result);
-    if (!cred?.accessToken) throw new Error("Google didn't return an access token.");
-    return cred.accessToken;
+    if (!auth.currentUser) throw new Error("Sign in first.");
+    return requestGoogleToken("https://www.googleapis.com/auth/webmasters.readonly");
   }
 
   return (

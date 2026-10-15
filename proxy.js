@@ -27,13 +27,16 @@ function contentSecurityPolicy(nonce) {
     // Inline because React's style={{}} props become style attributes, which
     // cannot carry a nonce. A nonce here would also switch 'unsafe-inline' off.
     // Fonts are self-hosted by next/font (app/layout.js); nothing from Google.
-    "style-src 'self' 'unsafe-inline'",
+    // accounts.google.com/gsi: Google Identity Services, loaded only when someone
+    // connects Search Console (lib/googleToken.js). These are the entries
+    // Google documents for it, and no wider.
+    "style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style",
     "font-src 'self'",
     // blob: is how the dashboard shows favicons it fetched through /api/favicon.
     "img-src 'self' data: blob:",
     // Firestore, Identity Toolkit and the token refresh endpoint.
-    "connect-src 'self' https://*.googleapis.com",
-    ...(authDomain ? [`frame-src https://${authDomain}`] : []),
+    "connect-src 'self' https://*.googleapis.com https://accounts.google.com/gsi/",
+    `frame-src https://accounts.google.com/gsi/${authDomain ? ` https://${authDomain}` : ""}`,
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
