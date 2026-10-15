@@ -33,7 +33,7 @@ function Sparkline({ series }) {
 }
 
 export default function SearchConsolePanel({ state, onConnect, onPickProperty, onRefresh, domain }) {
-  const { status, error, properties, siteUrl, data, needsReconnect } = state;
+  const { status, error, properties, siteUrl, data, needsReconnect, enableUrl } = state;
 
   // Not connected yet.
   if (status === "idle" || status === "connecting") {
@@ -48,7 +48,7 @@ export default function SearchConsolePanel({ state, onConnect, onPickProperty, o
           {domain} appear here — pulled straight from Google, not estimated.
         </p>
         {error ? (
-          <div style={{ fontSize: 12.5, color: "var(--color-accent-700)", background: "var(--color-accent-100)", borderRadius: 12, padding: "9px 12px" }}>
+          <div style={{ fontSize: 12.5, color: "var(--color-accent-700)", background: "var(--color-accent-100)", borderRadius: 12, padding: "9px 12px", overflowWrap: "anywhere" }}>
             {error}
           </div>
         ) : null}
@@ -114,10 +114,17 @@ export default function SearchConsolePanel({ state, onConnect, onPickProperty, o
     return (
       <section className="card elev-sm" style={{ padding: 18, gap: 10, border: "1px dashed var(--color-accent-400)" }}>
         <h4 style={{ margin: 0 }}>Traffic &amp; rankings</h4>
-        <p style={{ margin: 0, fontSize: 13, lineHeight: 1.55, color: "var(--color-accent-800)" }}>{error}</p>
-        <button className="btn btn-secondary" onClick={onConnect} style={{ fontSize: 13, fontWeight: 600, alignSelf: "flex-start" }}>
-          {needsReconnect ? "Reconnect Search Console" : "Try again"}
-        </button>
+        <p style={{ margin: 0, fontSize: 13, lineHeight: 1.55, color: "var(--color-accent-800)", overflowWrap: "anywhere" }}>{error}</p>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {enableUrl ? (
+            <a className="btn btn-primary" href={enableUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: "var(--on-accent)" }}>
+              Open Google Cloud
+            </a>
+          ) : null}
+          <button className="btn btn-secondary" onClick={onConnect} style={{ fontSize: 13, fontWeight: 600 }}>
+            {needsReconnect ? "Reconnect Search Console" : "Try again"}
+          </button>
+        </div>
       </section>
     );
   }

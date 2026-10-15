@@ -145,6 +145,22 @@ export async function POST(request) {
 
     return NextResponse.json({ ok: false, error: "Unknown action." }, { status: 400 });
   } catch (err) {
+    // The Search Console API switched off in the Google Cloud project that owns
+    // MADBOT's sign-in client. Google answers 403, which read as "your
+    // connection expired" and offered a reconnect that could never work. It is
+    // a one-time setting for whoever runs MADBOT, so say exactly that.
+    const project = String(err.message || "").match(/project (\d+)/)?.[1];
+    if (/has not been used in project|is disabled|SERVICE_DISABLED/i.test(String(err.message || ""))) {
+      return NextResponse.json(
+        {
+          ok: false,
+          code: "api_disabled",
+          error: "Google's Search Console API isn't switched on for MADBOT yet. It's a one-time setting in Google Cloud: open the link, press Enable, wait a couple of minutes, then try again.",
+          enableUrl: `https://console.cloud.google.com/apis/library/searchconsole.googleapis.com${project ? `?project=${project}` : ""}`,
+        },
+        { status: 200 }
+      );
+    }
     if (err.status === 401 || err.status === 403) {
       return NextResponse.json(
         { ok: false, error: err.message || "Google refused that request — the connection may have expired.", needsReconnect: true },

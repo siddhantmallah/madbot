@@ -189,6 +189,7 @@ function DashboardInner() {
   // hands back no refresh token, so we never persist it and just reconnect.
   const [gsc, setGsc] = useState({ status: "idle", error: "", properties: [], siteUrl: null, data: null });
   const gscTokenRef = useRef(null);
+  const jobsInFlight = useRef(new Set());
   const [onboardOpen, setOnboardOpen] = useState(false);
 
   const [aut, setAut] = useState(62);
@@ -916,7 +917,7 @@ function DashboardInner() {
     setGsc((s) => ({ ...s, status: "loading", error: "" }));
     const data = await gscCall("summary", { siteUrl: propertyUrl });
     if (!data.ok) {
-      setGsc((s) => ({ ...s, status: "error", error: data.error, needsReconnect: !!data.needsReconnect }));
+      setGsc((s) => ({ ...s, status: "error", error: data.error, needsReconnect: !!data.needsReconnect, enableUrl: data.enableUrl || null }));
       return;
     }
     setGsc((s) => ({ ...s, status: "ready", siteUrl: propertyUrl, data }));
@@ -929,7 +930,7 @@ function DashboardInner() {
       gscTokenRef.current = await connectSearchConsole();
       const listed = await gscCall("sites");
       if (!listed.ok) {
-        setGsc((s) => ({ ...s, status: "error", error: listed.error }));
+        setGsc((s) => ({ ...s, status: "error", error: listed.error, enableUrl: listed.enableUrl || null }));
         return;
       }
       const properties = listed.sites || [];
@@ -1014,6 +1015,12 @@ function DashboardInner() {
     // React state set a line above isn't visible in this closure yet.
     const targetSiteId = siteIdOverride || activeSiteId;
     if (!user || !targetSiteId) return;
+    // One run of a kind at a time. The busy state disables the button, but
+    // only after a render; two clicks in quick succession both got through and
+    // ran two paid searches five seconds apart.
+    const runKey = `${targetSiteId}:${type}`;
+    if (jobsInFlight.current.has(runKey)) return;
+    jobsInFlight.current.add(runKey);
     setJobBusy(type);
     try {
       const out = await enqueueAndRun(
@@ -1039,6 +1046,7 @@ function DashboardInner() {
       );
     } finally {
       setJobBusy(null);
+      jobsInFlight.current.delete(runKey);
     }
   }
 

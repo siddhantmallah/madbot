@@ -221,8 +221,13 @@ export default function Leads({
           <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
             <h4 style={{ margin: 0 }}>Find and qualify</h4>
             {leadSearch ? (
+              // The last search and the whole list are different numbers: every
+              // search adds to the list, and a company found twice is listed
+              // once. Showing only the last search's count next to a longer list
+              // read as a contradiction.
               <span className="text-muted" style={{ fontSize: 12, marginLeft: "auto" }}>
-                last search found {leadSearch.discovered}, shortlisted {leadSearch.shortlisted}
+                Last search: {leadSearch.discovered} found, {leadSearch.shortlisted} shortlisted
+                {leads.length ? ` · ${leads.length} compan${leads.length === 1 ? "y" : "ies"} in your list from all searches` : ""}
               </span>
             ) : null}
           </div>
